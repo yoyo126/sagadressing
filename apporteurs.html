@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Apporteurs — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Apporteurs d'affaires</h1>
+          <p class="topbar-sub" id="subTitle">—</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchInput" placeholder="Rechercher un apporteur…" />
+          </div>
+          <button class="btn btn-primary" onclick="toggleNewForm()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nouvel apporteur
+          </button>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <div class="panel" id="newForm" style="display:none;">
+        <div class="panel-head"><h2>Nouvel apporteur</h2></div>
+        <div class="form-grid" style="max-width:520px;">
+          <div class="form-field">
+            <label class="form-label" for="aNom">Nom affiché</label>
+            <input class="form-input" id="aNom" placeholder="Ex. Sonia L." />
+          </div>
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:1;">
+              <label class="form-label" for="aEmail">Email</label>
+              <input class="form-input" type="email" id="aEmail" placeholder="sonia@example.com" />
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="aPct">Commission (%)</label>
+              <input class="form-input" type="number" id="aPct" value="8" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="aStatutJur">Statut juridique</label>
+            <select class="form-select" id="aStatutJur">
+              <option>Auto-entrepreneur</option>
+              <option>Société (SASU, EURL…)</option>
+              <option>Particulier non professionnel</option>
+            </select>
+            <span class="card-note">Détermine les justificatifs à réclamer (Kbis, attestation URSSAF…).</span>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary btn-sm" onclick="addApporteur()">Créer la fiche</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleNewForm()">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Apporteurs actifs</span></div>
+          <div class="kpi-value tabular" id="kActifs">—</div>
+          <div class="kpi-delta" id="kActifsSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Commissions à verser</span></div>
+          <div class="kpi-value tabular" id="kDu" style="color:var(--brand-strong)">—</div>
+          <div class="kpi-delta" id="kDuSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Déjà versé</span></div>
+          <div class="kpi-value tabular" id="kVerse">—</div>
+          <div class="kpi-delta">depuis le début</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Justificatifs à régulariser</span></div>
+          <div class="kpi-value tabular" id="kDocs">—</div>
+          <div class="kpi-delta" id="kDocsSub">—</div>
+        </div>
+      </section>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Tous les apporteurs</h2></div>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Apporteur</th>
+              <th class="num">Clientes</th>
+              <th class="num">Commission</th>
+              <th class="num">Déjà versé</th>
+              <th class="num">Reste à verser</th>
+              <th>Dossier</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="apporteursBody"></tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Clientes par apporteur</h2></div>
+        <ul class="bar-list" id="barList"></ul>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('apporteurs');
+
+  // Chiffres alignés sur les fiches détaillées (apporteur.html)
+  var apporteurs = [
+    { key:'nadia', nom:'Nadia R.', initiales:'NR', pct:8, clientes:['Fanny (M)','Camille (B)','Élise (R)'],
+      verse:292, du:287, docsManquants:2, statut:'actif' },
+    { key:'karim', nom:'Karim B.', initiales:'KB', pct:6, clientes:['Marion (F)','Nora (T)'],
+      verse:87, du:90, docsManquants:3, statut:'actif' },
+    { key:'sonia', nom:'Sonia L.', initiales:'SL', pct:8, clientes:[],
+      verse:0, du:0, docsManquants:5, statut:'inactif' }
+  ];
+
+  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+
+  function render() {
+    var q = document.getElementById('searchInput').value.trim().toLowerCase();
+    var rows = apporteurs.filter(function (a) {
+      return !q || a.nom.toLowerCase().indexOf(q) !== -1;
+    });
+
+    document.getElementById('apporteursBody').innerHTML = rows.map(function (a) {
+      var dossier = a.docsManquants === 0
+        ? '<span class="chip good">Complet</span>'
+        : '<span class="chip critical">' + a.docsManquants + ' à fournir</span>';
+      var statut = a.statut === 'actif'
+        ? '<span class="chip good">Actif</span>'
+        : '<span class="chip neutral">Inactif</span>';
+      var du = a.du > 0
+        ? '<strong style="color:var(--brand-strong)">' + fmtEUR(a.du) + '</strong>'
+        : '<span class="muted">—</span>';
+      return '<tr data-href="apporteur.html?a=' + a.key + '">' +
+        '<td><div class="name-cell"><span class="tag-avatar">' + a.initiales + '</span> ' + a.nom + '</div></td>' +
+        '<td class="num tabular">' + a.clientes.length + '</td>' +
+        '<td class="num tabular">' + a.pct + ' %</td>' +
+        '<td class="num tabular">' + fmtEUR(a.verse) + '</td>' +
+        '<td class="num tabular">' + du + '</td>' +
+        '<td>' + dossier + '</td>' +
+        '<td>' + statut + '</td>' +
+      '</tr>';
+    }).join('');
+
+    initRowLinks(document.getElementById('apporteursBody'));
+
+    var actifs = apporteurs.filter(function (a) { return a.statut === 'actif'; });
+    var nbClientes = apporteurs.reduce(function (s, a) { return s + a.clientes.length; }, 0);
+    var totalDu = apporteurs.reduce(function (s, a) { return s + a.du; }, 0);
+    var totalVerse = apporteurs.reduce(function (s, a) { return s + a.verse; }, 0);
+    var totalDocs = apporteurs.reduce(function (s, a) { return s + a.docsManquants; }, 0);
+    var avecDocs = apporteurs.filter(function (a) { return a.docsManquants > 0; }).length;
+
+    document.getElementById('subTitle').textContent =
+      actifs.length + ' apporteur' + (actifs.length > 1 ? 's' : '') + ' actif' + (actifs.length > 1 ? 's' : '') +
+      ' — ' + nbClientes + ' cliente' + (nbClientes > 1 ? 's' : '') + ' rattachée' + (nbClientes > 1 ? 's' : '');
+    document.getElementById('kActifs').textContent = actifs.length;
+    document.getElementById('kActifsSub').textContent = nbClientes + ' clientes rattachées au total';
+    document.getElementById('kDu').textContent = fmtEUR(totalDu);
+    document.getElementById('kDuSub').textContent =
+      totalDu > 0 ? 'sur ' + apporteurs.filter(function (a) { return a.du > 0; }).length + ' apporteur(s)' : 'tout est à jour';
+    document.getElementById('kVerse').textContent = fmtEUR(totalVerse);
+    document.getElementById('kDocs').textContent = totalDocs;
+    document.getElementById('kDocsSub').textContent =
+      avecDocs ? 'chez ' + avecDocs + ' apporteur(s)' : 'tous les dossiers sont complets';
+
+    var maxC = Math.max.apply(null, apporteurs.map(function (a) { return a.clientes.length; }).concat([1]));
+    document.getElementById('barList').innerHTML = apporteurs
+      .filter(function (a) { return a.clientes.length > 0; })
+      .map(function (a) {
+        return '<li><div class="bar-row-top"><span>' + a.nom + ' — ' + a.clientes.join(', ') + '</span>' +
+          '<span class="tabular">' + a.clientes.length + ' cliente' + (a.clientes.length > 1 ? 's' : '') + '</span></div>' +
+          '<div class="bar-track"><div class="bar-fill" style="width:' + (a.clientes.length / maxC * 100) + '%"></div></div></li>';
+      }).join('') || '<li class="muted" style="font-size:.85rem;">Aucune cliente rattachée pour le moment.</li>';
+  }
+
+  function toggleNewForm() {
+    var f = document.getElementById('newForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    if (f.style.display === 'block') document.getElementById('aNom').focus();
+  }
+
+  function addApporteur() {
+    var nom = document.getElementById('aNom').value.trim();
+    if (!nom) { document.getElementById('aNom').focus(); return; }
+    var initiales = nom.split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+
+    apporteurs.push({
+      key: '', nom: nom, initiales: initiales,
+      pct: parseInt(document.getElementById('aPct').value, 10) || 8,
+      clientes: [], verse: 0, du: 0,
+      docsManquants: 5, statut: 'actif'
+    });
+
+    ['aNom','aEmail'].forEach(function (id) { document.getElementById(id).value = ''; });
+    toggleNewForm();
+    render();
+  }
+
+  document.getElementById('searchInput').addEventListener('input', render);
+  render();
+</script>
+</body>
+</html>

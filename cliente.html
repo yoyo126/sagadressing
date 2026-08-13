@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fanny (M) — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <a class="back-link" href="clientes.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>
+        Clientes
+      </a>
+
+      <div class="detail-header">
+        <div class="avatar-lg" id="cAvatar">M</div>
+        <div class="detail-title-block">
+          <div class="detail-title-row">
+            <h1 id="cName">—</h1>
+            <span class="chip good" id="cStatusChip">Active</span>
+            <span class="chip good" id="headerContratChip" style="display:none;">Contrat signé</span>
+          </div>
+          <div class="detail-meta" id="cMeta">—</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-secondary" onclick="document.querySelector('[data-tab=&quot;tab-infos&quot;]').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Modifier
+          </button>
+          <button class="btn btn-primary" onclick="payAll()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
+            Tout payer
+          </button>
+        </div>
+      </div>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <div class="alert-bar" id="pendingSignAlert" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        <span id="pendingSignText">—</span>
+        <button class="btn btn-secondary btn-sm alert-action" id="pendingSignBtn">Voir le document</button>
+      </div>
+
+      <div class="recap-bar">
+        <div class="recap-bar-left">
+          <span class="recap-title">Récapitulatif</span>
+          <span class="recap-period-label" id="recapPeriodLabel">depuis le début</span>
+        </div>
+        <div class="recap-bar-right">
+          <div class="toggle-group" id="recapPeriodToggle">
+            <button data-period="all" class="active">Tout</button>
+            <button data-period="90">90 jours</button>
+            <button data-period="30">30 jours</button>
+            <button data-period="custom">Personnalisé</button>
+          </div>
+          <div class="recap-dates" id="recapCustomDates" style="display:none;">
+            <label class="form-label" for="recapFrom">Du</label>
+            <input class="form-input" type="date" id="recapFrom" value="2026-07-01" />
+            <label class="form-label" for="recapTo">Au</label>
+            <input class="form-input" type="date" id="recapTo" value="2026-07-31" />
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Chiffre d'affaires</span>
+            <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.2-5 3 2.2 3 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/></svg></div>
+          </div>
+          <div class="kpi-value tabular" id="recapCA">—</div>
+          <div class="kpi-delta" id="recapCASub">—</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Ma commission</span>
+            <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13l4-5 4 3 5-7 3 3"/><path d="M4 19h16"/></svg></div>
+          </div>
+          <div class="kpi-value tabular" id="recapCommission">—</div>
+          <div class="kpi-delta" id="recapCommissionSub">—</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Déjà reversé à la cliente</span>
+            <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20,6 9,17 4,12"/></svg></div>
+          </div>
+          <div class="kpi-value tabular" id="recapVerse">—</div>
+          <div class="kpi-delta" id="recapVerseSub">—</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Reste à reverser</span>
+            <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg></div>
+          </div>
+          <div class="kpi-value tabular" id="recapReste" style="color:var(--brand-strong)">—</div>
+          <div class="kpi-delta" id="recapResteSub">—</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="tabs" data-panel-group="cliente">
+          <div class="tab-item active" data-tab="tab-lives">Lives</div>
+          <div class="tab-item" data-tab="tab-notes">Notes <span class="tab-badge" id="notesBadge" style="display:none;">0</span></div>
+          <div class="tab-item" data-tab="tab-contrat">Contrat</div>
+          <div class="tab-item" data-tab="tab-restitution">Restitution</div>
+          <div class="tab-item" data-tab="tab-paiements">Paiements</div>
+          <div class="tab-item" data-tab="tab-fichiers">Pièces jointes</div>
+          <div class="tab-item" data-tab="tab-infos">Infos</div>
+        </div>
+
+        <div class="tab-panel active" id="tab-lives" data-panel-group="cliente" style="margin-top:18px;">
+          <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+            <button class="btn btn-secondary btn-sm" onclick="toggleDirectSaleForm()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Ajouter une vente hors live
+            </button>
+          </div>
+
+          <div id="directSaleForm" class="form-grid" style="display:none; max-width:520px; margin-bottom:18px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface-alt);">
+            <p class="card-note" style="margin:0 0 2px;">Vente conclue hors Whatnot (main propre, virement, autre plateforme…). Ni frais Whatnot ni giveaways ne s'appliquent. La commission Saga (30 %) est retenue automatiquement ; celle de l'apporteur est à votre choix ci-dessous.</p>
+            <div class="form-field">
+              <label class="form-label">Date de la vente</label>
+              <input class="form-input" type="date" id="dsDate" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Article / description</label>
+              <input class="form-input" id="dsDescription" placeholder="Ex. Sac à main cuir" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Montant de la vente (€)</label>
+              <input class="form-input" type="number" id="dsMontant" placeholder="Ex. 45" />
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="dsFrais">Frais d'envoi (€)</label>
+              <input class="form-input" type="number" id="dsFrais" value="0" step="0.01" />
+              <span class="card-note">Colis, pochette, timbre… Déduits du montant reversé à la cliente.</span>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Mode de vente</label>
+              <select class="form-select" id="dsMode">
+                <option>Remise en main propre</option>
+                <option>Virement direct</option>
+                <option>Autre plateforme (Vinted, Leboncoin…)</option>
+              </select>
+            </div>
+
+            <div class="form-field" id="dsApporteurField">
+              <label class="form-label">Commission apporteur</label>
+              <label class="check-row">
+                <input type="checkbox" id="dsApporteur" />
+                <span id="dsApporteurLabel">—</span>
+              </label>
+              <span class="card-note">Décoché : l'apporteur n'est pas rémunéré sur cette vente directe.</span>
+            </div>
+
+            <div class="calc-recap" id="dsRecap">
+              <div class="calc-row"><span>Montant de la vente</span><span class="tabular" id="dsRecapMontant">—</span></div>
+              <div class="calc-row"><span>− Commission Saga (30 %)</span><span class="tabular" id="dsRecapSaga">—</span></div>
+              <div class="calc-row" id="dsRecapApporteurRow" style="display:none;"><span>− Commission apporteur (8 %)</span><span class="tabular" id="dsRecapApporteur">—</span></div>
+              <div class="calc-row" id="dsRecapFraisRow" style="display:none;"><span>− Frais d'envoi</span><span class="tabular" id="dsRecapFrais">—</span></div>
+              <div class="calc-row total"><span id="dsRecapNetLabel">Net à reverser</span><span class="tabular" id="dsRecapNet">—</span></div>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-primary btn-sm" onclick="addDirectSale()">Ajouter la vente</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleDirectSaleForm()">Annuler</button>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date</th><th>Session</th><th class="num">Ventes</th><th class="num">Commission</th><th class="num">Net reversé</th><th>Statut</th><th></th></tr></thead>
+            <tbody id="livesTableBody">
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-notes" data-panel-group="cliente" style="margin-top:18px;">
+          <div class="note-composer">
+            <textarea class="form-textarea" id="noteText" placeholder="Ce qui a été dit, ce qu'il reste à faire, un détail à ne pas oublier…"></textarea>
+            <div class="note-composer-actions">
+              <div class="toggle-group" id="noteTypeToggle">
+                <button data-type="note" class="active">Note</button>
+                <button data-type="todo">À faire</button>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="addNote()">Ajouter</button>
+            </div>
+          </div>
+
+          <div id="notesEmpty" class="empty-state" style="margin-top:18px;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3h8l4 4v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="14" y2="14"/></svg>
+            <div class="t">Aucune note pour cette cliente</div>
+            <div class="s">Notez ce que vous vous êtes dit, un point à surveiller, une chose à faire au prochain live</div>
+          </div>
+
+          <ul class="note-list" id="notesList" style="display:none;"></ul>
+        </div>
+
+        <div class="tab-panel" id="tab-contrat" data-panel-group="cliente" style="margin-top:18px;">
+
+          <div class="file-row" style="margin-bottom:18px;">
+            <div class="file-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            </div>
+            <div class="file-meta">
+              <div class="file-name">Contrat_Saga_Dressing.docx</div>
+              <div class="file-sub">Modèle utilisé pour toutes les clientes · mis à jour le 03/08/2026</div>
+            </div>
+            <div class="file-actions">
+              <button class="btn btn-ghost btn-sm">Remplacer le modèle</button>
+            </div>
+          </div>
+
+          <div id="contratEmpty" class="empty-state">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            <div class="t">Aucun contrat généré pour cette cliente</div>
+            <div class="s">Complétez les champs à droite pour pré-remplir le modèle, puis envoyez-le en signature électronique</div>
+            <button class="btn btn-primary" style="margin-top:8px;" onclick="startContrat()">Générer le contrat</button>
+          </div>
+
+          <div id="contratWorkspace" style="display:none;">
+            <div class="sign-steps" id="signSteps">
+              <div class="sign-step" data-step="draft"><div class="dot">1</div><span class="label">Brouillon</span><span class="sub" id="stepDraftSub">—</span></div>
+              <div class="sign-step" data-step="sent"><div class="dot">2</div><span class="label">Envoyé</span><span class="sub" id="stepSentSub">—</span></div>
+              <div class="sign-step" data-step="viewed"><div class="dot">3</div><span class="label">Vu</span><span class="sub" id="stepViewedSub">—</span></div>
+              <div class="sign-step" data-step="signed"><div class="dot">4</div><span class="label">Signé</span><span class="sub" id="stepSignedSub">—</span></div>
+            </div>
+
+            <div class="contrat-columns">
+              <div class="form-grid" id="contratFormFields">
+                <div class="form-field">
+                  <label class="form-label">Nom / Prénom</label>
+                  <input class="form-input" id="fNom" value="Fanny Moreau" readonly style="opacity:.7;" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Adresse</label>
+                  <input class="form-input" id="fAdresse" placeholder="Ex. 12 rue de Rivoli, 75001 Paris" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Téléphone</label>
+                  <input class="form-input" id="fTelephone" value="06 12 34 56 78" readonly style="opacity:.7;" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Email</label>
+                  <input class="form-input" id="fEmail" value="fanny.moreau@example.com" readonly style="opacity:.7;" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Fixation des prix</label>
+                  <select class="form-select" id="fFixationPrix">
+                    <option>Fixer elle-même un prix de départ conseillé</option>
+                    <option>Laisser le Dépositaire libre de fixer les prix</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Commission Saga (%)</label>
+                  <input class="form-input" type="number" id="fCommission" value="30" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Invendus</label>
+                  <select class="form-select" id="fInvendus">
+                    <option>Récupérer les invendus</option>
+                    <option>Autoriser la remise en vente</option>
+                    <option>Autoriser la baisse de prix</option>
+                    <option>Autoriser le don / déstockage</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Fait à Lésigny, le</label>
+                  <input class="form-input" type="date" id="fDate" />
+                </div>
+
+                <div id="contratActionsDraft" style="display:flex; gap:10px;">
+                  <button class="btn btn-primary" onclick="sendForSignature()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+                    Générer et envoyer pour signature
+                  </button>
+                  <button class="btn btn-ghost" onclick="cancelContrat()">Annuler</button>
+                </div>
+
+                <div id="contratActionsSent" style="display:none;">
+                  <p class="card-note" style="margin-bottom:10px;">Envoyé à <strong id="sentEmailLabel">—</strong> le <strong id="sentDateLabel">—</strong> · en attente de signature.</p>
+                  <button class="btn btn-secondary btn-sm" onclick="simulateSignature()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21,3 21,9 15,9"/></svg>
+                    Simuler la réception de signature
+                  </button>
+                  <p class="card-note" style="margin-top:8px;">Simule ce que fera automatiquement Yousign une fois l'intégration branchée. Toutes les signatures en attente sont regroupées sur le <a href="dashboard.html" style="color:var(--brand-strong);">tableau de bord</a>.</p>
+                </div>
+
+                <div id="contratActionsSigned" style="display:none;">
+                  <p class="card-note" style="margin-bottom:10px; color:var(--good);">✓ Contrat signé électroniquement le <strong id="signedDateLabel">—</strong>.</p>
+                  <button class="btn btn-secondary btn-sm" onclick="startAvenant()">Créer un avenant (nouvelle version)</button>
+                </div>
+              </div>
+
+              <div class="doc-preview" id="docPreview">
+                <div class="doc-title">CONTRAT DE DÉPÔT-VENTE</div>
+
+                <h3>1. Parties</h3>
+                <p>Entre les soussignés :<br/>
+                <strong>SAGA DRESSING</strong><br/>
+                SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 102 429 833<br/>
+                Représentée par Sarah Danino<br/>
+                Ci-après « le Dépositaire »</p>
+                <p>Et :<br/>
+                Nom / Prénom : <span class="field" data-field="nom">Fanny Moreau</span><br/>
+                Adresse : <span class="field empty" data-field="adresse">…</span><br/>
+                Téléphone : <span class="field" data-field="telephone">06 12 34 56 78</span><br/>
+                Email : <span class="field" data-field="email">fanny.moreau@example.com</span><br/>
+                Ci-après « le Déposant »</p>
+
+                <h3>2. Objet</h3>
+                <p>Le Déposant confie au Dépositaire des articles (vêtements, accessoires, etc.) en vue de leur revente via la plateforme Whatnot ou autres canaux de vente.</p>
+
+                <h3>3. Garantie des articles</h3>
+                <p>Le Déposant garantit au Dépositaire être propriétaire des biens, que les articles sont authentiques, qu'ils ne sont ni volés ni contrefaits. En cas de doute, le Dépositaire pourra refuser ou retirer un article sans indemnité ni autre compensation.</p>
+
+                <h3>4. Fixation des prix</h3>
+                <p>Le Déposant choisit : <span class="field" data-field="fixationPrix">Fixer elle-même un prix de départ conseillé</span>. Dans ce cas, le Dépositaire pourra adapter les prix selon le marché et les enchères.</p>
+
+                <h3>5. Commission</h3>
+                <p>Le Dépositaire perçoit <span class="field" data-field="commission">30</span>% du prix de vente net vendeur (après déduction des frais Whatnot et frais de transaction). Les cadeaux promotionnels « giveaways » offerts lors des ventes sont entièrement financés par le Dépositaire. Les frais de port afférents à l'envoi de ces cadeaux restent à la charge du Déposant, dans la limite maximale de 10 € au total par live. Ces frais sont directement déduits du montant à reverser et détaillés sur le relevé de vente.</p>
+
+                <h3>6. Gestion des ventes</h3>
+                <p>Le Dépositaire gère la mise en vente, la communication avec les acheteurs et l'expédition. Obligation de moyens uniquement.</p>
+
+                <h3>6.1 Délai de mise en vente</h3>
+                <p>Les articles sont confiés pour une durée minimale de trois (3) mois à compter de leur dépôt, pouvant s'étendre jusqu'à six (6) mois selon leur saisonnalité. Le Déposant ne pourra demander la restitution des articles avant l'expiration de cette période minimale, sauf accord écrit de Saga Dressing.</p>
+
+                <h3>7. Invendus</h3>
+                <p>Le Déposant choisit : <span class="field" data-field="invendus">Récupérer les invendus</span>. Il est expressément stipulé qu'à défaut de réponse sous 30 jours, les articles sont considérés comme abandonnés et ne donneront lieu à aucun retour ni dédommagement.</p>
+
+                <h3>8. Responsabilité</h3>
+                <p>Le Dépositaire n'est pas responsable des défauts non signalés (par écrit avec photo justificative), de l'usure normale, de la non-vente, ni des incidents liés à Whatnot.</p>
+
+                <h3>9. Paiement</h3>
+                <p>Paiement sous 15 à 30 jours après encaissement, déduction faite des commissions et frais mentionnés à l'article 5.</p>
+
+                <h3>10. Signature</h3>
+                <p>Fait à Lésigny, le <span class="field" data-field="date">—</span>.<br/>
+                Signature Déposant : <span class="field empty">à signer électroniquement</span><br/>
+                Signature Dépositaire : <span class="field empty">Sarah Danino</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-restitution" data-panel-group="cliente" style="margin-top:18px;">
+
+          <div id="restitEmpty" class="empty-state">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4v10l-9 4-9-4Z"/><path d="M3 7l9 4 9-4"/><line x1="12" y1="11" x2="12" y2="21"/></svg>
+            <div class="t">Aucune restitution enregistrée</div>
+            <div class="s">Générez un bon de restitution quand vous rendez à la cliente les articles non vendus — elle le signe, et il est archivé dans ses pièces jointes</div>
+            <button class="btn btn-primary" style="margin-top:8px;" onclick="startRestitution()">Créer un bon de restitution</button>
+          </div>
+
+          <div id="restitWorkspace" style="display:none;">
+            <div class="sign-steps" id="restitSteps">
+              <div class="sign-step" data-step="draft"><div class="dot">1</div><span class="label">Brouillon</span><span class="sub" id="rStepDraftSub">—</span></div>
+              <div class="sign-step" data-step="sent"><div class="dot">2</div><span class="label">À signer</span><span class="sub" id="rStepSentSub">—</span></div>
+              <div class="sign-step" data-step="signed"><div class="dot">3</div><span class="label">Signé</span><span class="sub" id="rStepSignedSub">—</span></div>
+            </div>
+
+            <div class="contrat-columns">
+              <div class="form-grid" id="restitFormFields">
+                <div class="form-field">
+                  <label class="form-label" for="rDate">Date de restitution</label>
+                  <input class="form-input" type="date" id="rDate" />
+                </div>
+                <div class="form-field" style="flex-direction:row; gap:12px;">
+                  <div style="flex:1;">
+                    <label class="form-label" for="rPieces">Nombre de pièces</label>
+                    <input class="form-input" type="number" id="rPieces" placeholder="Ex. 48" />
+                  </div>
+                  <div style="flex:1;">
+                    <label class="form-label" for="rCaisses">Caisses / cartons</label>
+                    <input class="form-input" type="number" id="rCaisses" placeholder="Ex. 4" />
+                  </div>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="rMode">Mode de restitution</label>
+                  <select class="form-select" id="rMode">
+                    <option>Remise en main propre</option>
+                    <option>Envoi postal</option>
+                    <option>Retrait par un tiers mandaté</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="rEtat">État des articles</label>
+                  <select class="form-select" id="rEtat">
+                    <option>Identique au dépôt</option>
+                    <option>Usure normale constatée</option>
+                    <option>Réserves (voir observations)</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="rObs">Observations</label>
+                  <textarea class="form-textarea" id="rObs" placeholder="Ex. 2 pièces tachées signalées à la cliente, robe bleue conservée pour le prochain live"></textarea>
+                </div>
+
+                <div id="restitActionsDraft" style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <button class="btn btn-primary btn-sm" onclick="signRestitutionOnSite()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    Signer sur place
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="sendRestitution()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+                    Envoyer en signature électronique
+                  </button>
+                  <button class="btn btn-ghost btn-sm" onclick="cancelRestitution()">Annuler</button>
+                </div>
+
+                <div id="restitActionsSent" style="display:none;">
+                  <p class="card-note" style="margin-bottom:10px;">Envoyé à <strong id="rSentEmail">—</strong> le <strong id="rSentDate">—</strong> · en attente de signature.</p>
+                  <button class="btn btn-secondary btn-sm" onclick="simulateRestitutionSignature()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21,3 21,9 15,9"/></svg>
+                    Simuler la réception de signature
+                  </button>
+                </div>
+
+                <div id="restitActionsSigned" style="display:none;">
+                  <p class="card-note" style="margin-bottom:10px; color:var(--good);">✓ Bon de restitution signé le <strong id="rSignedDate">—</strong>, archivé dans les pièces jointes.</p>
+                  <button class="btn btn-secondary btn-sm" onclick="startRestitution()">Nouvelle restitution</button>
+                </div>
+              </div>
+
+              <div class="doc-preview" id="restitPreview">
+                <div class="doc-title">BON DE RESTITUTION DE DRESSING</div>
+
+                <p>Entre <strong>SAGA DRESSING</strong>, SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 102 429 833,
+                représentée par Sarah Danino, ci-après « le Dépositaire »,</p>
+                <p>Et <span class="field" data-rfield="nom">Fanny Moreau</span>,
+                ci-après « le Déposant ».</p>
+
+                <h3>1. Objet</h3>
+                <p>Le Dépositaire restitue au Déposant les articles déposés en vue de leur revente et demeurés invendus,
+                dans le cadre du contrat de dépôt-vente les liant.</p>
+
+                <h3>2. Détail de la restitution</h3>
+                <p>Nombre de pièces restituées : <span class="field empty" data-rfield="pieces">…</span><br/>
+                Nombre de caisses / cartons : <span class="field empty" data-rfield="caisses">…</span><br/>
+                Mode de restitution : <span class="field" data-rfield="mode">Remise en main propre</span><br/>
+                État des articles : <span class="field" data-rfield="etat">Identique au dépôt</span></p>
+
+                <h3>3. Observations</h3>
+                <p><span class="field empty" data-rfield="obs">Aucune observation particulière.</span></p>
+
+                <h3>4. Décharge</h3>
+                <p>Le Déposant reconnaît avoir récupéré l'intégralité des articles invendus lui appartenant et déclare
+                n'avoir plus aucune réclamation à formuler à ce titre à l'encontre du Dépositaire. La restitution met fin
+                aux obligations de garde du Dépositaire sur ces articles.</p>
+
+                <h3>5. Signature</h3>
+                <p>Fait à Lésigny, le <span class="field" data-rfield="date">—</span>.<br/>
+                Signature du Déposant : <span class="field empty" data-rfield="sigmode">à signer</span><br/>
+                Signature du Dépositaire : <span class="field empty">Sarah Danino</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-paiements" data-panel-group="cliente" style="margin-top:18px;">
+          <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date</th><th>Mode</th><th class="num">Montant</th><th>Lives couverts</th></tr></thead>
+            <tbody>
+              <tr><td>17 juil.</td><td class="muted">Virement</td><td class="num tabular">522 €</td><td class="muted">Live du 17/07</td></tr>
+              <tr><td>20 juin</td><td class="muted">Virement</td><td class="num tabular">660 €</td><td class="muted">Live du 19/06</td></tr>
+              <tr><td>2 juin</td><td class="muted">Espèces</td><td class="num tabular">410 €</td><td class="muted">Live du 29/05</td></tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-fichiers" data-panel-group="cliente" style="margin-top:18px;">
+          <div id="fichiersEmpty" class="empty-state">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/><path d="M16 2l6 6"/><path d="M22 2l-9.5 9.5"/></svg>
+            <div class="t">Aucune pièce jointe</div>
+            <div class="s">Contrat, photos du dressing, justificatifs… glissez un fichier ici pour l'ajouter</div>
+          </div>
+          <div id="fichiersList" class="file-list" style="display:none;"></div>
+        </div>
+
+        <div class="tab-panel" id="tab-infos" data-panel-group="cliente" style="margin-top:18px;">
+          <div class="form-grid" style="max-width:560px;">
+
+            <div class="form-field">
+              <label class="form-label">Vignette Whatnot</label>
+              <div style="display:flex; gap:14px; align-items:flex-start;">
+                <div class="vignette-drop" id="iVignettePreview" onclick="document.getElementById('iVignette').click()">
+                  <span>Choisir<br/>une image</span>
+                </div>
+                <div style="flex:1;">
+                  <input type="file" id="iVignette" accept="image/*" style="display:none;" onchange="pickInfoVignette(this)" />
+                  <span class="card-note">
+                    Utilisée par le générateur de boutique pour les annonces de ce dressing. Format carré conseillé.
+                  </span>
+                  <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="clearInfoVignette()">Retirer la vignette</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:2;">
+                <label class="form-label" for="iPrenom">Prénom affiché</label>
+                <input class="form-input" id="iPrenom" />
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="iLettre">Lettre dressing</label>
+                <input class="form-input" id="iLettre" maxlength="1" />
+                <span class="card-note" id="iLettreWarn" style="display:none; color:var(--critical);">Lettre déjà utilisée</span>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="iNom">Nom complet</label>
+              <input class="form-input" id="iNom" />
+            </div>
+
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:1;">
+                <label class="form-label" for="iTel">Téléphone</label>
+                <input class="form-input" id="iTel" />
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="iEmail">Email</label>
+                <input class="form-input" type="email" id="iEmail" />
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="iAdresse">Adresse</label>
+              <input class="form-input" id="iAdresse" placeholder="Ex. 15 rue du Faubourg Saint-Antoine, 75011 Paris" />
+              <span class="card-note">Reprise automatiquement dans les contrats et bons de restitution.</span>
+            </div>
+
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:1;">
+                <label class="form-label" for="iCommission">Commission Saga (%)</label>
+                <input class="form-input" type="number" id="iCommission" />
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="iStatut">Statut</label>
+                <select class="form-select" id="iStatut">
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:2;">
+                <label class="form-label" for="iApporteur">Apporteur d'affaires</label>
+                <select class="form-select" id="iApporteur" onchange="majPctApporteur()">
+                  <option value="">Aucun</option>
+                  <option value="Nadia R.">Nadia R.</option>
+                  <option value="Karim B.">Karim B.</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="iApporteurPct">Sa commission (%)</label>
+                <input class="form-input" type="number" id="iApporteurPct" />
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button class="btn btn-primary btn-sm" onclick="saveInfos()">Enregistrer les modifications</button>
+              <button class="btn btn-ghost btn-sm" onclick="renderInfosForm()">Annuler</button>
+              <span class="card-note" id="iSaved" style="display:none; color:var(--good);">✓ Enregistré</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('clientes');
+  initRowLinks();
+  initTabs();
+
+  // ================== FICHES CLIENTES ==================
+  // La fiche affichée dépend du paramètre ?c= dans l'adresse (défaut : fanny)
+  var CLIENTS_DEFAUT = {
+    fanny: {
+      prenom: 'Fanny', nom: 'Fanny Moreau', lettre: 'M', statut: 'Active',
+      tel: '06 12 34 56 78', email: 'fanny.moreau@example.com', adresse: '',
+      commission: 30, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'mars 2026',
+      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' },
+      lives: [
+        { date: '2026-07-29', label: 'Live du 29/07', ventes: 1480, commission: 444, net: 890, paye: 1 },
+        { date: '2026-07-17', label: 'Live du 17/07', ventes: 870,  commission: 261, net: 522, paye: 1 },
+        { date: '2026-07-03', label: 'Live du 03/07', ventes: 1640, commission: 492, net: 735, paye: 0 },
+        { date: '2026-06-19', label: 'Live du 19/06', ventes: 1105, commission: 332, net: 660, paye: 1 },
+        { date: '2026-05-22', label: 'Live du 22/05', ventes: 780,  commission: 234, net: 468, paye: 1 },
+        { date: '2026-04-24', label: 'Live du 24/04', ventes: 545,  commission: 163, net: 382, paye: 1 }
+      ],
+      notes: [
+        { id: 1, type: 'todo', text: "Lui rendre les 3 pièces d'hiver mises de côté au prochain passage.", date: '2026-07-30', done: false },
+        { id: 2, type: 'note', text: "Préfère les lives le mardi soir. Ne veut pas vendre les pièces Sézane en dessous de 25 €.", date: '2026-07-18', done: false },
+        { id: 3, type: 'todo', text: 'Relancer pour le virement du live du 03/07.', date: '2026-07-10', done: true }
+      ]
+    },
+    julie: {
+      prenom: 'Julie', nom: 'Julie Renard', lettre: 'C', statut: 'Active',
+      tel: '06 22 41 08 93', email: 'julie.renard@example.com', adresse: '',
+      commission: 30, apporteur: null, apporteurPct: 0, depuis: 'janvier 2026',
+      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' },
+      lives: [
+        { date: '2026-07-27', label: 'Live du 27/07', ventes: 960,  commission: 288, net: 620,  paye: 0 },
+        { date: '2026-07-13', label: 'Live du 13/07', ventes: 1320, commission: 396, net: 790,  paye: 1 },
+        { date: '2026-06-25', label: 'Live du 25/06', ventes: 1450, commission: 435, net: 1015, paye: 1 },
+        { date: '2026-05-30', label: 'Live du 30/05', ventes: 1450, commission: 435, net: 870,  paye: 1 }
+      ],
+      notes: [
+        { id: 1, type: 'note', text: 'Dépose surtout des pièces de créateurs. Très réactive par SMS.', date: '2026-07-14', done: false }
+      ]
+    },
+    camille: {
+      prenom: 'Camille', nom: 'Camille Fabre', lettre: 'B', statut: 'Active',
+      tel: '07 61 55 12 04', email: 'camille.fabre@example.com', adresse: '',
+      commission: 25, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'février 2026',
+      pending: { type: 'restitution', texte: '<strong>Bon de restitution en attente de signature</strong> — envoyé le 30 juillet, pas encore ouvert.' },
+      lives: [
+        { date: '2026-07-24', label: 'Live du 24/07', ventes: 2110, commission: 528, net: 480,  paye: 0 },
+        { date: '2026-07-18', label: 'Sac à main cuir', ventes: 180, commission: 45,  net: 135,  paye: 1, horsLive: true },
+        { date: '2026-06-12', label: 'Live du 12/06', ventes: 1680, commission: 420, net: 1260, paye: 1 },
+        { date: '2026-05-15', label: 'Live du 15/05', ventes: 990,  commission: 248, net: 742,  paye: 1 }
+      ],
+      notes: [
+        { id: 1, type: 'todo', text: 'Récupérer les 12 caisses au dépôt de Rungis le 4 août.', date: '2026-07-31', done: false },
+        { id: 2, type: 'note', text: 'Commission négociée à 25 % (gros volume).', date: '2026-06-02', done: false }
+      ]
+    },
+    marion: {
+      prenom: 'Marion', nom: 'Marion Lefèvre', lettre: 'F', statut: 'Active',
+      tel: '06 84 27 66 31', email: 'marion.lefevre@example.com', adresse: '',
+      commission: 30, apporteur: 'Karim B.', apporteurPct: 6, depuis: 'avril 2026',
+      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 21 juillet, sans réponse depuis 11 jours (1 relance).' },
+      lives: [
+        { date: '2026-07-28', label: 'Bottines Isabel Marant', ventes: 260, commission: 78, net: 182, paye: 1, horsLive: true },
+        { date: '2026-07-20', label: 'Live du 20/07', ventes: 1500, commission: 450, net: 310, paye: 0 },
+        { date: '2026-06-08', label: 'Live du 08/06', ventes: 1450, commission: 435, net: 1015, paye: 1 }
+      ],
+      notes: []
+    }
+  };
+
+  var CLIENTS = sagaLoad('clients_data', CLIENTS_DEFAUT);
+  function persistClients() { sagaSave('clients_data', CLIENTS); }
+
+  function currentClientKey() {
+    var k = new URLSearchParams(window.location.search).get('c');
+    return (k && CLIENTS[k.toLowerCase()]) ? k.toLowerCase() : 'fanny';
+  }
+
+  var CLIENT = CLIENTS[currentClientKey()];
+
+  var CLIENTE_COMMISSION_PCT = CLIENT.commission;
+  var APPORTEUR_NAME = CLIENT.apporteur;
+  var APPORTEUR_PCT = CLIENT.apporteurPct;
+
+  function renderClient() {
+    document.title = CLIENT.prenom + ' (' + CLIENT.lettre + ') — Saga Dressing (maquette)';
+    document.getElementById('cAvatar').textContent = CLIENT.lettre;
+    document.getElementById('cName').textContent = CLIENT.prenom;
+    document.getElementById('cStatusChip').textContent = CLIENT.statut;
+
+    var meta = 'Dressing ' + CLIENT.lettre + ' · commission ' + CLIENT.commission + ' %';
+    meta += CLIENT.apporteur ? ' · apporteur ' + CLIENT.apporteur : ' · sans apporteur';
+    meta += ' · cliente depuis ' + CLIENT.depuis;
+    document.getElementById('cMeta').textContent = meta;
+
+    // Bandeau de signature en attente
+    var alertBar = document.getElementById('pendingSignAlert');
+    if (CLIENT.pending) {
+      document.getElementById('pendingSignText').innerHTML = CLIENT.pending.texte;
+      var targetTab = CLIENT.pending.type === 'restitution' ? 'tab-restitution' : 'tab-contrat';
+      var btn = document.getElementById('pendingSignBtn');
+      btn.textContent = CLIENT.pending.type === 'restitution' ? 'Voir la restitution' : 'Voir le contrat';
+      btn.onclick = function () { document.querySelector('[data-tab="' + targetTab + '"]').click(); };
+      alertBar.style.display = 'flex';
+    } else {
+      alertBar.style.display = 'none';
+    }
+
+    // Tableau des ventes
+    document.getElementById('livesTableBody').innerHTML = CLIENT.lives.map(function (l, i) {
+      var label = l.horsLive
+        ? l.label + ' <span class="chip neutral" style="margin-left:6px;">Hors live</span>'
+        : l.label;
+      var det = [];
+      if (l.apporteurMontant > 0) det.push('Apporteur ' + CLIENT.apporteur + ' : ' + fmtEURcents(l.apporteurMontant));
+      if (l.frais > 0) det.push("Frais d'envoi : " + fmtEURcents(l.frais));
+      if (det.length) label += '<div class="muted" style="font-size:.72rem; margin-top:3px;">' + det.join(' · ') + '</div>';
+      var statut = l.paye
+        ? '<span class="chip good">Payé</span>' +
+          (l.datePaiement ? '<div class="muted" style="font-size:.7rem; margin-top:3px;">le ' + fmtDateFR(l.datePaiement) + (l.modePaiement ? ' · ' + l.modePaiement : '') + '</div>' : '')
+        : '<span class="chip warn">En attente</span>';
+      var action = l.paye
+        ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); cancelPayment(' + i + ')">Annuler</button>'
+        : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payOne(' + i + ')">Payer</button>';
+      return '<tr' + (l.horsLive ? '' : ' data-href="live.html"') +
+        ' data-date="' + l.date + '" data-ventes="' + l.ventes + '" data-commission="' + l.commission +
+        '" data-net="' + l.net + '" data-paye="' + l.paye + '">' +
+        '<td>' + fmtDateShortFR(l.date) + '</td>' +
+        '<td class="muted">' + label + '</td>' +
+        '<td class="num tabular">' + fmtEUR(l.ventes) + '</td>' +
+        '<td class="num tabular">' + fmtEUR(l.commission) + '</td>' +
+        '<td class="num tabular">' + fmtEUR(l.net) + '</td>' +
+        '<td>' + statut + '</td>' +
+        '<td style="text-align:right; white-space:nowrap;">' + action + '</td></tr>';
+    }).join('');
+    initRowLinks(document.getElementById('livesTableBody'));
+
+    // Champs identité repris dans les documents
+    document.getElementById('fNom').value = CLIENT.nom;
+    document.getElementById('fTelephone').value = CLIENT.tel;
+    document.getElementById('fEmail').value = CLIENT.email;
+    document.getElementById('fCommission').value = CLIENT.commission;
+
+    // Vente hors live : libellés dépendant de la cliente
+    document.getElementById('dsRecapNetLabel').textContent = 'Net à reverser à ' + CLIENT.prenom;
+    var apField = document.getElementById('dsApporteurField');
+    if (CLIENT.apporteur) {
+      document.getElementById('dsApporteurLabel').innerHTML =
+        'Verser sa commission à <strong>' + CLIENT.apporteur + '</strong> (' + CLIENT.apporteurPct + ' %) sur cette vente';
+      apField.style.display = 'flex';
+    } else {
+      apField.style.display = 'none';
+    }
+
+    renderInfosForm();
+  }
+
+  /* ============ Fiche modifiable ============
+     La vignette vit dans la liste des clientes (`saga_clientes`), qui est aussi
+     la source du générateur de boutique : les deux restent donc synchronisés. */
+
+  function clientesStore() { return sagaLoad('clientes', []); }
+
+  function entreeListe(store) {
+    var cle = currentClientKey();
+    return store.filter(function (c) {
+      return (c.key && c.key === cle) || c.lettre === CLIENT.lettre;
+    })[0] || null;
+  }
+
+  function vignetteCourante() {
+    var e = entreeListe(clientesStore());
+    return (e && e.vignette) || '';
+  }
+
+  function afficheVignette(dataUrl) {
+    var box = document.getElementById('iVignettePreview');
+    box.innerHTML = dataUrl
+      ? '<img src="' + dataUrl + '" alt="" />'
+      : '<span>Choisir<br/>une image</span>';
+
+    // L'avatar de l'en-tête reprend la vignette dès qu'elle existe
+    var av = document.getElementById('cAvatar');
+    if (dataUrl) {
+      av.innerHTML = '<img src="' + dataUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:14px;" />';
+      av.style.padding = '0';
+    } else {
+      av.textContent = CLIENT.lettre;
+      av.style.padding = '';
+    }
+  }
+
+  var vignetteEnCours = null; // null = inchangée
+
+  function pickInfoVignette(input) {
+    if (!input.files || !input.files[0]) return;
+    sagaReadImage(input.files[0], 600, function (dataUrl) {
+      vignetteEnCours = dataUrl;
+      afficheVignette(dataUrl);
+    });
+  }
+
+  function clearInfoVignette() {
+    vignetteEnCours = '';
+    document.getElementById('iVignette').value = '';
+    afficheVignette('');
+  }
+
+  function majPctApporteur() {
+    var defauts = { 'Nadia R.': 8, 'Karim B.': 6, '': 0 };
+    var a = document.getElementById('iApporteur').value;
+    document.getElementById('iApporteurPct').value = defauts[a] !== undefined ? defauts[a] : 8;
+  }
+
+  function renderInfosForm() {
+    vignetteEnCours = null;
+    document.getElementById('iPrenom').value = CLIENT.prenom;
+    document.getElementById('iLettre').value = CLIENT.lettre;
+    document.getElementById('iNom').value = CLIENT.nom;
+    document.getElementById('iTel').value = CLIENT.tel;
+    document.getElementById('iEmail').value = CLIENT.email;
+    document.getElementById('iAdresse').value = CLIENT.adresse || '';
+    document.getElementById('iCommission').value = CLIENT.commission;
+    document.getElementById('iStatut').value = CLIENT.statut;
+    document.getElementById('iApporteur').value = CLIENT.apporteur || '';
+    document.getElementById('iApporteurPct').value = CLIENT.apporteurPct || 0;
+    document.getElementById('iLettreWarn').style.display = 'none';
+    afficheVignette(vignetteCourante());
+  }
+
+  function saveInfos() {
+    var prenom = document.getElementById('iPrenom').value.trim();
+    var lettre = document.getElementById('iLettre').value.trim().toUpperCase();
+    if (!prenom) { document.getElementById('iPrenom').focus(); return; }
+    if (!lettre) { document.getElementById('iLettre').focus(); return; }
+
+    // La lettre identifie le dressing dans les CSV Whatnot : elle doit rester unique
+    var conflit = clientesStore().some(function (c) {
+      return c.lettre === lettre && c.lettre !== CLIENT.lettre;
+    });
+    if (conflit) {
+      document.getElementById('iLettreWarn').style.display = 'block';
+      document.getElementById('iLettre').focus();
+      return;
+    }
+
+    var ancienneLettre = CLIENT.lettre;
+
+    CLIENT.prenom = prenom;
+    CLIENT.lettre = lettre;
+    CLIENT.nom = document.getElementById('iNom').value.trim();
+    CLIENT.tel = document.getElementById('iTel').value.trim();
+    CLIENT.email = document.getElementById('iEmail').value.trim();
+    CLIENT.adresse = document.getElementById('iAdresse').value.trim();
+    CLIENT.commission = parseInt(document.getElementById('iCommission').value, 10) || 0;
+    CLIENT.statut = document.getElementById('iStatut').value;
+    CLIENT.apporteur = document.getElementById('iApporteur').value || null;
+    CLIENT.apporteurPct = parseInt(document.getElementById('iApporteurPct').value, 10) || 0;
+    persistClients();
+
+    // Report dans la liste des clientes (et donc dans la boutique)
+    var store = clientesStore();
+    var e = store.filter(function (c) {
+      return (c.key && c.key === currentClientKey()) || c.lettre === ancienneLettre;
+    })[0];
+    // Si la liste n'a pas encore été ouverte, l'entrée n'existe pas : on la crée
+    if (!e) {
+      e = { key: currentClientKey(), ca: 0, commission: 0, reste: 0, vignette: '' };
+      store.push(e);
+    }
+    e.prenom = CLIENT.prenom;
+    e.lettre = CLIENT.lettre;
+    e.pct = CLIENT.commission;
+    e.apporteur = CLIENT.apporteur || '';
+    e.statut = CLIENT.statut === 'Active' ? 'active' : 'inactive';
+    if (vignetteEnCours !== null) e.vignette = vignetteEnCours;
+    sagaSave('clientes', store);
+
+    // Les taux servent aux calculs de vente hors live
+    CLIENTE_COMMISSION_PCT = CLIENT.commission;
+    APPORTEUR_NAME = CLIENT.apporteur;
+    APPORTEUR_PCT = CLIENT.apporteurPct;
+
+    renderClient();
+    refreshRecap();
+    refreshDirectSaleRecap();
+
+    var ok = document.getElementById('iSaved');
+    ok.style.display = 'inline';
+    setTimeout(function () { ok.style.display = 'none'; }, 2500);
+  }
+  var MONTHS_FR_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var TODAY_ISO = '2026-08-01'; // date de référence de la maquette
+
+  function fmtEUR(n) {
+    return Math.round(n).toLocaleString('fr-FR') + ' €';
+  }
+
+  function fmtEURcents(n) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  }
+
+  // Date "du jour" de la maquette, pour que tous les documents soient cohérents entre eux
+  function todayLabel() {
+    return fmtDateFR(TODAY_ISO);
+  }
+
+  function fmtDateShortFR(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T00:00:00');
+    return d.getDate() + ' ' + MONTHS_FR_SHORT[d.getMonth()];
+  }
+
+  // ---------- Récapitulatif : calculé à partir des lignes visibles du tableau ----------
+
+  function currentRange() {
+    const active = document.querySelector('#recapPeriodToggle button.active');
+    const period = active ? active.dataset.period : 'all';
+    if (period === 'custom') {
+      return {
+        from: document.getElementById('recapFrom').value || '0000-01-01',
+        to: document.getElementById('recapTo').value || '9999-12-31',
+        label: 'du ' + fmtDateShortFR(document.getElementById('recapFrom').value) +
+               ' au ' + fmtDateShortFR(document.getElementById('recapTo').value)
+      };
+    }
+    if (period === 'all') return { from: '0000-01-01', to: '9999-12-31', label: 'depuis le début' };
+    const days = parseInt(period, 10);
+    const from = new Date(TODAY_ISO + 'T00:00:00');
+    from.setDate(from.getDate() - days);
+    return { from: from.toISOString().slice(0, 10), to: '9999-12-31', label: 'sur les ' + days + ' derniers jours' };
+  }
+
+  function refreshRecap() {
+    const range = currentRange();
+    let ca = 0, commission = 0, verse = 0, reste = 0, count = 0, unpaidCount = 0;
+
+    document.querySelectorAll('#livesTableBody tr').forEach(function (row) {
+      const date = row.dataset.date || '';
+      const inRange = date >= range.from && date <= range.to;
+      row.style.display = inRange ? '' : 'none';
+      if (!inRange) return;
+
+      count++;
+      ca += parseFloat(row.dataset.ventes) || 0;
+      commission += parseFloat(row.dataset.commission) || 0;
+      const net = parseFloat(row.dataset.net) || 0;
+      if (row.dataset.paye === '1') {
+        verse += net;
+      } else {
+        reste += net;
+        unpaidCount++;
+      }
+    });
+
+    document.getElementById('recapPeriodLabel').textContent = range.label;
+    document.getElementById('recapCA').textContent = fmtEUR(ca);
+    document.getElementById('recapCASub').textContent = count + (count > 1 ? ' ventes' : ' vente') + ' sur la période';
+    document.getElementById('recapCommission').textContent = fmtEUR(commission);
+    document.getElementById('recapCommissionSub').textContent = ca > 0
+      ? Math.round(commission / ca * 100) + ' % du chiffre d\'affaires'
+      : '—';
+    document.getElementById('recapVerse').textContent = fmtEUR(verse);
+    document.getElementById('recapVerseSub').textContent = (count - unpaidCount) + ' réglée(s)';
+    document.getElementById('recapReste').textContent = fmtEUR(reste);
+    document.getElementById('recapResteSub').textContent = unpaidCount > 0
+      ? unpaidCount + ' en attente de paiement'
+      : 'tout est à jour';
+  }
+
+  document.getElementById('recapPeriodToggle').addEventListener('click', function (e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#recapPeriodToggle button').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('recapCustomDates').style.display = btn.dataset.period === 'custom' ? 'flex' : 'none';
+    refreshRecap();
+  });
+
+  ['recapFrom', 'recapTo'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', refreshRecap);
+  });
+
+  function toggleDirectSaleForm() {
+    const form = document.getElementById('directSaleForm');
+    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+  }
+
+  // Calcul d'une vente hors live : net = montant − commission Saga − commission apporteur (si choisie)
+  function computeDirectSale() {
+    const montant = parseFloat(document.getElementById('dsMontant').value) || 0;
+    const frais = parseFloat(document.getElementById('dsFrais').value) || 0;
+    const withApporteur = document.getElementById('dsApporteur').checked;
+    const saga = montant * CLIENTE_COMMISSION_PCT / 100;
+    const apporteur = withApporteur ? montant * APPORTEUR_PCT / 100 : 0;
+    return {
+      montant: montant, saga: saga, apporteur: apporteur, frais: frais,
+      net: montant - saga - apporteur - frais,
+      withApporteur: withApporteur
+    };
+  }
+
+  function refreshDirectSaleRecap() {
+    const c = computeDirectSale();
+    const empty = c.montant <= 0;
+    document.getElementById('dsRecapMontant').textContent = empty ? '—' : fmtEURcents(c.montant);
+    document.getElementById('dsRecapSaga').textContent = empty ? '—' : fmtEURcents(c.saga);
+    document.getElementById('dsRecapApporteur').textContent = empty ? '—' : fmtEURcents(c.apporteur);
+    document.getElementById('dsRecapNet').textContent = empty ? '—' : fmtEURcents(c.net);
+    document.getElementById('dsRecapApporteurRow').style.display = c.withApporteur ? 'flex' : 'none';
+    document.getElementById('dsRecapFrais').textContent = empty ? '—' : fmtEURcents(c.frais);
+    document.getElementById('dsRecapFraisRow').style.display = c.frais > 0 ? 'flex' : 'none';
+  }
+
+  function addDirectSale() {
+    const c = computeDirectSale();
+    if (c.montant <= 0) {
+      document.getElementById('dsMontant').focus();
+      return;
+    }
+    const dateIso = document.getElementById('dsDate').value || TODAY_ISO;
+    const desc = document.getElementById('dsDescription').value.trim() || 'Article vendu directement';
+
+    CLIENT.lives.unshift({
+      date: dateIso, label: desc, ventes: c.montant, commission: c.saga,
+      net: c.net, paye: 0, horsLive: true,
+      frais: c.frais, apporteurMontant: c.apporteur
+    });
+    persistClients();
+    renderClient();
+    refreshRecap();
+
+    document.getElementById('dsDate').value = '';
+    document.getElementById('dsDescription').value = '';
+    document.getElementById('dsMontant').value = '';
+    document.getElementById('dsFrais').value = '0';
+    document.getElementById('dsApporteur').checked = false;
+    refreshDirectSaleRecap();
+    toggleDirectSaleForm();
+  }
+
+  ['dsMontant', 'dsApporteur', 'dsFrais'].forEach(function (id) {
+    const el = document.getElementById(id);
+    el.addEventListener('input', refreshDirectSaleRecap);
+    el.addEventListener('change', refreshDirectSaleRecap);
+  });
+
+  // ---------- Paiements : date et mode enregistrés, annulation possible ----------
+
+  function askPaymentDetails(montant, quoi) {
+    var date = prompt('Date du paiement (JJ/MM/AAAA) — ' + quoi + '\n\nMontant : ' + fmtEUR(montant),
+                      fmtDateFR(TODAY_ISO));
+    if (date === null) return null;
+
+    var parts = date.trim().split('/');
+    if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+      alert('Date invalide. Format attendu : JJ/MM/AAAA');
+      return null;
+    }
+    var iso = parts[2] + '-' + parts[1] + '-' + parts[0];
+
+    var mode = prompt('Mode de paiement :\n\n1 — Virement\n2 — Espèces\n3 — PayPal', '1');
+    if (mode === null) return null;
+    var modes = { '1': 'Virement', '2': 'Espèces', '3': 'PayPal' };
+
+    return { date: iso, mode: modes[mode.trim()] || 'Virement' };
+  }
+
+  function payOne(index) {
+    var l = CLIENT.lives[index];
+    if (!l || l.paye) return;
+    var d = askPaymentDetails(l.net, l.label);
+    if (!d) return;
+    l.paye = 1; l.datePaiement = d.date; l.modePaiement = d.mode;
+    persistClients();
+    renderClient();
+    refreshRecap();
+  }
+
+  function cancelPayment(index) {
+    var l = CLIENT.lives[index];
+    if (!l || !l.paye) return;
+    if (!confirm('Annuler le paiement de « ' + l.label + ' » ?\n\n'
+      + 'Montant : ' + fmtEUR(l.net)
+      + (l.datePaiement ? '\nEnregistré le ' + fmtDateFR(l.datePaiement) : '')
+      + '\n\nLa vente repassera en attente de règlement.')) return;
+    l.paye = 0; delete l.datePaiement; delete l.modePaiement;
+    persistClients();
+    renderClient();
+    refreshRecap();
+  }
+
+  // Marque comme réglées toutes les ventes en attente
+  function payAll() {
+    var enAttente = CLIENT.lives.filter(function (l) { return !l.paye; });
+    if (enAttente.length === 0) {
+      alert('Rien à régler : tout est déjà à jour pour ' + CLIENT.prenom + '.');
+      return;
+    }
+    var total = enAttente.reduce(function (s, l) { return s + l.net; }, 0);
+    var d = askPaymentDetails(total, enAttente.length + ' vente(s) de ' + CLIENT.prenom);
+    if (!d) return;
+
+    enAttente.forEach(function (l) { l.paye = 1; l.datePaiement = d.date; l.modePaiement = d.mode; });
+    persistClients();
+    renderClient();
+    refreshRecap();
+  }
+
+  renderClient();
+  refreshRecap();
+
+  const FILE_ICON_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>';
+
+  const CONTRAT_INPUT_IDS = ['fAdresse', 'fFixationPrix', 'fCommission', 'fInvendus', 'fDate'];
+
+  let contratVersion = 0;
+  let contratFileRow = null;
+
+  function fmtDateFR(iso) {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return d + '/' + m + '/' + y;
+  }
+
+  function setField(name, value, isEmpty) {
+    const span = document.querySelector('#docPreview [data-field="' + name + '"]');
+    if (!span) return;
+    span.textContent = value;
+    span.classList.toggle('empty', !!isEmpty);
+  }
+
+  function refreshPreview() {
+    setField('nom', document.getElementById('fNom').value);
+    const adresse = document.getElementById('fAdresse').value;
+    setField('adresse', adresse || '…', !adresse);
+    setField('telephone', document.getElementById('fTelephone').value);
+    setField('email', document.getElementById('fEmail').value);
+
+    const fixSel = document.getElementById('fFixationPrix');
+    setField('fixationPrix', fixSel.options[fixSel.selectedIndex].text);
+
+    setField('commission', document.getElementById('fCommission').value || '0');
+
+    const invSel = document.getElementById('fInvendus');
+    setField('invendus', invSel.options[invSel.selectedIndex].text);
+
+    setField('date', fmtDateFR(document.getElementById('fDate').value));
+  }
+
+  function setFormDisabled(disabled) {
+    CONTRAT_INPUT_IDS.forEach(id => { document.getElementById(id).disabled = disabled; });
+  }
+
+  function setSignStep(step) {
+    const order = ['draft', 'sent', 'viewed', 'signed'];
+    const idx = order.indexOf(step);
+    order.forEach((s, i) => {
+      const el = document.querySelector('.sign-step[data-step="' + s + '"]');
+      el.classList.remove('done', 'current');
+      if (i < idx) el.classList.add('done');
+      else if (i === idx) el.classList.add('current');
+    });
+  }
+
+  function startContrat() {
+    document.getElementById('contratEmpty').style.display = 'none';
+    document.getElementById('contratWorkspace').style.display = 'block';
+    document.getElementById('fDate').value = TODAY_ISO;
+    setFormDisabled(false);
+    setSignStep('draft');
+    ['stepSentSub', 'stepViewedSub', 'stepSignedSub'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('contratActionsDraft').style.display = 'flex';
+    document.getElementById('contratActionsSent').style.display = 'none';
+    document.getElementById('contratActionsSigned').style.display = 'none';
+    refreshPreview();
+  }
+
+  function cancelContrat() {
+    if (contratVersion === 0) {
+      document.getElementById('contratWorkspace').style.display = 'none';
+      document.getElementById('contratEmpty').style.display = 'flex';
+    }
+  }
+
+  function sendForSignature() {
+    contratVersion++;
+    refreshPreview();
+    setFormDisabled(true);
+
+    const today = todayLabel();
+    document.getElementById('stepDraftSub').textContent = today;
+    document.getElementById('stepSentSub').textContent = today;
+    setSignStep('sent');
+
+    document.getElementById('contratActionsDraft').style.display = 'none';
+    document.getElementById('contratActionsSent').style.display = 'block';
+    document.getElementById('sentEmailLabel').textContent = document.getElementById('fEmail').value;
+    document.getElementById('sentDateLabel').textContent = today;
+
+    contratFileRow = addContractFile(
+      'Contrat_' + CLIENT.prenom + '_v' + contratVersion + '.pdf',
+      '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyé le ' + today
+    );
+  }
+
+  function simulateSignature() {
+    const today = todayLabel();
+    document.getElementById('stepViewedSub').textContent = today;
+    document.getElementById('stepSignedSub').textContent = today;
+    setSignStep('signed');
+
+    document.getElementById('contratActionsSent').style.display = 'none';
+    document.getElementById('contratActionsSigned').style.display = 'block';
+    document.getElementById('signedDateLabel').textContent = today;
+
+    updateContractFileToSigned(contratFileRow, today);
+
+    const chip = document.getElementById('headerContratChip');
+    if (chip) chip.style.display = 'inline-block';
+  }
+
+  function startAvenant() {
+    setFormDisabled(false);
+    document.getElementById('contratActionsSigned').style.display = 'none';
+    document.getElementById('contratActionsDraft').style.display = 'flex';
+    setSignStep('draft');
+    ['stepSentSub', 'stepViewedSub', 'stepSignedSub'].forEach(id => document.getElementById(id).textContent = '—');
+  }
+
+  function addContractFile(name, subHtml) {
+    document.getElementById('fichiersEmpty').style.display = 'none';
+    const list = document.getElementById('fichiersList');
+    list.style.display = 'flex';
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    row.innerHTML =
+      '<div class="file-icon">' + FILE_ICON_PDF + '</div>' +
+      '<div class="file-meta">' +
+        '<div class="file-name" data-name>' + name + '</div>' +
+        '<div class="file-sub" data-sub>' + subHtml + '</div>' +
+      '</div>' +
+      '<div class="file-actions">' +
+        '<button class="btn btn-ghost btn-sm">Voir</button>' +
+        '<button class="btn btn-ghost btn-sm">Télécharger</button>' +
+      '</div>';
+    list.prepend(row);
+    return row;
+  }
+
+  function updateContractFileToSigned(row, dateLabel) {
+    if (!row) return;
+    const nameEl = row.querySelector('[data-name]');
+    const subEl = row.querySelector('[data-sub]');
+    nameEl.textContent = nameEl.textContent.replace('.pdf', '_signe.pdf');
+    subEl.innerHTML = '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Signé</span>Mis à jour automatiquement le ' + dateLabel;
+    row.style.transition = 'background 1.4s ease';
+    row.style.background = 'var(--good-bg)';
+    setTimeout(() => { row.style.background = ''; }, 1400);
+  }
+
+  CONTRAT_INPUT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', refreshPreview);
+    el.addEventListener('change', refreshPreview);
+  });
+
+  // ================== NOTES PAR CLIENTE ==================
+
+  var notes = CLIENT.notes.slice(); var _unusedNotes = [
+    { id: 1, type: 'todo', text: "Lui rendre les 3 pièces d'hiver mises de côté au prochain passage.", date: '2026-07-30', done: false },
+    { id: 2, type: 'note', text: "Préfère les lives le mardi soir. Ne veut pas vendre les pièces Sézane en dessous de 25 €.", date: '2026-07-18', done: false },
+    { id: 3, type: 'todo', text: 'Relancer pour le virement du live du 03/07.', date: '2026-07-10', done: true }
+  ];
+
+  function noteTypeSelected() {
+    var b = document.querySelector('#noteTypeToggle button.active');
+    return b ? b.dataset.type : 'note';
+  }
+
+  function renderNotes() {
+    var list = document.getElementById('notesList');
+    var empty = document.getElementById('notesEmpty');
+    var badge = document.getElementById('notesBadge');
+
+    var pending = notes.filter(function (n) { return n.type === 'todo' && !n.done; }).length;
+    if (pending > 0) {
+      badge.textContent = pending;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    if (notes.length === 0) {
+      list.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+    empty.style.display = 'none';
+    list.style.display = 'flex';
+
+    var sorted = notes.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+    list.innerHTML = sorted.map(function (n) {
+      var check = n.type === 'todo'
+        ? '<input type="checkbox" class="note-check"' + (n.done ? ' checked' : '') + ' onchange="toggleNote(' + n.id + ')" title="Marquer comme fait" />'
+        : '<span class="note-bullet"></span>';
+      var tag = n.type === 'todo'
+        ? '<span class="agenda-kind"' + (n.done ? ' style="background:var(--good-bg); color:var(--good);"' : '') + '>' + (n.done ? 'Fait' : 'À faire') + '</span>'
+        : '';
+      return '<li class="note-item' + (n.done ? ' done' : '') + '">' +
+          check +
+          '<div class="note-body">' +
+            '<div class="note-text">' + tag + n.text + '</div>' +
+            '<div class="note-meta">' + fmtDateShortFR(n.date) + ' · Sarah</div>' +
+          '</div>' +
+          '<button class="btn btn-ghost btn-sm" onclick="deleteNote(' + n.id + ')">Supprimer</button>' +
+        '</li>';
+    }).join('');
+  }
+
+  function addNote() {
+    var field = document.getElementById('noteText');
+    var text = field.value.trim();
+    if (!text) { field.focus(); return; }
+    notes.push({
+      id: Date.now(),
+      type: noteTypeSelected(),
+      text: text,
+      date: TODAY_ISO,
+      done: false
+    });
+    field.value = '';
+    renderNotes();
+  }
+
+  function toggleNote(id) {
+    var n = notes.find(function (x) { return x.id === id; });
+    if (n) { n.done = !n.done; renderNotes(); }
+  }
+
+  function deleteNote(id) {
+    notes = notes.filter(function (x) { return x.id !== id; });
+    renderNotes();
+  }
+
+  document.getElementById('noteTypeToggle').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#noteTypeToggle button').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+
+  renderNotes();
+
+  // ================== BON DE RESTITUTION ==================
+
+  var RESTIT_INPUT_IDS = ['rDate', 'rPieces', 'rCaisses', 'rMode', 'rEtat', 'rObs'];
+  var restitFileRow = null;
+
+  function setRField(name, value, isEmpty) {
+    var el = document.querySelector('#restitPreview [data-rfield="' + name + '"]');
+    if (!el) return;
+    el.textContent = value;
+    el.classList.toggle('empty', !!isEmpty);
+  }
+
+  function refreshRestitPreview() {
+    var pieces = document.getElementById('rPieces').value;
+    var caisses = document.getElementById('rCaisses').value;
+    var obs = document.getElementById('rObs').value.trim();
+    var modeSel = document.getElementById('rMode');
+    var etatSel = document.getElementById('rEtat');
+
+    setRField('pieces', pieces || '…', !pieces);
+    setRField('caisses', caisses || '…', !caisses);
+    setRField('mode', modeSel.options[modeSel.selectedIndex].text);
+    setRField('etat', etatSel.options[etatSel.selectedIndex].text);
+    setRField('obs', obs || 'Aucune observation particulière.', !obs);
+    setRField('nom', CLIENT.nom);
+    setRField('date', fmtDateFR(document.getElementById('rDate').value));
+  }
+
+  function setRestitStep(step) {
+    var order = ['draft', 'sent', 'signed'];
+    var idx = order.indexOf(step);
+    order.forEach(function (s, i) {
+      var el = document.querySelector('#restitSteps .sign-step[data-step="' + s + '"]');
+      el.classList.remove('done', 'current');
+      if (i < idx) el.classList.add('done');
+      else if (i === idx) el.classList.add('current');
+    });
+  }
+
+  function setRestitDisabled(disabled) {
+    RESTIT_INPUT_IDS.forEach(function (id) { document.getElementById(id).disabled = disabled; });
+  }
+
+  function startRestitution() {
+    document.getElementById('restitEmpty').style.display = 'none';
+    document.getElementById('restitWorkspace').style.display = 'block';
+    document.getElementById('rDate').value = TODAY_ISO;
+    setRestitDisabled(false);
+    setRestitStep('draft');
+    ['rStepSentSub', 'rStepSignedSub'].forEach(function (id) { document.getElementById(id).textContent = '—'; });
+    document.getElementById('restitActionsDraft').style.display = 'flex';
+    document.getElementById('restitActionsSent').style.display = 'none';
+    document.getElementById('restitActionsSigned').style.display = 'none';
+    setRField('sigmode', 'à signer', true);
+    refreshRestitPreview();
+  }
+
+  function cancelRestitution() {
+    document.getElementById('restitWorkspace').style.display = 'none';
+    document.getElementById('restitEmpty').style.display = 'flex';
+  }
+
+  function restitFileName(signed) {
+    var d = document.getElementById('rDate').value || TODAY_ISO;
+    return 'Restitution_' + CLIENT.prenom + '_' + d + (signed ? '_signe' : '') + '.pdf';
+  }
+
+  // Cas courant : la cliente est devant vous, elle signe le bon immédiatement
+  function signRestitutionOnSite() {
+    var today = todayLabel();
+    setRestitDisabled(true);
+    setRField('sigmode', 'signé sur place');
+    document.getElementById('rStepDraftSub').textContent = today;
+    document.getElementById('rStepSentSub').textContent = today;
+    document.getElementById('rStepSignedSub').textContent = today;
+    setRestitStep('signed');
+    document.getElementById('restitActionsDraft').style.display = 'none';
+    document.getElementById('restitActionsSigned').style.display = 'block';
+    document.getElementById('rSignedDate').textContent = today;
+
+    addContractFile(
+      restitFileName(true),
+      '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Restitution signée</span>Signée sur place le ' + today
+    );
+  }
+
+  // Cas à distance : envoi pour signature électronique
+  function sendRestitution() {
+    var today = todayLabel();
+    setRestitDisabled(true);
+    setRField('sigmode', 'à signer électroniquement', true);
+    document.getElementById('rStepDraftSub').textContent = today;
+    document.getElementById('rStepSentSub').textContent = today;
+    setRestitStep('sent');
+    document.getElementById('restitActionsDraft').style.display = 'none';
+    document.getElementById('restitActionsSent').style.display = 'block';
+    document.getElementById('rSentEmail').textContent = document.getElementById('fEmail').value;
+    document.getElementById('rSentDate').textContent = today;
+
+    restitFileRow = addContractFile(
+      restitFileName(false),
+      '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyée le ' + today
+    );
+  }
+
+  function simulateRestitutionSignature() {
+    var today = todayLabel();
+    setRField('sigmode', 'signé électroniquement');
+    document.getElementById('rStepSignedSub').textContent = today;
+    setRestitStep('signed');
+    document.getElementById('restitActionsSent').style.display = 'none';
+    document.getElementById('restitActionsSigned').style.display = 'block';
+    document.getElementById('rSignedDate').textContent = today;
+    updateContractFileToSigned(restitFileRow, today);
+  }
+
+  RESTIT_INPUT_IDS.forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener('input', refreshRestitPreview);
+    el.addEventListener('change', refreshRestitPreview);
+  });
+</script>
+</body>
+</html>

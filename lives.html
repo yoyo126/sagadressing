@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lives — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Lives</h1>
+          <p class="topbar-sub">Sessions Whatnot — groupées par date</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Rechercher un live…" />
+          </div>
+          <button class="btn btn-primary" onclick="toggleImport()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importer un CSV Whatnot
+          </button>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <div class="panel" id="importPanel" style="display:none;">
+        <div class="panel-head"><h2>Importer un CSV Whatnot</h2></div>
+        <div class="form-grid" style="max-width:520px;">
+          <div class="form-field">
+            <label class="form-label" for="csvFile">Fichier exporté depuis Whatnot</label>
+            <input class="form-input" type="file" id="csvFile" accept=".csv" />
+            <span class="card-note">Whatnot → Revenus → Exporter. Les virements (PAYOUT) sont ignorés automatiquement.</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="csvSession">Nom de la session</label>
+            <input class="form-input" id="csvSession" placeholder="Ex. Live du 5 août" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="csvFrais">Frais Whatnot appliqués (%)</label>
+            <input class="form-input" type="number" id="csvFrais" value="0" />
+            <span class="card-note">0 en temps normal. À 15-20 pendant les promotions « 0 frais », où vous conservez les frais.</span>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary btn-sm" onclick="runImport()">Analyser le fichier</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleImport()">Annuler</button>
+          </div>
+        </div>
+        <div id="importResult" style="display:none; margin-top:18px;">
+          <div class="info-card">
+            <div class="info-card-title">Étape suivante : associer les lettres aux clientes</div>
+            <p class="card-note">Le fichier contient 4 lettres de dressing. Chacune doit être rattachée à une cliente avant de créer les lives.</p>
+            <div class="table-scroll" style="margin-top:12px;">
+              <table>
+                <thead><tr><th>Lettre</th><th class="num">Articles</th><th class="num">Total</th><th>Cliente</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>M</strong></td><td class="num tabular">38</td><td class="num tabular">1 480 €</td><td class="muted">Fanny — reconnue</td></tr>
+                  <tr><td><strong>C</strong></td><td class="num tabular">27</td><td class="num tabular">1 660 €</td><td class="muted">Julie — reconnue</td></tr>
+                  <tr><td><strong>B</strong></td><td class="num tabular">31</td><td class="num tabular">1 500 €</td><td class="muted">Camille — reconnue</td></tr>
+                  <tr><td><strong>?</strong></td><td class="num tabular">4</td><td class="num tabular">120 €</td><td><span class="chip warn">Sans lettre — à affecter</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Sessions récentes</h2>
+          <div class="filter-bar">
+            <div class="toggle-group" id="statusToggle">
+              <button data-status="all" class="active">Toutes</button>
+              <button data-status="open">En cours</button>
+              <button data-status="done">Soldées</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Session</th>
+              <th class="num">Clientes</th>
+              <th class="num">Ventes totales</th>
+              <th class="num">Commission Saga</th>
+              <th class="num">Reste à reverser</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-href="live.html" data-status="open">
+              <td><strong>Live du 29 juillet</strong><div class="muted" style="font-size:.75rem;">Sacs &amp; accessoires</div></td>
+              <td class="num tabular">3</td>
+              <td class="num tabular">4 640 €</td>
+              <td class="num tabular">1 392 €</td>
+              <td class="num tabular">2 052 €</td>
+              <td><span class="chip warn">En cours</span></td>
+            </tr>
+            <tr data-href="live.html" data-status="done">
+              <td><strong>Live du 27 juillet</strong><div class="muted" style="font-size:.75rem;">Mix saison</div></td>
+              <td class="num tabular">2</td>
+              <td class="num tabular">1 960 €</td>
+              <td class="num tabular">588 €</td>
+              <td class="num tabular">0 €</td>
+              <td><span class="chip good">Soldée</span></td>
+            </tr>
+            <tr data-href="live.html" data-status="open">
+              <td><strong>Live du 24 juillet</strong><div class="muted" style="font-size:.75rem;">Promo 0 frais Whatnot</div></td>
+              <td class="num tabular">4</td>
+              <td class="num tabular">5 210 €</td>
+              <td class="num tabular">1 563 €</td>
+              <td class="num tabular">480 €</td>
+              <td><span class="chip critical">Retard</span></td>
+            </tr>
+            <tr data-href="live.html" data-status="done">
+              <td><strong>Live du 20 juillet</strong><div class="muted" style="font-size:.75rem;">Mix saison</div></td>
+              <td class="num tabular">2</td>
+              <td class="num tabular">2 050 €</td>
+              <td class="num tabular">615 €</td>
+              <td class="num tabular">0 €</td>
+              <td><span class="chip good">Soldée</span></td>
+            </tr>
+            <tr data-href="live.html" data-status="done">
+              <td><strong>Live du 17 juillet</strong><div class="muted" style="font-size:.75rem;">Robes d'été</div></td>
+              <td class="num tabular">3</td>
+              <td class="num tabular">2 870 €</td>
+              <td class="num tabular">861 €</td>
+              <td class="num tabular">0 €</td>
+              <td><span class="chip good">Soldée</span></td>
+            </tr>
+            <tr data-href="live.html" data-status="done">
+              <td><strong>Live du 13 juillet</strong><div class="muted" style="font-size:.75rem;">Mix saison</div></td>
+              <td class="num tabular">2</td>
+              <td class="num tabular">2 320 €</td>
+              <td class="num tabular">696 €</td>
+              <td class="num tabular">0 €</td>
+              <td><span class="chip good">Soldée</span></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('lives');
+
+  function toggleImport() {
+    var p = document.getElementById('importPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('importResult').style.display = 'none';
+  }
+
+  function runImport() {
+    document.getElementById('importResult').style.display = 'block';
+  }
+  initRowLinks();
+
+  document.getElementById('statusToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#statusToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const status = btn.dataset.status;
+    document.querySelectorAll('tbody tr[data-status]').forEach(tr => {
+      tr.style.display = (status === 'all' || tr.dataset.status === status) ? '' : 'none';
+    });
+  });
+</script>
+</body>
+</html>

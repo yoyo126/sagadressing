@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agenda — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Agenda</h1>
+          <p class="topbar-sub">Récupérations de dressing, lives programmés, autres rendez-vous</p>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <p class="card-note" style="margin:-6px 0 0;">
+        Agenda iCloud non connecté — <a href="parametres.html" style="color:var(--brand-strong);">le configurer dans Paramètres</a>.
+      </p>
+
+      <section class="content-grid">
+        <div class="panel">
+          <div class="panel-head"><h2>Cette semaine</h2></div>
+          <ul class="agenda-list" id="agendaThisWeek">
+            <li>
+              <div class="agenda-date today"><span class="d">1</span><span class="m">Août</span></div>
+              <div class="agenda-body">
+                <div class="agenda-title"><span class="agenda-kind">Live</span>Julie (C) — programmé<span class="sync-badge" data-sync-badge title="Synchronisé avec iCloud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17 8.5a4 4 0 0 1-.5 7.99"/></svg></span></div>
+                <div class="agenda-meta">19h00, mix saison</div>
+              </div>
+            </li>
+            <li>
+              <div class="agenda-date"><span class="d">4</span><span class="m">Août</span></div>
+              <div class="agenda-body">
+                <div class="agenda-title"><span class="agenda-kind">Récup.</span>Camille (B) — dressing<span class="sync-badge" data-sync-badge title="Synchronisé avec iCloud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17 8.5a4 4 0 0 1-.5 7.99"/></svg></span></div>
+                <div class="agenda-meta">12 caisses à récupérer, dépôt Rungis</div>
+              </div>
+            </li>
+            <li>
+              <div class="agenda-date"><span class="d">5</span><span class="m">Août</span></div>
+              <div class="agenda-body">
+                <div class="agenda-title"><span class="agenda-kind">Live</span>Marion (F) — programmé<span class="sync-badge" data-sync-badge title="Synchronisé avec iCloud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17 8.5a4 4 0 0 1-.5 7.99"/></svg></span></div>
+                <div class="agenda-meta">20h30, catégorie sacs &amp; accessoires</div>
+              </div>
+            </li>
+          </ul>
+
+          <div class="panel-head" style="margin-top:22px;"><h2>Plus tard</h2></div>
+          <ul class="agenda-list">
+            <li>
+              <div class="agenda-date"><span class="d">9</span><span class="m">Août</span></div>
+              <div class="agenda-body">
+                <div class="agenda-title"><span class="agenda-kind">Autre</span>Réception fournisseur</div>
+                <div class="agenda-meta">Livraison housses + étiquettes</div>
+              </div>
+            </li>
+            <li>
+              <div class="agenda-date"><span class="d">14</span><span class="m">Août</span></div>
+              <div class="agenda-body">
+                <div class="agenda-title"><span class="agenda-kind">Récup.</span>Nora (T) — dressing</div>
+                <div class="agenda-meta">Première collecte, 4 caisses estimées</div>
+              </div>
+            </li>
+            <li>
+              <div class="agenda-date"><span class="d">19</span><span class="m">Août</span></div>
+              <div class="agenda-body">
+                <div class="agenda-title"><span class="agenda-kind">Live</span>Fanny (M) — programmé</div>
+                <div class="agenda-meta">20h00, fin de saison été</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="side-col">
+          <div class="panel">
+            <div class="panel-head"><h2>Août 2026</h2></div>
+            <div class="calendar-mini">
+              <span class="dow">L</span><span class="dow">M</span><span class="dow">M</span><span class="dow">J</span><span class="dow">V</span><span class="dow">S</span><span class="dow">D</span>
+              <span class="day muted">27</span><span class="day muted">28</span><span class="day muted">29</span><span class="day muted">30</span><span class="day muted">31</span><span class="day today">1</span><span class="day">2</span>
+              <span class="day">3</span><span class="day has-event">4</span><span class="day has-event">5</span><span class="day">6</span><span class="day">7</span><span class="day">8</span><span class="day has-event">9</span>
+              <span class="day">10</span><span class="day">11</span><span class="day">12</span><span class="day">13</span><span class="day has-event">14</span><span class="day">15</span><span class="day">16</span>
+              <span class="day">17</span><span class="day">18</span><span class="day has-event">19</span><span class="day">20</span><span class="day">21</span><span class="day">22</span><span class="day">23</span>
+              <span class="day">24</span><span class="day">25</span><span class="day">26</span><span class="day">27</span><span class="day">28</span><span class="day">29</span><span class="day">30</span>
+              <span class="day">31</span><span class="day muted">1</span><span class="day muted">2</span><span class="day muted">3</span><span class="day muted">4</span><span class="day muted">5</span><span class="day muted">6</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Nouvel événement</h2></div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="form-label">Type</label>
+                <div class="toggle-group" style="width:100%;">
+                  <button class="active" style="flex:1;">Récup.</button>
+                  <button style="flex:1;">Live</button>
+                  <button style="flex:1;">Autre</button>
+                </div>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Date</label>
+                <input class="form-input" type="date" value="2026-08-04" />
+              </div>
+              <div class="form-field">
+                <label class="form-label">Cliente</label>
+                <select class="form-select">
+                  <option>Fanny (M)</option>
+                  <option>Julie (C)</option>
+                  <option>Camille (B)</option>
+                  <option>Marion (F)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Commentaire</label>
+                <textarea class="form-textarea" placeholder="Ex. 12 caisses à récupérer, dépôt Rungis"></textarea>
+              </div>
+              <button class="btn btn-primary" style="justify-content:center;" onclick="addEvent()">Ajouter à l'agenda</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('agenda');
+
+  var MOIS_AG = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+
+  function addEvent() {
+    var type = document.querySelector('.form-field .toggle-group button.active').textContent.trim();
+    var dateVal = document.querySelector('#tab-add-date, .form-field input[type="date"]').value;
+    var cliente = document.querySelector('.form-field select').value;
+    var comment = document.querySelector('.form-textarea').value.trim();
+    if (!dateVal) { alert('Choisissez une date.'); return; }
+
+    var d = new Date(dateVal + 'T00:00:00');
+    var li = document.createElement('li');
+    li.innerHTML =
+      '<div class="agenda-date"><span class="d">' + d.getDate() + '</span><span class="m">' + MOIS_AG[d.getMonth()] + '</span></div>' +
+      '<div class="agenda-body">' +
+        '<div class="agenda-title"><span class="agenda-kind">' + type + '</span>' + cliente + '</div>' +
+        '<div class="agenda-meta">' + (comment || 'Sans commentaire') + '</div>' +
+      '</div>';
+    var list = document.getElementById('agendaThisWeek');
+    list.appendChild(li);
+    li.style.transition = 'background 1.4s ease';
+    li.style.background = 'var(--good-bg)';
+    setTimeout(function () { li.style.background = ''; }, 1400);
+    document.querySelector('.form-textarea').value = '';
+  }
+
+  document.querySelectorAll('.form-field .toggle-group button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+</script>
+</body>
+</html>

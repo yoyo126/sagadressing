@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Boutique — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Boutique</h1>
+          <p class="topbar-sub">Générer le fichier d'annonces à importer dans Whatnot</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="genererCSV()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger le CSV
+          </button>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — le fichier généré est en revanche bien réel et téléchargeable
+      </div>
+
+      <div class="content-grid">
+        <div class="side-col">
+          <!-- Dressings -->
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Dressings à inclure</h2>
+              <span class="panel-link" style="color:var(--ink-faint);" id="dressCount">—</span>
+            </div>
+            <div id="dressList" class="dress-list"></div>
+            <p class="card-note" style="margin-top:12px;">
+              La vignette provient de la fiche cliente. Vous pouvez la remplacer ici pour cette boutique
+              sans modifier la fiche.
+            </p>
+          </div>
+
+          <!-- Paliers de prix -->
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Paliers de prix</h2>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-ghost btn-sm" onclick="selectPaliers(true)">Tout</button>
+                <button class="btn btn-ghost btn-sm" onclick="selectPaliers(false)">Aucun</button>
+              </div>
+            </div>
+            <div id="palierList" class="palier-grid"></div>
+            <div class="form-field" style="margin-top:14px;">
+              <label class="form-label" for="palierAdd">Ajouter un palier (€)</label>
+              <div style="display:flex; gap:8px;">
+                <input class="form-input" type="number" id="palierAdd" placeholder="Ex. 75" />
+                <button class="btn btn-secondary btn-sm" onclick="addPalier()">Ajouter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Réglages + aperçu -->
+        <div class="side-col">
+          <div class="panel">
+            <div class="panel-head"><h2>Réglages de l'annonce</h2></div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="form-label" for="fCat">Catégorie Whatnot</label>
+                <select class="form-select" id="fCat" onchange="majSousCat(); refreshApercu();">
+                  <option value="Women's Fashion">Mode femme</option>
+                  <option value="Men's Fashion">Mode homme</option>
+                  <option value="Baby &amp; Kids">Bébé &amp; enfant</option>
+                </select>
+                <span class="card-note">Les libellés doivent rester en anglais dans le fichier : Whatnot refuse les traductions.</span>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="fSousCat">Sous-catégorie</label>
+                <select class="form-select" id="fSousCat" onchange="refreshApercu()"></select>
+              </div>
+              <div class="form-field" style="flex-direction:row; gap:12px;">
+                <div style="flex:1;">
+                  <label class="form-label" for="fQte">Quantité</label>
+                  <input class="form-input" type="number" id="fQte" value="126" oninput="refreshApercu()" />
+                </div>
+                <div style="flex:1;">
+                  <label class="form-label" for="fType">Type de vente</label>
+                  <select class="form-select" id="fType" onchange="refreshApercu()">
+                    <option>Auction</option>
+                    <option>Buy It Now</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="fLivraison">Profil de livraison</label>
+                <select class="form-select" id="fLivraison" onchange="refreshApercu()">
+                  <option>De 100 g à &lt; 250 g</option>
+                  <option>De 250 g à &lt; 500 g</option>
+                  <option>De 500 g à &lt; 1 kg</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="fMention">Mention dans le titre</label>
+                <input class="form-input" id="fMention" value="( pas d'annulation, ni reprise )" oninput="refreshApercu()" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="fDesc">Description</label>
+                <textarea class="form-textarea" id="fDesc" oninput="refreshApercu()">Article vendu en l'état, sans annulation ni reprise. Expédition sous 48 h après réception du paiement.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Aperçu</h2>
+              <span class="chip neutral" id="lineCount">—</span>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Titre</th><th class="num">Prix</th><th>SKU</th><th>Image</th></tr></thead>
+                <tbody id="apercuBody"></tbody>
+              </table>
+            </div>
+            <p class="card-note" style="margin-top:12px;" id="apercuNote">—</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('boutique');
+
+  var SOUS_CATS = {
+    "Women's Fashion": ["Women's Contemporary", "Women's Vintage Clothing", "Women's Activewear",
+                        "Women's Plus Size", "Women's Boutiques", "Women's Shoes", "Women's Dresses", "Women's Swimwear"],
+    "Men's Fashion":   ["Men's Modern", "Men's Vintage Clothing", "Men's Streetwear",
+                        "Men's Sports Apparel", "Men's Activewear", "Big & Tall Fashion"],
+    "Baby & Kids":     ["Baby & Kids Clothes", "Baby & Kids Shoes", "Baby & Kids Supplies"]
+  };
+
+  var PALIERS_DEFAUT = [1,5,10,15,20,25,30,35,40,50,60,70,80,90,100,150,200,250,300,400,500];
+
+  // Les dressings viennent des fiches clientes (avec leur vignette)
+  var CLIENTES_FALLBACK = [
+    { prenom:'Fanny',   lettre:'M', statut:'active', vignette:'' },
+    { prenom:'Julie',   lettre:'C', statut:'active', vignette:'' },
+    { prenom:'Camille', lettre:'B', statut:'active', vignette:'' },
+    { prenom:'Marion',  lettre:'F', statut:'active', vignette:'' }
+  ];
+
+  var clientes = sagaLoad('clientes', CLIENTES_FALLBACK).filter(function (c) { return c.statut === 'active'; });
+  var config = sagaLoad('boutique_config', { paliers: PALIERS_DEFAUT.slice(), selection: {}, images: {} });
+
+  if (!config.paliersActifs) {
+    config.paliersActifs = {};
+    config.paliers.forEach(function (p) { config.paliersActifs[p] = true; });
+  }
+  clientes.forEach(function (c) {
+    if (config.selection[c.lettre] === undefined) config.selection[c.lettre] = true;
+  });
+
+  function persist() { sagaSave('boutique_config', config); }
+
+  function imageDe(lettre) {
+    var override = config.images[lettre];
+    if (override) return override;
+    var c = clientes.find(function (x) { return x.lettre === lettre; });
+    return (c && c.vignette) || '';
+  }
+
+  function renderDressings() {
+    document.getElementById('dressList').innerHTML = clientes.map(function (c) {
+      var img = imageDe(c.lettre);
+      var vign = img
+        ? '<img class="vignette-thumb" src="' + img + '" alt="" />'
+        : '<span class="vignette-thumb empty">—</span>';
+      var perso = config.images[c.lettre] ? ' <span class="chip neutral" style="font-size:.62rem;">remplacée</span>' : '';
+      return '<label class="dress-row">' +
+        '<input type="checkbox" ' + (config.selection[c.lettre] ? 'checked' : '') +
+          ' onchange="toggleDress(\'' + c.lettre + '\', this.checked)" />' +
+        vign +
+        '<span class="dress-name"><strong>' + c.lettre + '</strong> · ' + c.prenom + perso +
+          (img ? '' : '<div class="muted" style="font-size:.7rem;">Aucune vignette</div>') + '</span>' +
+        '<input type="file" accept="image/*" id="img_' + c.lettre + '" style="display:none;" onchange="changeImage(\'' + c.lettre + '\', this)" />' +
+        '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.lettre + '\').click()">Changer</button>' +
+      '</label>';
+    }).join('') || '<p class="card-note">Aucune cliente active. Créez-en une depuis la page Clientes.</p>';
+
+    var n = clientes.filter(function (c) { return config.selection[c.lettre]; }).length;
+    document.getElementById('dressCount').textContent = n + ' sur ' + clientes.length;
+  }
+
+  function toggleDress(lettre, checked) {
+    config.selection[lettre] = checked;
+    persist(); renderDressings(); refreshApercu();
+  }
+
+  function changeImage(lettre, input) {
+    if (!input.files || !input.files[0]) return;
+    sagaReadImage(input.files[0], 600, function (dataUrl) {
+      config.images[lettre] = dataUrl;
+      persist(); renderDressings(); refreshApercu();
+    });
+  }
+
+  function renderPaliers() {
+    config.paliers.sort(function (a, b) { return a - b; });
+    document.getElementById('palierList').innerHTML = config.paliers.map(function (p) {
+      return '<label class="palier-chip' + (config.paliersActifs[p] ? ' on' : '') + '">' +
+        '<input type="checkbox" ' + (config.paliersActifs[p] ? 'checked' : '') +
+        ' onchange="togglePalier(' + p + ', this.checked)" />' + p + ' €</label>';
+    }).join('');
+  }
+
+  function togglePalier(p, checked) {
+    config.paliersActifs[p] = checked;
+    persist(); renderPaliers(); refreshApercu();
+  }
+
+  function selectPaliers(all) {
+    config.paliers.forEach(function (p) { config.paliersActifs[p] = all; });
+    persist(); renderPaliers(); refreshApercu();
+  }
+
+  function addPalier() {
+    var v = parseInt(document.getElementById('palierAdd').value, 10);
+    if (!v || v <= 0) return;
+    if (config.paliers.indexOf(v) === -1) {
+      config.paliers.push(v);
+      config.paliersActifs[v] = true;
+    }
+    document.getElementById('palierAdd').value = '';
+    persist(); renderPaliers(); refreshApercu();
+  }
+
+  function majSousCat() {
+    var cat = document.getElementById('fCat').value;
+    document.getElementById('fSousCat').innerHTML = SOUS_CATS[cat]
+      .map(function (s) { return '<option>' + s + '</option>'; }).join('');
+  }
+
+  function titrePour(prix, lettre) {
+    return 'PDD ' + prix + '€ ' + lettre + ' ' + document.getElementById('fMention').value;
+  }
+
+  function lignes() {
+    var out = [];
+    clientes.filter(function (c) { return config.selection[c.lettre]; }).forEach(function (c) {
+      config.paliers.filter(function (p) { return config.paliersActifs[p]; }).forEach(function (p) {
+        out.push({ lettre: c.lettre, prenom: c.prenom, prix: p,
+                   titre: titrePour(p, c.lettre), sku: c.lettre + '_' + p, image: imageDe(c.lettre) });
+      });
+    });
+    return out;
+  }
+
+  function refreshApercu() {
+    var L = lignes();
+    document.getElementById('lineCount').textContent = L.length + ' annonce' + (L.length > 1 ? 's' : '');
+    document.getElementById('apercuBody').innerHTML = L.slice(0, 12).map(function (l) {
+      return '<tr>' +
+        '<td style="font-size:.78rem;">' + l.titre + '</td>' +
+        '<td class="num tabular">' + l.prix + ' €</td>' +
+        '<td class="muted">' + l.sku + '</td>' +
+        '<td>' + (l.image ? '<img class="vignette-thumb" src="' + l.image + '" alt="" />'
+                          : '<span class="chip warn" style="font-size:.62rem;">absente</span>') + '</td>' +
+      '</tr>';
+    }).join('') || '<tr><td colspan="4" class="muted" style="text-align:center; padding:20px;">Sélectionnez au moins un dressing et un palier.</td></tr>';
+
+    var sansImage = L.filter(function (l) { return !l.image; }).length;
+    document.getElementById('apercuNote').innerHTML = L.length === 0 ? '—'
+      : (L.length > 12 ? 'Les 12 premières lignes sur ' + L.length + '. ' : '')
+        + (sansImage
+            ? '<strong style="color:var(--brand-strong)">' + sansImage + ' annonce(s) sans vignette</strong> — Whatnot les acceptera, mais elles s\'afficheront sans image.'
+            : 'Toutes les annonces ont une vignette.');
+  }
+
+  /* ---------- Génération du fichier ----------
+     Format Whatnot : BOM UTF-8, séparateur virgule, fins de ligne CRLF,
+     21 colonnes, pas de saut de ligne final. */
+  function echap(v) {
+    v = String(v == null ? '' : v);
+    return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+
+  function genererCSV() {
+    var L = lignes();
+    if (L.length === 0) {
+      alert('Rien à générer : sélectionnez au moins un dressing et un palier de prix.');
+      return;
+    }
+
+    var entetes = ['Catégorie','Sous-catégorie','Titre','Description','Quantité','Type','Prix',
+                   'Profil de livraison','Offres Acceptées','Matières dangereuses','État',
+                   'Coût par article','SKU','Image URL 1','Image URL 2','Image URL 3','Image URL 4',
+                   'Image URL 5','Image URL 6','Image URL 7','Image URL 8'];
+
+    var cat = document.getElementById('fCat').value;
+    var sousCat = document.getElementById('fSousCat').value;
+    var qte = document.getElementById('fQte').value;
+    var type = document.getElementById('fType').value;
+    var livraison = document.getElementById('fLivraison').value;
+    var desc = document.getElementById('fDesc').value;
+
+    var lignesCSV = [entetes.map(echap).join(',')];
+    L.forEach(function (l) {
+      // Les vignettes locales ne sont pas des URL publiques : la colonne reste vide
+      var imageUrl = /^https?:\/\//.test(l.image) ? l.image : '';
+      lignesCSV.push([
+        cat, sousCat, l.titre, desc, qte, type, l.prix, livraison,
+        'Non', 'Non', 'Utilisé', '', l.sku, imageUrl, '', '', '', '', '', '', ''
+      ].map(echap).join(','));
+    });
+
+    // BOM + CRLF, sans saut de ligne final
+    var contenu = '﻿' + lignesCSV.join('\r\n');
+    var nom = 'boutique_whatnot_' + new Date().toISOString().slice(0, 10) + '.csv';
+    sagaDownload(nom, contenu, 'text/csv');
+
+    var localesNonExportees = L.filter(function (l) { return l.image && !/^https?:\/\//.test(l.image); }).length;
+    if (localesNonExportees > 0) {
+      alert('Fichier téléchargé : ' + L.length + ' annonces.\n\n'
+        + 'À savoir : Whatnot ne sait lire que des images accessibles par une adresse internet. '
+        + 'Vos vignettes sont stockées dans le navigateur, la colonne image a donc été laissée vide.\n\n'
+        + 'Une fois le CRM en ligne, les vignettes seront hébergées sur sagadressing.fr et remplies automatiquement.');
+    }
+  }
+
+  majSousCat();
+  renderDressings();
+  renderPaliers();
+  refreshApercu();
+</script>
+</body>
+</html>

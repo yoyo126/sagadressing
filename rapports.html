@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rapports — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Rapports</h1>
+          <p class="topbar-sub">Synthèse financière par période</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary" onclick="doExport('CSV')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exporter CSV
+          </button>
+          <button class="btn btn-secondary" onclick="doExport('PDF')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exporter PDF
+          </button>
+          <button class="btn btn-primary" onclick="doBackup()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Sauvegarder mes données
+          </button>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Période</h2>
+        </div>
+        <div class="filter-bar">
+          <div class="form-field" style="min-width:150px;">
+            <label class="form-label" for="repFrom">Du</label>
+            <input class="form-input" type="date" id="repFrom" value="2026-07-01" />
+          </div>
+          <div class="form-field" style="min-width:150px;">
+            <label class="form-label" for="repTo">Au</label>
+            <input class="form-input" type="date" id="repTo" value="2026-07-31" />
+          </div>
+          <div class="form-field" style="min-width:180px;">
+            <label class="form-label" for="repCliente">Cliente</label>
+            <select class="form-select" id="repCliente">
+              <option value="">Toutes les clientes</option>
+              <option value="Fanny">Fanny (M)</option>
+              <option value="Julie">Julie (C)</option>
+              <option value="Camille">Camille (B)</option>
+              <option value="Marion">Marion (F)</option>
+            </select>
+          </div>
+          <div class="form-field" style="align-self:flex-end;">
+            <button class="btn btn-ghost btn-sm" id="repReset">Réinitialiser</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">CA période</span></div>
+          <div class="kpi-value tabular" id="kpiCA">—</div>
+          <div class="kpi-delta" id="kpiCASub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Commission Saga</span></div>
+          <div class="kpi-value tabular" id="kpiCommission">—</div>
+          <div class="kpi-delta" id="kpiCommissionSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Commission apporteurs</span></div>
+          <div class="kpi-value tabular" id="kpiApporteur">—</div>
+          <div class="kpi-delta" id="kpiApporteurSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Net reversé clientes</span></div>
+          <div class="kpi-value tabular" id="kpiNet">—</div>
+          <div class="kpi-delta" id="kpiNetSub">—</div>
+        </div>
+      </section>
+
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Synthèse par cliente</h2>
+            <div class="toggle-group" id="sourceToggle">
+              <button data-source="all" class="active">Tout</button>
+              <button data-source="live">Lives</button>
+              <button data-source="direct">Hors live</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+          <table>
+            <thead id="repTableHead"><tr><th>Cliente</th><th class="num">Ventes live</th><th class="num">Hors live</th><th class="num">Giveaways</th><th class="num">Commission Saga</th><th class="num">Net reversé</th></tr></thead>
+            <tbody id="repTableBody"></tbody>
+            <tfoot id="repTableFoot"></tfoot>
+          </table>
+          </div>
+          <p class="card-note" style="margin-top:12px;">Les ventes hors live (main propre, virement, autre plateforme) sont incluses dans les totaux. Elles ne supportent ni frais Whatnot ni giveaways ; la commission d'apporteur y est appliquée au cas par cas, selon le choix fait à la saisie.</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>CA par semaine</h2></div>
+          <div class="bar-chart" id="repChart"></div>
+          <p class="card-note" style="margin-top:14px;" id="repChartNote">—</p>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('rapports');
+
+  // Export réel : CSV téléchargé, PDF via la boîte d'impression du navigateur
+  function doExport(format) {
+    var rows = filteredVentes();
+    if (rows.length === 0) { alert('Aucune vente sur la période sélectionnée.'); return; }
+
+    var from = document.getElementById('repFrom').value || 'debut';
+    var to = document.getElementById('repTo').value || 'fin';
+
+    if (format === 'CSV') {
+      var entetes = ['Date','Cliente','Lettre','Origine','Ventes','Giveaways','Commission Saga','Commission apporteur','Net reverse'];
+      var lignes = [entetes.join(';')];
+      rows.forEach(function (v) {
+        lignes.push([v.date, v.cliente, v.lettre, v.source === 'live' ? 'Live' : 'Hors live',
+                     v.ventes, v.giveaways, v.saga, v.apporteur, v.net].join(';'));
+      });
+      var t = rows.reduce(function (a, v) {
+        a.ventes += v.ventes; a.giveaways += v.giveaways; a.saga += v.saga;
+        a.apporteur += v.apporteur; a.net += v.net; return a;
+      }, {ventes:0, giveaways:0, saga:0, apporteur:0, net:0});
+      lignes.push(['TOTAL','','','', t.ventes, t.giveaways, t.saga, t.apporteur, t.net].join(';'));
+
+      // BOM + point-virgule : Excel français ouvre le fichier correctement
+      sagaDownload('rapport_' + from + '_' + to + '.csv', '\ufeff' + lignes.join('\r\n'), 'text/csv');
+      return;
+    }
+
+    // PDF : on imprime la page, le navigateur propose « Enregistrer au format PDF »
+    window.print();
+  }
+
+  function doBackup() {
+    alert('Sauvegarde complète de la base\n\nUn fichier .sql est téléchargé, contenant clientes, lives, ventes, paiements et documents. À conserver avant toute manipulation importante.');
+  }
+
+  // ---------- Données de démonstration : une ligne = une vente ----------
+  // source: 'live' ou 'direct' · net = ce qui revient à la cliente
+  var VENTES = [
+    { date: '2026-07-29', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 1480, giveaways: 60, saga: 444, apporteur: 118, net: 890 },
+    { date: '2026-07-28', cliente: 'Marion',  lettre: 'F', source: 'direct', ventes: 260,  giveaways: 0,  saga: 78,  apporteur: 0,   net: 182 },
+    { date: '2026-07-27', cliente: 'Julie',   lettre: 'C', source: 'live',   ventes: 960,  giveaways: 0,  saga: 288, apporteur: 0,   net: 620 },
+    { date: '2026-07-24', cliente: 'Camille', lettre: 'B', source: 'live',   ventes: 2110, giveaways: 40, saga: 633, apporteur: 169, net: 1245 },
+    { date: '2026-07-22', cliente: 'Fanny',   lettre: 'M', source: 'direct', ventes: 245,  giveaways: 0,  saga: 74,  apporteur: 0,   net: 171 },
+    { date: '2026-07-20', cliente: 'Marion',  lettre: 'F', source: 'live',   ventes: 1500, giveaways: 0,  saga: 450, apporteur: 90,  net: 1050 },
+    { date: '2026-07-18', cliente: 'Camille', lettre: 'B', source: 'direct', ventes: 180,  giveaways: 0,  saga: 54,  apporteur: 0,   net: 126 },
+    { date: '2026-07-17', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 870,  giveaways: 0,  saga: 261, apporteur: 70,  net: 522 },
+    { date: '2026-07-13', cliente: 'Julie',   lettre: 'C', source: 'live',   ventes: 1320, giveaways: 0,  saga: 396, apporteur: 0,   net: 790 },
+    { date: '2026-06-25', cliente: 'Julie',   lettre: 'C', source: 'live',   ventes: 1450, giveaways: 0,  saga: 435, apporteur: 0,   net: 1015 },
+    { date: '2026-06-19', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 1105, giveaways: 0,  saga: 332, apporteur: 88,  net: 660 },
+    { date: '2026-06-12', cliente: 'Camille', lettre: 'B', source: 'live',   ventes: 1680, giveaways: 0,  saga: 504, apporteur: 134, net: 1176 },
+    { date: '2026-05-22', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 780,  giveaways: 0,  saga: 234, apporteur: 62,  net: 468 }
+  ];
+
+  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+
+  function currentSource() {
+    var btn = document.querySelector('#sourceToggle button.active');
+    return btn ? btn.dataset.source : 'all';
+  }
+
+  function filteredVentes() {
+    var from = document.getElementById('repFrom').value || '0000-01-01';
+    var to = document.getElementById('repTo').value || '9999-12-31';
+    var cliente = document.getElementById('repCliente').value;
+    var source = currentSource();
+
+    return VENTES.filter(function (v) {
+      if (v.date < from || v.date > to) return false;
+      if (cliente && v.cliente !== cliente) return false;
+      if (source === 'live' && v.source !== 'live') return false;
+      if (source === 'direct' && v.source !== 'direct') return false;
+      return true;
+    });
+  }
+
+  function isoWeek(dateStr) {
+    var d = new Date(dateStr + 'T00:00:00');
+    var target = new Date(d.valueOf());
+    target.setDate(target.getDate() - ((d.getDay() + 6) % 7) + 3);
+    var firstThursday = new Date(target.getFullYear(), 0, 4);
+    firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() + 6) % 7) + 3);
+    return 1 + Math.round((target - firstThursday) / (7 * 24 * 3600 * 1000));
+  }
+
+  function renderReport() {
+    var rows = filteredVentes();
+
+    var totals = { live: 0, direct: 0, giveaways: 0, saga: 0, apporteur: 0, net: 0 };
+    var sagaDirect = 0, netDirect = 0;
+    var byCliente = {};
+
+    rows.forEach(function (v) {
+      totals[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
+      totals.giveaways += v.giveaways;
+      totals.saga += v.saga;
+      totals.apporteur += v.apporteur;
+      totals.net += v.net;
+      if (v.source === 'direct') { sagaDirect += v.saga; netDirect += v.net; }
+
+      if (!byCliente[v.cliente]) {
+        byCliente[v.cliente] = { lettre: v.lettre, live: 0, direct: 0, giveaways: 0, saga: 0, net: 0 };
+      }
+      var c = byCliente[v.cliente];
+      c[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
+      c.giveaways += v.giveaways;
+      c.saga += v.saga;
+      c.net += v.net;
+    });
+
+    var ca = totals.live + totals.direct;
+
+    document.getElementById('kpiCA').textContent = fmtEUR(ca);
+    document.getElementById('kpiCASub').innerHTML = ca === 0 ? 'aucune vente sur la période'
+      : fmtEUR(totals.live) + ' en live · <strong style="color:var(--brand-strong)">' + fmtEUR(totals.direct) + ' hors live</strong>';
+    document.getElementById('kpiCommission').textContent = fmtEUR(totals.saga);
+    document.getElementById('kpiCommissionSub').textContent = 'dont ' + fmtEUR(sagaDirect) + ' sur ventes hors live';
+    document.getElementById('kpiApporteur').textContent = fmtEUR(totals.apporteur);
+    document.getElementById('kpiApporteurSub').textContent = totals.apporteur > 0 ? 'à régler aux apporteurs' : 'aucune commission sur la période';
+    document.getElementById('kpiNet').textContent = fmtEUR(totals.net);
+    document.getElementById('kpiNetSub').textContent = 'dont ' + fmtEUR(netDirect) + ' hors live';
+
+    // Tableau par cliente
+    var names = Object.keys(byCliente).sort(function (a, b) {
+      return (byCliente[b].live + byCliente[b].direct) - (byCliente[a].live + byCliente[a].direct);
+    });
+    var body = document.getElementById('repTableBody');
+    if (names.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:22px 8px;">Aucune vente sur cette période.</td></tr>';
+      document.getElementById('repTableFoot').innerHTML = '';
+    } else {
+      body.innerHTML = names.map(function (name) {
+        var c = byCliente[name];
+        return '<tr>' +
+          '<td><div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span> ' + name + '</div></td>' +
+          '<td class="num tabular">' + (c.live ? fmtEUR(c.live) : '<span class="muted">—</span>') + '</td>' +
+          '<td class="num tabular">' + (c.direct ? fmtEUR(c.direct) : '<span class="muted">—</span>') + '</td>' +
+          '<td class="num tabular">' + fmtEUR(c.giveaways) + '</td>' +
+          '<td class="num tabular">' + fmtEUR(c.saga) + '</td>' +
+          '<td class="num tabular">' + fmtEUR(c.net) + '</td>' +
+          '</tr>';
+      }).join('');
+      document.getElementById('repTableFoot').innerHTML =
+        '<tr><td><strong>Total</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(totals.live) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(totals.direct) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(totals.giveaways) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(totals.saga) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(totals.net) + '</strong></td></tr>';
+    }
+
+    applyColumnVisibility();
+    renderChart(rows);
+  }
+
+  // Masque la colonne devenue inutile selon la source choisie
+  function applyColumnVisibility() {
+    var source = currentSource();
+    var hidden = source === 'live' ? [2] : (source === 'direct' ? [1, 3] : []);
+    document.querySelectorAll('#repTableBody tr, #repTableFoot tr, #repTableHead tr').forEach(function (row) {
+      if (row.children.length < 6) return;
+      Array.prototype.forEach.call(row.children, function (cell, i) {
+        cell.style.display = hidden.indexOf(i) === -1 ? '' : 'none';
+      });
+    });
+  }
+
+  function renderChart(rows) {
+    var byWeek = {};
+    rows.forEach(function (v) {
+      var w = 'S' + isoWeek(v.date);
+      byWeek[w] = (byWeek[w] || 0) + v.ventes;
+    });
+    var weeks = Object.keys(byWeek).sort(function (a, b) {
+      return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
+    });
+    var chart = document.getElementById('repChart');
+    var note = document.getElementById('repChartNote');
+
+    if (weeks.length === 0) {
+      chart.innerHTML = '';
+      note.textContent = 'Aucune donnée à afficher sur cette période.';
+      return;
+    }
+    var max = Math.max.apply(null, weeks.map(function (w) { return byWeek[w]; }));
+    chart.innerHTML = weeks.map(function (w) {
+      var h = Math.max(6, byWeek[w] / max * 100);
+      var peak = byWeek[w] === max ? ' peak' : '';
+      return '<div class="bar' + peak + '" title="' + w + ' : ' + fmtEUR(byWeek[w]) + '">' +
+             '<div class="bar-fill" style="height:' + h + '%"></div>' +
+             '<span class="bar-label">' + w + '</span></div>';
+    }).join('');
+
+    var best = weeks.reduce(function (a, b) { return byWeek[a] >= byWeek[b] ? a : b; });
+    note.textContent = 'Meilleure semaine : ' + best + ' avec ' + fmtEUR(byWeek[best]) + ' de ventes.';
+  }
+
+  document.getElementById('sourceToggle').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#sourceToggle button').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    renderReport();
+  });
+
+  ['repFrom', 'repTo', 'repCliente'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', renderReport);
+  });
+
+  document.getElementById('repReset').addEventListener('click', function () {
+    document.getElementById('repFrom').value = '2026-07-01';
+    document.getElementById('repTo').value = '2026-07-31';
+    document.getElementById('repCliente').value = '';
+    document.querySelectorAll('#sourceToggle button').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelector('#sourceToggle button[data-source="all"]').classList.add('active');
+    renderReport();
+  });
+
+  renderReport();
+</script>
+</body>
+</html>

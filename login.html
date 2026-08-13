@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Connexion — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-mark serif">S</div>
+        <div class="brand-word">
+          <span class="brand-word-main">Saga</span>
+          <span class="brand-word-sub">Dressing</span>
+        </div>
+      </div>
+
+      <!-- Étape 1 : connexion -->
+      <div class="auth-step active" id="stepLogin">
+        <h1 class="auth-title">Connexion</h1>
+        <p class="auth-sub">Accédez à votre CRM.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="loginEmail">Adresse email</label>
+            <input class="form-input" type="email" id="loginEmail" placeholder="sarah@sagadressing.fr" />
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="loginPassword">Mot de passe</label>
+            <input class="form-input" type="password" id="loginPassword" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-primary" style="justify-content:center;" onclick="goStep('stepSent')">Se connecter</button>
+          <button class="link-button" onclick="goStep('stepForgot')">Mot de passe oublié ?</button>
+        </div>
+      </div>
+
+      <!-- Étape 2 : demande de réinitialisation -->
+      <div class="auth-step" id="stepForgot">
+        <h1 class="auth-title">Mot de passe oublié</h1>
+        <p class="auth-sub">Indiquez votre adresse email : nous vous envoyons un lien pour en choisir un nouveau.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="forgotEmail">Adresse email</label>
+            <input class="form-input" type="email" id="forgotEmail" placeholder="sarah@sagadressing.fr" />
+          </div>
+          <button class="btn btn-primary" style="justify-content:center;" onclick="goStep('stepSent')">Envoyer le lien</button>
+          <button class="link-button" onclick="goStep('stepLogin')">← Retour à la connexion</button>
+        </div>
+      </div>
+
+      <!-- Étape 3 : email envoyé -->
+      <div class="auth-step" id="stepSent">
+        <div class="auth-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>
+        </div>
+        <h1 class="auth-title">Vérifiez vos emails</h1>
+        <p class="auth-sub">
+          Si un compte existe pour cette adresse, un lien de réinitialisation vient d'être envoyé.
+          Il est valable <strong>1 heure</strong>. Pensez à regarder dans les indésirables.
+        </p>
+        <div class="form-grid">
+          <button class="btn btn-secondary" style="justify-content:center;" onclick="goStep('stepReset')">J'ai cliqué sur le lien reçu</button>
+          <button class="link-button" onclick="goStep('stepLogin')">← Retour à la connexion</button>
+        </div>
+      </div>
+
+      <!-- Étape 4 : nouveau mot de passe -->
+      <div class="auth-step" id="stepReset">
+        <h1 class="auth-title">Nouveau mot de passe</h1>
+        <p class="auth-sub">Choisissez un mot de passe d'au moins 10 caractères.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="newPassword">Nouveau mot de passe</label>
+            <input class="form-input" type="password" id="newPassword" placeholder="••••••••••" oninput="checkStrength()" />
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            <span class="card-note" id="strengthLabel">Au moins 10 caractères, avec chiffres et majuscules.</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="confirmPassword">Confirmer</label>
+            <input class="form-input" type="password" id="confirmPassword" placeholder="••••••••••" />
+          </div>
+          <button class="btn btn-primary" style="justify-content:center;" onclick="goStep('stepDone')">Enregistrer le mot de passe</button>
+        </div>
+      </div>
+
+      <!-- Étape 5 : terminé -->
+      <div class="auth-step" id="stepDone">
+        <div class="auth-icon good">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20,6 9,17 4,12"/></svg>
+        </div>
+        <h1 class="auth-title">Mot de passe modifié</h1>
+        <p class="auth-sub">Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
+        <div class="form-grid">
+          <a class="btn btn-primary" style="justify-content:center;" href="dashboard.html">Accéder au CRM</a>
+          <button class="link-button" onclick="goStep('stepLogin')">← Retour à la connexion</button>
+        </div>
+      </div>
+
+      <p class="auth-note">
+        Maquette design — aucun compte réel, aucun email réellement envoyé.
+        Les boutons font simplement défiler les étapes du parcours.
+      </p>
+    </div>
+  </div>
+
+<script>
+  function goStep(id) {
+    document.querySelectorAll('.auth-step').forEach(function (s) { s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function checkStrength() {
+    var v = document.getElementById('newPassword').value;
+    var score = 0;
+    if (v.length >= 10) score++;
+    if (/[A-Z]/.test(v)) score++;
+    if (/[0-9]/.test(v)) score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+
+    var fill = document.getElementById('strengthFill');
+    var label = document.getElementById('strengthLabel');
+    var pct = [0, 25, 50, 75, 100][score];
+    var colors = ['var(--line)', 'var(--critical)', 'var(--warn)', 'var(--warn)', 'var(--good)'];
+    var texts = [
+      'Au moins 10 caractères, avec chiffres et majuscules.',
+      'Trop faible.',
+      'Encore un peu court.',
+      'Correct.',
+      'Excellent mot de passe.'
+    ];
+    fill.style.width = pct + '%';
+    fill.style.background = colors[score];
+    label.textContent = texts[score];
+  }
+</script>
+</body>
+</html>

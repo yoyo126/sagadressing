@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Paramètres — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Paramètres</h1>
+          <p class="topbar-sub">Connexions et accès — à régler une fois, puis à oublier</p>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — aucune connexion réelle, aucun compte réel
+      </div>
+
+      <div class="panel">
+        <div class="tabs" data-panel-group="param">
+          <div class="tab-item active" data-tab="tab-yousign">Signature électronique</div>
+          <div class="tab-item" data-tab="tab-icloud">Agenda iCloud</div>
+          <div class="tab-item" data-tab="tab-users">Utilisateurs</div>
+          <div class="tab-item" data-tab="tab-email">Envoi des emails</div>
+        </div>
+
+        <!-- ============ YOUSIGN ============ -->
+        <div class="tab-panel active" id="tab-yousign" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>Yousign</h2>
+            <span class="chip neutral" id="ysChip">Non connecté</span>
+          </div>
+
+          <div id="ysDisconnected">
+            <p class="card-note" style="max-width:700px; margin-bottom:16px;">
+              Une fois connecté, chaque contrat ou bon de restitution envoyé depuis une fiche cliente part directement
+              dans Yousign. Dès que la cliente signe, le CRM est mis à jour tout seul : statut, date de signature et
+              document signé archivé dans ses pièces jointes. Vous n'avez rien à ressaisir.
+            </p>
+            <div class="form-grid" style="max-width:460px;">
+              <div class="form-field">
+                <label class="form-label" for="ysKey">Clé API Yousign</label>
+                <input class="form-input" type="password" id="ysKey" placeholder="••••••••••••••••••••" />
+                <span class="card-note">Dans Yousign : Paramètres → API → Créer une clé. Elle reste stockée chiffrée, jamais affichée.</span>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="ysEnv">Environnement</label>
+                <select class="form-select" id="ysEnv">
+                  <option value="sandbox">Bac à sable — pour tester sans valeur légale</option>
+                  <option value="production" selected>Production — signatures ayant valeur légale</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" style="justify-content:center; max-width:240px;" onclick="connectYousign()">
+                Connecter Yousign
+              </button>
+            </div>
+          </div>
+
+          <div id="ysConnected" style="display:none;">
+            <div class="stat-inline-row" style="margin-bottom:16px;">
+              <div class="stat-inline"><span class="label">Compte</span><span class="value" style="font-size:1rem;">Saga Dressing</span></div>
+              <div class="stat-inline"><span class="label">Environnement</span><span class="value" id="ysEnvLabel" style="font-size:1rem;">—</span></div>
+              <div class="stat-inline"><span class="label">Dernier événement reçu</span><span class="value" id="ysLastEvent" style="font-size:1rem;">—</span></div>
+            </div>
+
+            <div class="form-field" style="max-width:620px; margin-bottom:16px;">
+              <label class="form-label">Adresse à coller dans Yousign (webhook)</label>
+              <div style="display:flex; gap:8px;">
+                <input class="form-input" id="ysWebhook" readonly value="https://app.sagadressing.fr/crm/webhook_yousign.php" style="font-size:0.8rem;" />
+                <button class="btn btn-secondary btn-sm" onclick="copyWebhook()" id="copyBtn">Copier</button>
+              </div>
+              <span class="card-note">
+                C'est cette adresse qui rend la mise à jour automatique. Dans Yousign : Paramètres → Webhooks → Ajouter,
+                puis cochez les événements <strong>Signature terminée</strong>, <strong>Document ouvert</strong> et <strong>Signature refusée</strong>.
+              </span>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <a class="btn btn-secondary btn-sm" href="dashboard.html">Voir les signatures en attente</a>
+              <button class="btn btn-ghost btn-sm" onclick="disconnectYousign()">Déconnecter</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ ICLOUD ============ -->
+        <div class="tab-panel" id="tab-icloud" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>Agenda iCloud</h2>
+            <span class="chip neutral" id="icloudStatusChip">Non connecté</span>
+          </div>
+
+          <div id="icloudDisconnected">
+            <p class="card-note" style="margin-bottom:14px; max-width:640px;">
+              Synchronisez l'agenda du CRM avec le Calendrier de votre iPhone, dans les deux sens : ce que vous créez ici
+              apparaît sur votre téléphone, et ce que vous ajoutez sur votre téléphone apparaît ici.
+            </p>
+            <div class="form-grid" style="max-width:420px;">
+              <div class="form-field">
+                <label class="form-label" for="icloudEmail">Identifiant Apple (email)</label>
+                <input class="form-input" id="icloudEmail" placeholder="sarah@icloud.com" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="icloudPassword">Mot de passe d'application</label>
+                <input class="form-input" type="password" id="icloudPassword" placeholder="xxxx-xxxx-xxxx-xxxx" />
+                <span class="card-note">Généré sur appleid.apple.com → Sécurité → Mots de passe pour applications. Jamais votre vrai mot de passe iCloud.</span>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="icloudCalendarName">Calendrier à synchroniser</label>
+                <input class="form-input" id="icloudCalendarName" value="Saga Dressing" />
+                <span class="card-note">Idéalement un calendrier iCloud dédié, séparé de votre agenda personnel.</span>
+              </div>
+              <button class="btn btn-primary" id="icloudConnectBtn" onclick="connectIcloud()" style="justify-content:center; max-width:280px;">
+                <span id="icloudConnectBtnLabel">Connecter mon agenda iCloud</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="icloudConnected" style="display:none;">
+            <div class="stat-inline-row">
+              <div class="stat-inline"><span class="label">Compte</span><span class="value" id="icloudAccountLabel" style="font-size:1rem;">—</span></div>
+              <div class="stat-inline"><span class="label">Calendrier</span><span class="value" id="icloudCalendarLabel" style="font-size:1rem;">—</span></div>
+              <div class="stat-inline"><span class="label">Sens</span><span class="value" style="font-size:1rem;">Bidirectionnel</span></div>
+              <div class="stat-inline"><span class="label">Dernière synchro</span><span class="value" id="icloudLastSync" style="font-size:1rem;">—</span></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+              <button class="btn btn-secondary btn-sm" id="icloudSyncBtn" onclick="syncIcloudNow()">Synchroniser maintenant</button>
+              <a class="btn btn-ghost btn-sm" href="agenda.html">Ouvrir l'agenda</a>
+              <button class="btn btn-ghost btn-sm" onclick="disconnectIcloud()">Déconnecter</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ UTILISATEURS ============ -->
+        <div class="tab-panel" id="tab-users" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>Comptes</h2>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span class="panel-link" style="color:var(--ink-faint);" id="userCount">—</span>
+              <button class="btn btn-primary btn-sm" onclick="toggleInviteForm()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Inviter
+              </button>
+            </div>
+          </div>
+
+          <div id="inviteForm" style="display:none; margin-bottom:18px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface-alt);">
+            <div class="form-grid" style="max-width:460px;">
+              <div class="form-field">
+                <label class="form-label" for="invName">Nom complet</label>
+                <input class="form-input" id="invName" placeholder="Ex. Camille Dubois" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="invEmail">Adresse email</label>
+                <input class="form-input" type="email" id="invEmail" placeholder="camille@sagadressing.fr" />
+                <span class="card-note">L'invitation lui sera envoyée à cette adresse. Elle choisira son mot de passe elle-même — vous ne le connaîtrez jamais.</span>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="invRole">Rôle</label>
+                <select class="form-select" id="invRole">
+                  <option value="gestion">Gestionnaire — gère les clientes, lives et paiements</option>
+                  <option value="lecture">Lecture seule — consulte sans rien modifier</option>
+                  <option value="admin">Administratrice — tous les droits, y compris les utilisateurs</option>
+                </select>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary btn-sm" onclick="sendInvite()">Envoyer l'invitation</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleInviteForm()">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Utilisateur</th><th>Rôle</th><th>Dernière connexion</th><th>Statut</th><th></th></tr>
+              </thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Éditeur de droits -->
+          <div id="permPanel" style="display:none; margin-top:22px; padding-top:20px; border-top:1px solid var(--line);">
+            <div class="panel-head">
+              <h2>Droits de <span id="permUserName">—</span></h2>
+              <button class="btn btn-ghost btn-sm" onclick="closePerms()">Fermer</button>
+            </div>
+
+            <div class="form-field" style="max-width:420px; margin-bottom:18px;">
+              <label class="form-label" for="permRole">Rôle</label>
+              <select class="form-select" id="permRole">
+                <option value="admin">Administratrice</option>
+                <option value="gestion">Gestionnaire</option>
+                <option value="lecture">Lecture seule</option>
+                <option value="custom">Droits personnalisés</option>
+              </select>
+              <span class="card-note">Choisir un rôle pré-remplit les droits ci-dessous. Toute modification manuelle bascule sur « Droits personnalisés ».</span>
+            </div>
+
+            <div class="table-scroll">
+              <table class="perm-table">
+                <thead>
+                  <tr><th>Section du CRM</th><th class="perm-col">Aucun accès</th><th class="perm-col">Lecture</th><th class="perm-col">Modification</th></tr>
+                </thead>
+                <tbody id="permBody"></tbody>
+              </table>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:18px;">
+              <button class="btn btn-primary btn-sm" onclick="savePerms()">Enregistrer les droits</button>
+              <button class="btn btn-ghost btn-sm" onclick="closePerms()">Annuler</button>
+              <span class="card-note" id="permSaved" style="display:none; align-self:center; color:var(--good);">✓ Droits enregistrés</span>
+            </div>
+          </div>
+
+          <!-- Mots de passe -->
+          <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
+            <div class="panel-head"><h2>Mots de passe</h2></div>
+            <p class="card-note" style="max-width:720px; margin-bottom:16px;">
+              Les mots de passe ne sont jamais visibles, ni par vous ni par nous : ils sont stockés chiffrés. Il y a deux façons d'en changer un.
+            </p>
+            <div class="content-grid">
+              <div class="info-card">
+                <div class="info-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+                  L'utilisateur l'a oublié
+                </div>
+                <p class="card-note">
+                  Sur l'écran de connexion, il clique sur <strong>« Mot de passe oublié ? »</strong>, saisit son adresse email et reçoit
+                  un lien de réinitialisation valable 1 heure. Il choisit un nouveau mot de passe, sans intervention de votre part.
+                </p>
+                <a class="btn btn-secondary btn-sm" href="login.html" style="margin-top:12px;">Voir l'écran de connexion</a>
+              </div>
+              <div class="info-card">
+                <div class="info-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                  Vous forcez la réinitialisation
+                </div>
+                <p class="card-note">
+                  Depuis la liste ci-dessus, le bouton <strong>« Réinitialiser »</strong> envoie le même lien à l'utilisateur.
+                  Utile s'il ne reçoit pas l'email ou en cas de doute sur la sécurité de son compte.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ ENVOI DES EMAILS ============ -->
+        <div class="tab-panel" id="tab-email" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>Envoi des emails</h2>
+          </div>
+
+          <p class="card-note" style="max-width:740px; margin-bottom:20px;">
+            Le CRM envoie deux sortes de messages, qui n'ont rien à voir : des emails <strong>techniques</strong>
+            (mot de passe oublié, invitation d'un utilisateur) et des emails <strong>adressés à vos clientes</strong>
+            (contrats à signer, relances). Ils ne doivent pas partir de la même adresse — voici pourquoi.
+          </p>
+
+          <!-- ===== 1. Emails techniques ===== -->
+          <div class="mail-profile">
+            <div class="panel-head" style="margin-bottom:8px;">
+              <h2 style="font-size:0.98rem;">1. Emails techniques — mot de passe, invitations</h2>
+              <span class="chip warn" id="mailChip">À configurer</span>
+            </div>
+
+            <div class="info-card" style="margin-bottom:16px;">
+              <div class="info-card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                Pourquoi pas votre boîte personnelle
+              </div>
+              <p class="card-note">
+                Pour envoyer depuis votre adresse personnelle, le CRM devrait en stocker le mot de passe — et tout
+                s'arrêterait le jour où vous le changez. Ces messages sont d'ailleurs impersonnels : personne ne
+                répond à un lien de réinitialisation. Mieux vaut une adresse dédiée, que vous n'aurez jamais à ouvrir.
+              </p>
+            </div>
+
+            <div class="form-grid" style="max-width:560px;">
+              <div class="form-field">
+                <label class="form-label" for="mailMethod">Par quel biais envoyer</label>
+                <select class="form-select" id="mailMethod" onchange="switchMailMethod()">
+                  <option value="service">Service d'envoi dédié (Brevo, Postmark…) — recommandé</option>
+                  <option value="smtp">Boîte mail technique IONOS (SMTP)</option>
+                  <option value="php">Fonction d'envoi du serveur — sans réglage</option>
+                </select>
+              </div>
+
+              <div id="mailHint" class="info-card" style="margin:0;"></div>
+
+              <div class="form-field">
+                <label class="form-label" for="mailFrom">Adresse expéditrice</label>
+                <input class="form-input" id="mailFrom" value="ne-pas-repondre@sagadressing.fr" />
+                <span class="card-note">Une adresse dédiée, sur votre domaine. Ce n'est pas une boîte que vous consultez.</span>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="mailName">Nom affiché</label>
+                <input class="form-input" id="mailName" value="Saga Dressing" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="mailReply">Adresse de réponse</label>
+                <input class="form-input" id="mailReply" value="contact@sagadressing.fr" />
+                <span class="card-note">Si quelqu'un répond quand même, le message arrive ici — pas dans le vide.</span>
+              </div>
+
+              <div id="serviceFields">
+                <div class="form-field">
+                  <label class="form-label" for="apiKey">Clé API du service</label>
+                  <input class="form-input" type="password" id="apiKey" placeholder="••••••••••••••••" />
+                  <span class="card-note">Compte à créer chez Brevo (gratuit jusqu'à 300 emails/jour) ou Postmark, puis coller la clé ici.</span>
+                </div>
+              </div>
+
+              <div id="smtpFields" style="display:none;">
+                <div class="form-field" style="margin-bottom:14px;">
+                  <label class="form-label" for="smtpHost">Serveur SMTP</label>
+                  <input class="form-input" id="smtpHost" value="smtp.ionos.fr" />
+                </div>
+                <div class="form-field" style="flex-direction:row; gap:12px; margin-bottom:14px;">
+                  <div style="flex:1;">
+                    <label class="form-label" for="smtpPort">Port</label>
+                    <input class="form-input" id="smtpPort" value="465" />
+                  </div>
+                  <div style="flex:1;">
+                    <label class="form-label" for="smtpSec">Sécurité</label>
+                    <select class="form-select" id="smtpSec"><option>SSL/TLS</option><option>STARTTLS</option></select>
+                  </div>
+                </div>
+                <div class="form-field" style="margin-bottom:14px;">
+                  <label class="form-label" for="smtpUser">Identifiant de la boîte dédiée</label>
+                  <input class="form-input" id="smtpUser" value="ne-pas-repondre@sagadressing.fr" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="smtpPass">Mot de passe de cette boîte</label>
+                  <input class="form-input" type="password" id="smtpPass" placeholder="••••••••••" />
+                  <span class="card-note">Stocké chiffré. Celui de la boîte technique, jamais celui de votre messagerie personnelle.</span>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="saveMail()">Enregistrer</button>
+                <button class="btn btn-secondary btn-sm" onclick="testMail()">Envoyer un email de test</button>
+                <span class="card-note" id="mailTestResult" style="display:none;"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 2. Emails aux clientes ===== -->
+          <div class="mail-profile">
+            <div class="panel-head" style="margin-bottom:8px;">
+              <h2 style="font-size:0.98rem;">2. Emails aux clientes — contrats et relances</h2>
+              <span class="chip good">Via Yousign</span>
+            </div>
+
+            <div class="info-card" style="margin-bottom:16px;">
+              <div class="info-card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+                Là, votre nom a toute sa place
+              </div>
+              <p class="card-note">
+                Ces messages, ce sont vos clientes qui les reçoivent : il vaut mieux qu'elles voient votre nom
+                plutôt qu'un envoi anonyme. Techniquement, c'est <strong>Yousign</strong> qui les expédie avec ses
+                propres serveurs — le CRM ne touche donc jamais au mot de passe de votre boîte. Vous indiquez
+                simplement le nom à afficher et l'adresse à laquelle les clientes doivent répondre.
+              </p>
+            </div>
+
+            <div class="form-grid" style="max-width:560px;">
+              <div class="form-field">
+                <label class="form-label" for="ysSenderName">Nom de l'expéditeur affiché</label>
+                <input class="form-input" id="ysSenderName" value="Sarah Danino — Saga Dressing" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="ysReplyTo">Adresse de réponse</label>
+                <input class="form-input" id="ysReplyTo" value="sarah@sagadressing.fr" />
+                <span class="card-note">Votre adresse professionnelle : si une cliente a une question sur le contrat, elle vous écrit directement.</span>
+              </div>
+
+              <div class="mail-preview">
+                <div class="mail-preview-head">Aperçu de ce que reçoit la cliente</div>
+                <div class="mail-preview-row"><span class="k">De</span><span class="v" id="prevFrom">—</span></div>
+                <div class="mail-preview-row"><span class="k">Répondre à</span><span class="v" id="prevReply">—</span></div>
+                <div class="mail-preview-row"><span class="k">Objet</span><span class="v">Votre contrat de dépôt-vente à signer</span></div>
+              </div>
+
+              <button class="btn btn-primary btn-sm" style="max-width:200px;" onclick="saveSender(this)">Enregistrer</button>
+            </div>
+          </div>
+
+          <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
+            <div class="panel-head"><h2>Données de test</h2></div>
+            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
+              Tout ce que vous saisissez dans cette maquette (clientes, ventes, paiements, vignettes, réglages de boutique)
+              est conservé dans votre navigateur et survit aux changements de page. Rien n'est envoyé sur internet.
+              Ce bouton remet la maquette dans son état d'origine.
+            </p>
+            <button class="btn btn-secondary btn-sm" onclick="resetDonnees()">Réinitialiser les données de test</button>
+          </div>
+
+          <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
+            <div class="panel-head"><h2>Récapitulatif</h2></div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Message</th><th>Part de</th><th>Expédié par</th></tr></thead>
+                <tbody>
+                  <tr><td>Invitation d'un utilisateur</td><td class="muted">ne-pas-repondre@sagadressing.fr</td><td class="muted">Service d'envoi</td></tr>
+                  <tr><td>Mot de passe oublié</td><td class="muted">ne-pas-repondre@sagadressing.fr</td><td class="muted">Service d'envoi</td></tr>
+                  <tr><td>Contrat à signer</td><td class="muted">Sarah Danino — Saga Dressing</td><td class="muted">Yousign</td></tr>
+                  <tr><td>Relance de signature</td><td class="muted">Sarah Danino — Saga Dressing</td><td class="muted">Yousign</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('parametres');
+  initTabs();
+
+  /* ================= YOUSIGN ================= */
+  function connectYousign() {
+    var env = document.getElementById('ysEnv');
+    document.getElementById('ysDisconnected').style.display = 'none';
+    document.getElementById('ysConnected').style.display = 'block';
+    document.getElementById('ysEnvLabel').textContent = env.options[env.selectedIndex].text.split(' — ')[0];
+    document.getElementById('ysLastEvent').textContent = "Aujourd'hui à 09:14";
+    var chip = document.getElementById('ysChip');
+    chip.textContent = 'Connecté';
+    chip.className = 'chip good';
+  }
+
+  function disconnectYousign() {
+    document.getElementById('ysConnected').style.display = 'none';
+    document.getElementById('ysDisconnected').style.display = 'block';
+    var chip = document.getElementById('ysChip');
+    chip.textContent = 'Non connecté';
+    chip.className = 'chip neutral';
+  }
+
+  function copyWebhook() {
+    var input = document.getElementById('ysWebhook');
+    input.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copié ✓';
+    setTimeout(function () { btn.textContent = 'Copier'; }, 1800);
+  }
+
+  /* ================= ICLOUD ================= */
+  function connectIcloud() {
+    var email = document.getElementById('icloudEmail').value.trim() || 'sarah@icloud.com';
+    var calendar = document.getElementById('icloudCalendarName').value.trim() || 'Saga Dressing';
+    var btn = document.getElementById('icloudConnectBtn');
+    var label = document.getElementById('icloudConnectBtnLabel');
+    btn.disabled = true;
+    label.textContent = 'Connexion en cours…';
+
+    setTimeout(function () {
+      document.getElementById('icloudDisconnected').style.display = 'none';
+      document.getElementById('icloudConnected').style.display = 'block';
+      var chip = document.getElementById('icloudStatusChip');
+      chip.textContent = 'Connecté';
+      chip.className = 'chip good';
+      document.getElementById('icloudAccountLabel').textContent = email;
+      document.getElementById('icloudCalendarLabel').textContent = calendar;
+      document.getElementById('icloudLastSync').textContent = "À l'instant";
+      btn.disabled = false;
+      label.textContent = 'Connecter mon agenda iCloud';
+    }, 800);
+  }
+
+  function syncIcloudNow() {
+    var btn = document.getElementById('icloudSyncBtn');
+    btn.disabled = true;
+    setTimeout(function () {
+      document.getElementById('icloudLastSync').textContent = "À l'instant";
+      btn.disabled = false;
+    }, 700);
+  }
+
+  function disconnectIcloud() {
+    document.getElementById('icloudConnected').style.display = 'none';
+    document.getElementById('icloudDisconnected').style.display = 'block';
+    var chip = document.getElementById('icloudStatusChip');
+    chip.textContent = 'Non connecté';
+    chip.className = 'chip neutral';
+  }
+
+  /* ================= UTILISATEURS ================= */
+  var MODULES = [
+    { key: 'clientes',     label: 'Clientes' },
+    { key: 'lives',        label: 'Lives et ventes' },
+    { key: 'apporteurs',   label: 'Apporteurs' },
+    { key: 'agenda',       label: 'Agenda' },
+    { key: 'rapports',     label: 'Rapports et exports' },
+    { key: 'boutique',     label: 'Boutique' },
+    { key: 'parametres',   label: 'Paramètres et utilisateurs' }
+  ];
+
+  var ROLE_PRESETS = {
+    admin:   { clientes:'edit', lives:'edit', apporteurs:'edit', agenda:'edit', rapports:'edit', boutique:'edit', parametres:'edit' },
+    gestion: { clientes:'edit', lives:'edit', apporteurs:'edit', agenda:'edit', rapports:'edit', boutique:'edit', parametres:'none' },
+    lecture: { clientes:'read', lives:'read', apporteurs:'read', agenda:'read', rapports:'read', boutique:'read', parametres:'none' }
+  };
+
+  var ROLE_LABELS = { admin:'Administratrice', gestion:'Gestionnaire', lecture:'Lecture seule', custom:'Droits personnalisés' };
+
+  var users = [
+    { id:1, name:'Sarah Danino',   email:'sarah@sagadressing.fr',  role:'admin',   perms:null, last:"Aujourd'hui à 09:12", status:'active', owner:true },
+    { id:2, name:'Léa Martin',     email:'lea@sagadressing.fr',    role:'gestion', perms:null, last:'Hier à 18:40',        status:'active', owner:false },
+    { id:3, name:'Thomas Bernard', email:'thomas@sagadressing.fr', role:'lecture', perms:null, last:'12 juillet',          status:'active', owner:false },
+    { id:4, name:'Camille Dubois', email:'camille@sagadressing.fr',role:'gestion', perms:null, last:'—',                   status:'invited', owner:false }
+  ];
+
+  var editingUserId = null;
+
+  function initials(name) {
+    return name.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+  }
+
+  function permsOf(user) {
+    return user.perms || ROLE_PRESETS[user.role] || ROLE_PRESETS.lecture;
+  }
+
+  function renderUsers() {
+    document.getElementById('usersBody').innerHTML = users.map(function (u) {
+      var statusChip = u.status === 'invited'
+        ? '<span class="chip warn">Invitation envoyée</span>'
+        : '<span class="chip good">Actif</span>';
+      var roleChip = u.perms
+        ? '<span class="chip neutral" title="Droits ajustés manuellement">Droits personnalisés</span>'
+        : '<span class="chip neutral">' + ROLE_LABELS[u.role] + '</span>';
+      var ownerNote = u.owner ? '<div class="muted" style="font-size:.72rem; margin-top:2px;">Propriétaire du compte</div>' : '';
+      var deleteBtn = u.owner
+        ? '<button class="btn btn-ghost btn-sm" disabled style="opacity:.4; cursor:not-allowed;" title="Le propriétaire ne peut pas être supprimé">Supprimer</button>'
+        : '<button class="btn btn-ghost btn-sm" onclick="removeUser(' + u.id + ')">Supprimer</button>';
+      return '<tr>' +
+        '<td><div class="name-cell"><span class="tag-avatar">' + initials(u.name) + '</span>' +
+          '<div><div>' + u.name + '</div><div class="muted" style="font-size:.75rem;">' + u.email + '</div>' + ownerNote + '</div></div></td>' +
+        '<td>' + roleChip + '</td>' +
+        '<td class="muted">' + u.last + '</td>' +
+        '<td>' + statusChip + '</td>' +
+        '<td style="text-align:right; white-space:nowrap;">' +
+          '<button class="btn btn-ghost btn-sm" onclick="openPerms(' + u.id + ')">Droits</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="resetPassword(' + u.id + ')">Réinitialiser</button>' +
+          deleteBtn +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    var actives = users.filter(function (u) { return u.status === 'active'; }).length;
+    var invited = users.length - actives;
+    document.getElementById('userCount').textContent =
+      actives + ' actif' + (actives > 1 ? 's' : '') + (invited ? ' · ' + invited + ' en attente' : '');
+  }
+
+  function toggleInviteForm() {
+    var f = document.getElementById('inviteForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function sendInvite() {
+    var name = document.getElementById('invName').value.trim();
+    var email = document.getElementById('invEmail').value.trim();
+    if (!name) { document.getElementById('invName').focus(); return; }
+    if (!email) { document.getElementById('invEmail').focus(); return; }
+
+    users.push({
+      id: Date.now(), name: name, email: email,
+      role: document.getElementById('invRole').value,
+      perms: null, last: '—', status: 'invited', owner: false
+    });
+    renderUsers();
+    document.getElementById('invName').value = '';
+    document.getElementById('invEmail').value = '';
+    toggleInviteForm();
+  }
+
+  function removeUser(id) {
+    var u = users.find(function (x) { return x.id === id; });
+    if (!u) return;
+    if (!confirm('Supprimer le compte de ' + u.name + ' ?\n\nIl perdra immédiatement l\'accès au CRM. Les données qu\'il a saisies sont conservées.')) return;
+    users = users.filter(function (x) { return x.id !== id; });
+    if (editingUserId === id) closePerms();
+    renderUsers();
+  }
+
+  function resetPassword(id) {
+    var u = users.find(function (x) { return x.id === id; });
+    if (!u) return;
+    alert('Un lien de réinitialisation vient d\'être envoyé à ' + u.email + '.\n\nIl est valable 1 heure. Le mot de passe actuel reste utilisable tant que le lien n\'a pas été ouvert.');
+  }
+
+  function openPerms(id) {
+    var u = users.find(function (x) { return x.id === id; });
+    if (!u) return;
+    editingUserId = id;
+    document.getElementById('permUserName').textContent = u.name;
+    document.getElementById('permRole').value = u.perms ? 'custom' : u.role;
+    renderPermTable(permsOf(u), u.owner);
+    document.getElementById('permSaved').style.display = 'none';
+    document.getElementById('permPanel').style.display = 'block';
+    document.getElementById('permPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function renderPermTable(perms, locked) {
+    document.getElementById('permBody').innerHTML = MODULES.map(function (m) {
+      function radio(level) {
+        return '<td class="perm-col"><input type="radio" name="perm_' + m.key + '" value="' + level + '"' +
+               (perms[m.key] === level ? ' checked' : '') + (locked ? ' disabled' : '') + ' /></td>';
+      }
+      return '<tr><td>' + m.label + '</td>' + radio('none') + radio('read') + radio('edit') + '</tr>';
+    }).join('');
+
+    document.querySelectorAll('#permBody input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', function () { document.getElementById('permRole').value = 'custom'; });
+    });
+  }
+
+  document.getElementById('permRole').addEventListener('change', function () {
+    var role = this.value;
+    if (role === 'custom') return;
+    renderPermTable(ROLE_PRESETS[role], false);
+    this.value = role;
+  });
+
+  function savePerms() {
+    var u = users.find(function (x) { return x.id === editingUserId; });
+    if (!u) return;
+    var role = document.getElementById('permRole').value;
+
+    if (role === 'custom') {
+      var perms = {};
+      MODULES.forEach(function (m) {
+        var checked = document.querySelector('input[name="perm_' + m.key + '"]:checked');
+        perms[m.key] = checked ? checked.value : 'none';
+      });
+      u.perms = perms;
+    } else {
+      u.role = role;
+      u.perms = null;
+    }
+    renderUsers();
+    var saved = document.getElementById('permSaved');
+    saved.style.display = 'inline';
+    setTimeout(function () { saved.style.display = 'none'; }, 2500);
+  }
+
+  function closePerms() {
+    editingUserId = null;
+    document.getElementById('permPanel').style.display = 'none';
+  }
+
+  renderUsers();
+
+  /* ================= ENVOI DES EMAILS ================= */
+  var MAIL_HINTS = {
+    service: {
+      titre: 'Un service spécialisé, indépendant de vos boîtes mail',
+      texte: "Brevo ou Postmark se chargent de l'envoi et vous disent si le message est bien arrivé. Aucun mot de passe de messagerie n'est stocké : seulement une clé que vous pouvez révoquer à tout moment. Gratuit jusqu'à environ 300 emails par jour chez Brevo — bien au-delà de vos besoins."
+    },
+    smtp: {
+      titre: 'Une boîte mail créée exprès pour le CRM',
+      texte: "Vous créez chez IONOS une adresse dédiée (par exemple ne-pas-repondre@sagadressing.fr) et le CRM s'y connecte. C'est fiable et gratuit puisque le domaine est déjà le vôtre. Important : ce doit être une boîte à part, pas votre messagerie personnelle."
+    },
+    php: {
+      titre: 'Aucun réglage, mais peu fiable',
+      texte: "Le serveur envoie directement, sans authentification. Les messages finissent très souvent en indésirables chez Gmail et Outlook — une utilisatrice risquerait donc de ne jamais recevoir son lien de mot de passe. À éviter sauf dépannage."
+    }
+  };
+
+  function switchMailMethod() {
+    var m = document.getElementById('mailMethod').value;
+    document.getElementById('smtpFields').style.display = m === 'smtp' ? 'block' : 'none';
+    document.getElementById('serviceFields').style.display = m === 'service' ? 'block' : 'none';
+    var h = MAIL_HINTS[m];
+    document.getElementById('mailHint').innerHTML =
+      '<div class="info-card-title">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>' +
+        h.titre + '</div><p class="card-note">' + h.texte + '</p>';
+  }
+
+  function saveMail() {
+    var chip = document.getElementById('mailChip');
+    chip.textContent = 'Configuré';
+    chip.className = 'chip good';
+  }
+
+  function testMail() {
+    var res = document.getElementById('mailTestResult');
+    res.style.display = 'inline';
+    res.style.color = 'var(--good)';
+    res.textContent = '✓ Email de test envoyé à ' + document.getElementById('mailReply').value;
+    setTimeout(function () { res.style.display = 'none'; }, 4000);
+  }
+
+  // Aperçu de ce que voit la cliente quand elle reçoit un contrat
+  function refreshSenderPreview() {
+    document.getElementById('prevFrom').textContent =
+      document.getElementById('ysSenderName').value + ' (via Yousign)';
+    document.getElementById('prevReply').textContent = document.getElementById('ysReplyTo').value;
+  }
+
+  function saveSender(btn) {
+    refreshSenderPreview();
+    btn.textContent = 'Enregistré ✓';
+    setTimeout(function () { btn.textContent = 'Enregistrer'; }, 1800);
+  }
+
+  ['ysSenderName', 'ysReplyTo'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', refreshSenderPreview);
+  });
+
+  function resetDonnees() {
+    if (!confirm('Effacer toutes les données saisies dans la maquette ?\n\n'
+      + 'Clientes créées, ventes, paiements, vignettes et réglages de boutique seront perdus.\n'
+      + 'Les données de démonstration d\'origine réapparaîtront.')) return;
+    sagaReset();
+    alert('Données réinitialisées.');
+    location.reload();
+  }
+
+  switchMailMethod();
+  refreshSenderPreview();
+</script>
+</body>
+</html>

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Apporteur — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <a class="back-link" href="apporteurs.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>
+        Apporteurs
+      </a>
+
+      <div class="detail-header">
+        <div class="avatar-lg" id="aAvatar">—</div>
+        <div class="detail-title-block">
+          <div class="detail-title-row">
+            <h1 id="aName">—</h1>
+            <span class="chip good" id="aStatusChip">Actif</span>
+            <span class="chip critical" id="aDocChip" style="display:none;">Justificatif manquant</span>
+          </div>
+          <div class="detail-meta" id="aMeta">—</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Modifier
+          </button>
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
+            Régler les commissions
+          </button>
+        </div>
+      </div>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <div class="alert-bar" id="docAlert" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4"/><path d="M10.3 3.9 2.4 18a1.8 1.8 0 0 0 1.6 2.7h16a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg>
+        <span id="docAlertText">—</span>
+        <button class="btn btn-secondary btn-sm alert-action" onclick="document.querySelector('[data-tab=&quot;tab-docs&quot;]').click()">Voir les justificatifs</button>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Clientes apportées</span></div>
+          <div class="kpi-value tabular" id="kClientes">—</div>
+          <div class="kpi-delta" id="kClientesSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Commission par défaut</span></div>
+          <div class="kpi-value tabular" id="kPct">—</div>
+          <div class="kpi-delta">appliquée aux ventes en live</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Déjà versé</span></div>
+          <div class="kpi-value tabular" id="kPaye">—</div>
+          <div class="kpi-delta" id="kPayeSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Reste à verser</span></div>
+          <div class="kpi-value tabular" id="kDu" style="color:var(--brand-strong)">—</div>
+          <div class="kpi-delta" id="kDuSub">—</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="tabs" data-panel-group="apporteur">
+          <div class="tab-item active" data-tab="tab-commissions">Commissions</div>
+          <div class="tab-item" data-tab="tab-contrat-a">Contrat</div>
+          <div class="tab-item" data-tab="tab-docs">Justificatifs <span class="tab-badge" id="docsBadge" style="display:none;">0</span></div>
+          <div class="tab-item" data-tab="tab-infos-a">Infos</div>
+        </div>
+
+        <!-- ===== COMMISSIONS ===== -->
+        <div class="tab-panel active" id="tab-commissions" data-panel-group="apporteur" style="margin-top:18px;">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Date</th><th>Origine</th><th>Cliente</th><th class="num">Base</th><th class="num">Commission</th><th>Statut</th></tr></thead>
+              <tbody id="commBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== CONTRAT ===== -->
+        <div class="tab-panel" id="tab-contrat-a" data-panel-group="apporteur" style="margin-top:18px;">
+          <div class="file-row" style="margin-bottom:18px;">
+            <div class="file-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/></svg>
+            </div>
+            <div class="file-meta">
+              <div class="file-name">Modele_Contrat_Apporteur.docx</div>
+              <div class="file-sub">Modèle utilisé pour tous les apporteurs</div>
+            </div>
+            <div class="file-actions"><button class="btn btn-ghost btn-sm">Remplacer le modèle</button></div>
+          </div>
+
+          <div id="contratEmpty" class="empty-state">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+            <div class="t">Aucun contrat d'apporteur enregistré</div>
+            <div class="s">Fixez le taux et les conditions, puis envoyez-le en signature électronique</div>
+            <button class="btn btn-primary" style="margin-top:8px;" onclick="startContrat()">Créer le contrat</button>
+          </div>
+
+          <div id="contratWorkspace" style="display:none;">
+            <div class="sign-steps" id="signSteps">
+              <div class="sign-step" data-step="draft"><div class="dot">1</div><span class="label">Brouillon</span><span class="sub" id="stepDraftSub">—</span></div>
+              <div class="sign-step" data-step="sent"><div class="dot">2</div><span class="label">À signer</span><span class="sub" id="stepSentSub">—</span></div>
+              <div class="sign-step" data-step="signed"><div class="dot">3</div><span class="label">Signé</span><span class="sub" id="stepSignedSub">—</span></div>
+            </div>
+
+            <div class="contrat-columns">
+              <div class="form-grid" id="contratFields">
+                <div class="form-field">
+                  <label class="form-label" for="cStatutJur">Statut de l'apporteur</label>
+                  <select class="form-select" id="cStatutJur">
+                    <option>Auto-entrepreneur</option>
+                    <option>Société (SASU, EURL…)</option>
+                    <option>Particulier non professionnel</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="cSiret">SIRET</label>
+                  <input class="form-input" id="cSiret" placeholder="Ex. 892 411 675 00018" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="cTaux">Taux de commission (%)</label>
+                  <input class="form-input" type="number" id="cTaux" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="cAssiette">Assiette de la commission</label>
+                  <select class="form-select" id="cAssiette">
+                    <option>Ventes en live uniquement</option>
+                    <option>Toutes les ventes (live et hors live)</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="cDuree">Durée de l'apport</label>
+                  <select class="form-select" id="cDuree">
+                    <option>Tant que la cliente reste active</option>
+                    <option>12 mois à compter de la mise en relation</option>
+                    <option>24 mois à compter de la mise en relation</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="cDebut">Date d'effet</label>
+                  <input class="form-input" type="date" id="cDebut" />
+                </div>
+
+                <div id="actionsDraft" style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <button class="btn btn-primary btn-sm" onclick="sendForSignature()">Envoyer en signature</button>
+                  <button class="btn btn-ghost btn-sm" onclick="cancelContrat()">Annuler</button>
+                </div>
+                <div id="actionsSent" style="display:none;">
+                  <p class="card-note" style="margin-bottom:10px;">Envoyé à <strong id="sentEmail">—</strong> · en attente de signature.</p>
+                  <button class="btn btn-secondary btn-sm" onclick="simulateSignature()">Simuler la réception de signature</button>
+                </div>
+                <div id="actionsSigned" style="display:none;">
+                  <p class="card-note" style="margin-bottom:10px; color:var(--good);">✓ Contrat signé le <strong id="signedDate">—</strong>, archivé dans les justificatifs.</p>
+                </div>
+              </div>
+
+              <div class="doc-preview" id="contratPreview">
+                <div class="doc-title">CONTRAT D'APPORTEUR D'AFFAIRES</div>
+                <p>Entre <strong>SAGA DRESSING</strong>, SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 102 429 833,
+                représentée par Sarah Danino, ci-après « la Société »,</p>
+                <p>Et <span class="field" data-f="nom">—</span>,
+                <span class="field" data-f="statut">—</span>,
+                SIRET <span class="field empty" data-f="siret">…</span>, ci-après « l'Apporteur ».</p>
+
+                <h3>1. Objet</h3>
+                <p>L'Apporteur met en relation la Société avec des personnes susceptibles de lui confier des articles
+                en dépôt-vente. Il n'a aucun pouvoir de représentation ni de négociation au nom de la Société.</p>
+
+                <h3>2. Rémunération</h3>
+                <p>L'Apporteur perçoit <span class="field" data-f="taux">—</span> % du produit des ventes réalisées
+                pour les clientes qu'il a apportées, calculé sur <span class="field" data-f="assiette">—</span>.
+                La commission est due après encaissement effectif par la Société.</p>
+
+                <h3>3. Durée de l'apport</h3>
+                <p><span class="field" data-f="duree">—</span>. Prise d'effet au
+                <span class="field" data-f="debut">—</span>.</p>
+
+                <h3>4. Facturation</h3>
+                <p>L'Apporteur professionnel adresse une facture mensuelle. À défaut de statut professionnel,
+                les sommes versées sont déclarées par la Société au titre des honoraires (déclaration DAS2).</p>
+
+                <h3>5. Obligations de l'Apporteur</h3>
+                <p>L'Apporteur fournit et maintient à jour les justificatifs légaux exigés : extrait Kbis ou avis
+                de situation SIRENE, attestation de vigilance URSSAF (renouvelée tous les 6 mois), pièce d'identité
+                et coordonnées bancaires.</p>
+
+                <h3>6. Signature</h3>
+                <p>Fait à Lésigny, le <span class="field" data-f="debut2">—</span>.<br/>
+                Signature de l'Apporteur : <span class="field empty" data-f="sig">à signer</span><br/>
+                Pour la Société : <span class="field empty">Sarah Danino</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== JUSTIFICATIFS ===== -->
+        <div class="tab-panel" id="tab-docs" data-panel-group="apporteur" style="margin-top:18px;">
+          <p class="card-note" style="max-width:720px; margin-bottom:16px;">
+            Pièces à conserver pour être en règle en cas de contrôle. Celles marquées <strong>Obligatoire</strong>
+            doivent être présentes et à jour ; l'attestation de vigilance URSSAF se renouvelle tous les 6 mois.
+          </p>
+
+          <div class="doc-checklist" id="docChecklist"></div>
+
+          <div style="margin-top:18px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface-alt);">
+            <div class="form-grid" style="max-width:480px;">
+              <div class="form-field">
+                <label class="form-label" for="upType">Type de document</label>
+                <select class="form-select" id="upType"></select>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="upFile">Fichier</label>
+                <input class="form-input" type="file" id="upFile" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="upExpire">Date d'expiration (si applicable)</label>
+                <input class="form-input" type="date" id="upExpire" />
+                <span class="card-note">Renseignée, elle déclenche une alerte quand le document approche de sa péremption.</span>
+              </div>
+              <button class="btn btn-primary btn-sm" style="max-width:220px;" onclick="addDoc()">Ajouter le justificatif</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== INFOS ===== -->
+        <div class="tab-panel" id="tab-infos-a" data-panel-group="apporteur" style="margin-top:18px;">
+          <div class="info-list" id="infoList"></div>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('apporteurs');
+  initTabs();
+
+  var TODAY_ISO = '2026-08-01';
+  var MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso + 'T00:00:00');
+    return d.getDate() + ' ' + MOIS[d.getMonth()];
+  }
+  function fmtDateFR(iso) {
+    if (!iso) return '—';
+    var p = iso.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  // Types de justificatifs attendus pour un apporteur d'affaires
+  var DOC_TYPES = [
+    { key: 'kbis',     label: 'Extrait Kbis / avis SIRENE',        required: true },
+    { key: 'urssaf',   label: 'Attestation de vigilance URSSAF',   required: true, renouvelable: true },
+    { key: 'identite', label: "Pièce d'identité",                  required: true },
+    { key: 'rib',      label: 'RIB',                               required: true },
+    { key: 'contrat',  label: "Contrat d'apporteur signé",         required: true },
+    { key: 'assurance',label: 'Attestation RC professionnelle',    required: false },
+    { key: 'das2',     label: 'Déclaration DAS2 (honoraires)',     required: false },
+    { key: 'facture',  label: 'Facture de commission',             required: false },
+    { key: 'autre',    label: 'Autre document',                    required: false }
+  ];
+
+  var APPORTEURS = {
+    nadia: {
+      prenom: 'Nadia R.', nom: 'Nadia Roussel', initiales: 'NR', statut: 'Actif',
+      email: 'nadia.roussel@example.com', tel: '06 45 78 21 09',
+      statutJur: 'Auto-entrepreneur', siret: '892 411 675 00018',
+      pct: 8, depuis: 'mars 2026',
+      clientes: ['Fanny (M)', 'Camille (B)', 'Élise (R)'],
+      commissions: [
+        { date: '2026-07-29', origine: 'Live du 29/07', cliente: 'Fanny',   base: 1480, montant: 118, paye: 0 },
+        { date: '2026-07-24', origine: 'Live du 24/07', cliente: 'Camille', base: 2110, montant: 169, paye: 0 },
+        { date: '2026-07-17', origine: 'Live du 17/07', cliente: 'Fanny',   base: 870,  montant: 70,  paye: 1 },
+        { date: '2026-06-19', origine: 'Live du 19/06', cliente: 'Fanny',   base: 1105, montant: 88,  paye: 1 },
+        { date: '2026-06-12', origine: 'Live du 12/06', cliente: 'Camille', base: 1680, montant: 134, paye: 1 }
+      ],
+      docs: [
+        { type: 'kbis',     nom: 'Kbis_Nadia_Roussel.pdf',       ajoute: '2026-03-12', expire: '' },
+        { type: 'identite', nom: 'CNI_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '2031-05-04' },
+        { type: 'rib',      nom: 'RIB_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '' },
+        { type: 'urssaf',   nom: 'Vigilance_URSSAF_T1_2026.pdf', ajoute: '2026-02-10', expire: '2026-08-10' }
+      ]
+    },
+    karim: {
+      prenom: 'Karim B.', nom: 'Karim Belkacem', initiales: 'KB', statut: 'Actif',
+      email: 'karim.belkacem@example.com', tel: '07 12 66 45 30',
+      statutJur: 'Société (SASU, EURL…)', siret: '904 552 118 00027',
+      pct: 6, depuis: 'avril 2026',
+      clientes: ['Marion (F)', 'Nora (T)'],
+      commissions: [
+        { date: '2026-07-20', origine: 'Live du 20/07', cliente: 'Marion', base: 1500, montant: 90, paye: 0 },
+        { date: '2026-06-08', origine: 'Live du 08/06', cliente: 'Marion', base: 1450, montant: 87, paye: 1 }
+      ],
+      docs: [
+        { type: 'kbis',     nom: 'Kbis_KB_Conseil.pdf',   ajoute: '2026-04-02', expire: '' },
+        { type: 'rib',      nom: 'RIB_KB_Conseil.pdf',    ajoute: '2026-04-02', expire: '' }
+      ]
+    },
+    sonia: {
+      prenom: 'Sonia L.', nom: 'Sonia Lambert', initiales: 'SL', statut: 'Inactif',
+      email: 'sonia.lambert@example.com', tel: '06 33 90 74 12',
+      statutJur: 'Particulier non professionnel', siret: '',
+      pct: 8, depuis: 'janvier 2026',
+      clientes: [],
+      commissions: [],
+      docs: []
+    }
+  };
+
+  function currentKey() {
+    var k = new URLSearchParams(window.location.search).get('a');
+    return (k && APPORTEURS[k.toLowerCase()]) ? k.toLowerCase() : 'nadia';
+  }
+
+  var A = APPORTEURS[currentKey()];
+
+  function docTypeLabel(key) {
+    var t = DOC_TYPES.find(function (x) { return x.key === key; });
+    return t ? t.label : key;
+  }
+
+  // État d'un justificatif : manquant / expiré / bientôt expiré / à jour
+  function docState(doc) {
+    if (!doc) return 'missing';
+    if (!doc.expire) return 'ok';
+    var days = Math.round((new Date(doc.expire + 'T00:00:00') - new Date(TODAY_ISO + 'T00:00:00')) / 86400000);
+    if (days < 0) return 'expired';
+    if (days <= 30) return 'soon';
+    return 'ok';
+  }
+
+  function renderDocs() {
+    var html = DOC_TYPES.filter(function (t) { return t.key !== 'autre'; }).map(function (t) {
+      var doc = A.docs.find(function (d) { return d.type === t.key; });
+      var state = docState(doc);
+      var chip, sub;
+
+      if (!doc) {
+        chip = t.required ? '<span class="chip critical">Manquant</span>' : '<span class="chip neutral">Non fourni</span>';
+        sub = t.required ? 'Document obligatoire' : 'Optionnel';
+      } else if (state === 'expired') {
+        chip = '<span class="chip critical">Expiré</span>';
+        sub = doc.nom + ' · expiré le ' + fmtDateFR(doc.expire);
+      } else if (state === 'soon') {
+        chip = '<span class="chip warn">À renouveler</span>';
+        sub = doc.nom + ' · expire le ' + fmtDateFR(doc.expire);
+      } else {
+        chip = '<span class="chip good">À jour</span>';
+        sub = doc.nom + ' · ajouté le ' + fmtDateFR(doc.ajoute) + (doc.expire ? ' · valable jusqu\'au ' + fmtDateFR(doc.expire) : '');
+      }
+
+      var action = doc
+        ? '<button class="btn btn-ghost btn-sm">Télécharger</button><button class="btn btn-ghost btn-sm" onclick="removeDoc(\'' + t.key + '\')">Supprimer</button>'
+        : '<button class="btn btn-secondary btn-sm" onclick="focusUpload(\'' + t.key + '\')">Ajouter</button>';
+
+      return '<div class="doc-row">' +
+        '<div class="file-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/></svg></div>' +
+        '<div class="doc-meta">' +
+          '<div class="doc-name">' + t.label + (t.required ? ' <span class="req">Obligatoire</span>' : '') + '</div>' +
+          '<div class="doc-sub">' + sub + '</div>' +
+        '</div>' +
+        '<div class="doc-state">' + chip + '</div>' +
+        '<div class="file-actions">' + action + '</div>' +
+      '</div>';
+    }).join('');
+
+    // Documents libres (autre, factures…) ajoutés en plus
+    var extras = A.docs.filter(function (d) { return !DOC_TYPES.some(function (t) { return t.key === d.type && t.key !== 'autre'; }); });
+    html += extras.map(function (d) {
+      return '<div class="doc-row">' +
+        '<div class="file-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/></svg></div>' +
+        '<div class="doc-meta"><div class="doc-name">' + docTypeLabel(d.type) + '</div>' +
+        '<div class="doc-sub">' + d.nom + ' · ajouté le ' + fmtDateFR(d.ajoute) + '</div></div>' +
+        '<div class="doc-state"><span class="chip good">Ajouté</span></div>' +
+        '<div class="file-actions"><button class="btn btn-ghost btn-sm">Télécharger</button></div>' +
+      '</div>';
+    }).join('');
+
+    document.getElementById('docChecklist').innerHTML = html;
+
+    // Alerte + badge sur les documents à problème
+    var problems = DOC_TYPES.filter(function (t) { return t.key !== 'autre'; }).filter(function (t) {
+      var doc = A.docs.find(function (d) { return d.type === t.key; });
+      var st = docState(doc);
+      return (t.required && !doc) || st === 'expired' || st === 'soon';
+    });
+
+    var badge = document.getElementById('docsBadge');
+    if (problems.length) {
+      badge.textContent = problems.length;
+      badge.style.display = 'inline-block';
+      document.getElementById('docAlertText').innerHTML =
+        '<strong>' + problems.length + ' justificatif' + (problems.length > 1 ? 's' : '') +
+        ' à régulariser</strong> — ' + problems.map(function (p) { return p.label; }).join(', ') + '.';
+      document.getElementById('docAlert').style.display = 'flex';
+      document.getElementById('aDocChip').style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+      document.getElementById('docAlert').style.display = 'none';
+      document.getElementById('aDocChip').style.display = 'none';
+    }
+  }
+
+  function focusUpload(typeKey) {
+    document.getElementById('upType').value = typeKey;
+    document.getElementById('upFile').focus();
+    document.getElementById('upFile').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function addDoc() {
+    var type = document.getElementById('upType').value;
+    var expire = document.getElementById('upExpire').value;
+    var existing = A.docs.find(function (d) { return d.type === type; });
+    var nom = docTypeLabel(type).replace(/[^A-Za-zÀ-ÿ0-9]+/g, '_') + '_' + A.prenom.replace(/\W+/g, '') + '.pdf';
+
+    if (existing) {
+      existing.nom = nom; existing.ajoute = TODAY_ISO; existing.expire = expire;
+    } else {
+      A.docs.push({ type: type, nom: nom, ajoute: TODAY_ISO, expire: expire });
+    }
+    document.getElementById('upExpire').value = '';
+    document.getElementById('upFile').value = '';
+    renderDocs();
+  }
+
+  function removeDoc(typeKey) {
+    if (!confirm('Supprimer ce justificatif ?')) return;
+    A.docs = A.docs.filter(function (d) { return d.type !== typeKey; });
+    renderDocs();
+  }
+
+  function renderCommissions() {
+    var body = document.getElementById('commBody');
+    if (A.commissions.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:22px 8px;">Aucune commission enregistrée.</td></tr>';
+      return;
+    }
+    body.innerHTML = A.commissions.map(function (c) {
+      return '<tr>' +
+        '<td>' + fmtDate(c.date) + '</td>' +
+        '<td class="muted">' + c.origine + '</td>' +
+        '<td>' + c.cliente + '</td>' +
+        '<td class="num tabular">' + fmtEUR(c.base) + '</td>' +
+        '<td class="num tabular">' + fmtEUR(c.montant) + '</td>' +
+        '<td>' + (c.paye ? '<span class="chip good">Versée</span>' : '<span class="chip warn">À verser</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderApporteur() {
+    document.title = A.prenom + ' — Saga Dressing (maquette)';
+    document.getElementById('aAvatar').textContent = A.initiales;
+    document.getElementById('aName').textContent = A.prenom;
+    var chip = document.getElementById('aStatusChip');
+    chip.textContent = A.statut;
+    chip.className = A.statut === 'Actif' ? 'chip good' : 'chip neutral';
+    document.getElementById('aMeta').textContent =
+      A.statutJur + ' · commission ' + A.pct + ' % · apporteur depuis ' + A.depuis;
+
+    var paye = 0, du = 0, nbDu = 0;
+    A.commissions.forEach(function (c) {
+      if (c.paye) paye += c.montant; else { du += c.montant; nbDu++; }
+    });
+
+    document.getElementById('kClientes').textContent = A.clientes.length;
+    document.getElementById('kClientesSub').textContent = A.clientes.length ? A.clientes.join(', ') : 'aucune cliente rattachée';
+    document.getElementById('kPct').textContent = A.pct + ' %';
+    document.getElementById('kPaye').textContent = fmtEUR(paye);
+    document.getElementById('kPayeSub').textContent = 'depuis ' + A.depuis;
+    document.getElementById('kDu').textContent = fmtEUR(du);
+    document.getElementById('kDuSub').textContent = nbDu ? nbDu + ' commission(s) en attente' : 'tout est à jour';
+
+    document.getElementById('infoList').innerHTML = [
+      ['Nom complet', A.nom], ['Email', A.email], ['Téléphone', A.tel],
+      ['Statut juridique', A.statutJur], ['SIRET', A.siret || '—'],
+      ['Commission par défaut', A.pct + ' %'],
+      ['Clientes apportées', A.clientes.length ? A.clientes.join(', ') : '—']
+    ].map(function (r) {
+      return '<div class="info-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>';
+    }).join('');
+
+    document.getElementById('upType').innerHTML = DOC_TYPES.map(function (t) {
+      return '<option value="' + t.key + '">' + t.label + '</option>';
+    }).join('');
+
+    document.getElementById('cTaux').value = A.pct;
+    document.getElementById('cSiret').value = A.siret;
+    document.getElementById('cStatutJur').value = A.statutJur;
+    document.getElementById('cDebut').value = TODAY_ISO;
+
+    renderCommissions();
+    renderDocs();
+  }
+
+  /* ===== Contrat d'apporteur ===== */
+  function setF(name, value, empty) {
+    var el = document.querySelector('#contratPreview [data-f="' + name + '"]');
+    if (!el) return;
+    el.textContent = value;
+    el.classList.toggle('empty', !!empty);
+  }
+
+  function refreshContrat() {
+    var st = document.getElementById('cStatutJur');
+    var as = document.getElementById('cAssiette');
+    var du = document.getElementById('cDuree');
+    var siret = document.getElementById('cSiret').value;
+    setF('nom', A.nom);
+    setF('statut', st.options[st.selectedIndex].text);
+    setF('siret', siret || '…', !siret);
+    setF('taux', document.getElementById('cTaux').value || '0');
+    setF('assiette', as.options[as.selectedIndex].text.toLowerCase());
+    setF('duree', du.options[du.selectedIndex].text);
+    setF('debut', fmtDateFR(document.getElementById('cDebut').value));
+    setF('debut2', fmtDateFR(document.getElementById('cDebut').value));
+  }
+
+  function setStep(step) {
+    var order = ['draft', 'sent', 'signed'];
+    var idx = order.indexOf(step);
+    order.forEach(function (s, i) {
+      var el = document.querySelector('#signSteps .sign-step[data-step="' + s + '"]');
+      el.classList.remove('done', 'current');
+      if (i < idx) el.classList.add('done');
+      else if (i === idx) el.classList.add('current');
+    });
+  }
+
+  function startContrat() {
+    document.getElementById('contratEmpty').style.display = 'none';
+    document.getElementById('contratWorkspace').style.display = 'block';
+    setStep('draft');
+    document.getElementById('actionsDraft').style.display = 'flex';
+    document.getElementById('actionsSent').style.display = 'none';
+    document.getElementById('actionsSigned').style.display = 'none';
+    refreshContrat();
+  }
+
+  function cancelContrat() {
+    document.getElementById('contratWorkspace').style.display = 'none';
+    document.getElementById('contratEmpty').style.display = 'flex';
+  }
+
+  function sendForSignature() {
+    var today = fmtDateFR(TODAY_ISO);
+    document.getElementById('stepDraftSub').textContent = today;
+    document.getElementById('stepSentSub').textContent = today;
+    setStep('sent');
+    document.getElementById('actionsDraft').style.display = 'none';
+    document.getElementById('actionsSent').style.display = 'block';
+    document.getElementById('sentEmail').textContent = A.email;
+    ['cStatutJur','cSiret','cTaux','cAssiette','cDuree','cDebut'].forEach(function (id) {
+      document.getElementById(id).disabled = true;
+    });
+    setF('sig', 'à signer électroniquement', true);
+  }
+
+  function simulateSignature() {
+    var today = fmtDateFR(TODAY_ISO);
+    document.getElementById('stepSignedSub').textContent = today;
+    setStep('signed');
+    document.getElementById('actionsSent').style.display = 'none';
+    document.getElementById('actionsSigned').style.display = 'block';
+    document.getElementById('signedDate').textContent = today;
+    setF('sig', 'signé électroniquement');
+
+    // Le contrat signé rejoint automatiquement les justificatifs
+    var existing = A.docs.find(function (d) { return d.type === 'contrat'; });
+    var nom = 'Contrat_Apporteur_' + A.prenom.replace(/\W+/g, '') + '_signe.pdf';
+    if (existing) { existing.nom = nom; existing.ajoute = TODAY_ISO; }
+    else { A.docs.push({ type: 'contrat', nom: nom, ajoute: TODAY_ISO, expire: '' }); }
+    renderDocs();
+  }
+
+  ['cStatutJur','cSiret','cTaux','cAssiette','cDuree','cDebut'].forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener('input', refreshContrat);
+    el.addEventListener('change', refreshContrat);
+  });
+
+  renderApporteur();
+</script>
+</body>
+</html>

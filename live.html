@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live du 29 juillet — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <a class="back-link" href="lives.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>
+        Lives
+      </a>
+
+      <div class="detail-header">
+        <div class="avatar-lg" style="background:linear-gradient(145deg,#EADFC8,#C9A063); color:#2A2115;">29</div>
+        <div class="detail-title-block">
+          <div class="detail-title-row">
+            <h1>Live du 29 juillet</h1>
+            <span class="chip warn">En cours</span>
+          </div>
+          <div class="detail-meta">3 clientes · sacs &amp; accessoires · frais Whatnot 0 % · reçu le 30 juillet</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-secondary" onclick="alert('Ouvrirait le formulaire d\'édition du live (date, frais Whatnot, catégorie).')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Modifier
+          </button>
+          <button class="btn btn-primary" onclick="payAllRows()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
+            Tout marquer payé
+          </button>
+        </div>
+      </div>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <div class="stat-inline-row">
+        <div class="stat-inline"><span class="label">Ventes totales</span><span class="value tabular">4 640 €</span></div>
+        <div class="stat-inline"><span class="label">Commission Saga</span><span class="value tabular">1 392 €</span></div>
+        <div class="stat-inline"><span class="label">Commission apporteurs</span><span class="value tabular">278 €</span></div>
+        <div class="stat-inline"><span class="label">Reste à reverser</span><span class="value tabular" id="liveReste" style="color:var(--brand-strong)">1 890 €</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Répartition par cliente</h2>
+          <span class="panel-link" style="color:var(--ink-faint);">base = ventes − frais Whatnot</span>
+        </div>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th class="num">Ventes</th>
+              <th class="num">Giveaways</th>
+              <th class="num">Base</th>
+              <th class="num">Comm. Saga</th>
+              <th class="num">Comm. apporteur</th>
+              <th class="num">Net reversé</th>
+              <th>Statut</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="name-cell"><span class="tag-avatar">M</span> Fanny</div></td>
+              <td class="num tabular">1 480 €</td>
+              <td class="num tabular">60 €</td>
+              <td class="num tabular">1 480 €</td>
+              <td class="num tabular">444 €</td>
+              <td class="num tabular">86 €</td>
+              <td class="num tabular"><strong>890 €</strong></td>
+              <td><span class="chip warn">En attente</span></td>
+              <td><button class="btn btn-secondary btn-sm" onclick="payRow(this)">Payer</button></td>
+            </tr>
+            <tr>
+              <td><div class="name-cell"><span class="tag-avatar">C</span> Julie</div></td>
+              <td class="num tabular">1 660 €</td>
+              <td class="num tabular">0 €</td>
+              <td class="num tabular">1 660 €</td>
+              <td class="num tabular">498 €</td>
+              <td class="num tabular">0 €</td>
+              <td class="num tabular"><strong>1 162 €</strong></td>
+              <td><span class="chip warn">En attente</span></td>
+              <td><button class="btn btn-secondary btn-sm" onclick="payRow(this)">Payer</button></td>
+            </tr>
+            <tr>
+              <td><div class="name-cell"><span class="tag-avatar">B</span> Camille</div></td>
+              <td class="num tabular">1 500 €</td>
+              <td class="num tabular">40 €</td>
+              <td class="num tabular">1 500 €</td>
+              <td class="num tabular">450 €</td>
+              <td class="num tabular">192 €</td>
+              <td class="num tabular"><strong>818 €</strong></td>
+              <td><span class="chip good">Payé</span></td>
+              <td><button class="btn btn-ghost btn-sm" disabled style="opacity:.5;">Annuler</button></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-head"><h2>Ventes du live</h2><span class="panel-link" style="color:var(--ink-faint);">import CSV Whatnot</span></div>
+          <div class="table-scroll">
+          <table>
+            <thead><tr><th>Article</th><th>Dressing</th><th class="num">Montant</th><th>Type</th></tr></thead>
+            <tbody>
+              <tr><td>PDD 30€ M</td><td class="muted">M</td><td class="num tabular">30 €</td><td class="muted">Vente</td></tr>
+              <tr><td>PDD 15€ C</td><td class="muted">C</td><td class="num tabular">15 €</td><td class="muted">Vente</td></tr>
+              <tr><td>PDD 60€ B</td><td class="muted">B</td><td class="num tabular">60 €</td><td class="muted">Vente</td></tr>
+              <tr><td>PDD 10€ M — giveaway</td><td class="muted">M</td><td class="num tabular">0 €</td><td class="muted">Giveaway</td></tr>
+              <tr><td>PDD 45€ C</td><td class="muted">C</td><td class="num tabular">45 €</td><td class="muted">Vente</td></tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="side-col">
+          <div class="panel">
+            <div class="panel-head"><h2>Calcul du reversement</h2></div>
+            <p class="card-note">
+              <strong>Base</strong> = ventes × (1 − frais Whatnot %)<br/>
+              <strong>Commission Saga</strong> = base × % cliente<br/>
+              <strong>Commission apporteur</strong> = base × % apporteur<br/>
+              <strong>Net reversé</strong> = base − giveaways − commission Saga − commission apporteur
+            </p>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Encaissement Whatnot</h2></div>
+            <div class="info-list">
+              <div class="info-row"><span class="k">Statut</span><span class="v"><span class="chip good">Reçu</span></span></div>
+              <div class="info-row"><span class="k">Date</span><span class="v">30 juillet 2026</span></div>
+              <div class="info-row"><span class="k">Montant</span><span class="v tabular">4 640 €</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('lives');
+
+  // Passe une cliente au statut réglé et met à jour le total restant du live
+  // Le total est recalculé au chargement pour ne jamais diverger des lignes
+  function payRow(btn) {
+    var tr = btn.closest('tr');
+    tr.querySelector('.chip').outerHTML = '<span class="chip good">Payé</span>';
+    btn.outerHTML = '<button class="btn btn-ghost btn-sm" disabled style="opacity:.5;">Annuler</button>';
+    refreshLiveTotal();
+  }
+
+  function payAllRows() {
+    var pending = document.querySelectorAll('button.btn-secondary.btn-sm');
+    var todo = Array.prototype.filter.call(pending, function (b) { return b.textContent.trim() === 'Payer'; });
+    if (todo.length === 0) { alert('Toutes les clientes de ce live sont déjà réglées.'); return; }
+    if (!confirm('Marquer comme réglées les ' + todo.length + ' cliente(s) en attente sur ce live ?')) return;
+    todo.forEach(payRow);
+  }
+
+  // Le « reste à reverser » du bandeau suit les paiements
+  function refreshLiveTotal() {
+    var reste = 0;
+    document.querySelectorAll('tbody tr').forEach(function (tr) {
+      var chip = tr.querySelector('.chip');
+      if (!chip || chip.textContent.trim() !== 'En attente') return;
+      var cells = tr.querySelectorAll('td.num');
+      if (cells.length < 6) return;
+      var net = parseFloat(cells[5].textContent.replace(/[^0-9,.-]/g, '').replace(',', '.')) || 0;
+      reste += net;
+    });
+    var el = document.getElementById('liveReste');
+    if (el) el.textContent = Math.round(reste).toLocaleString('fr-FR') + ' €';
+  }
+
+  refreshLiveTotal();
+</script>
+</body>
+</html>

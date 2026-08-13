@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clientes — Saga Dressing (maquette)</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebarRoot"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1>Clientes</h1>
+          <p class="topbar-sub" id="subTitle">—</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchInput" placeholder="Rechercher une cliente…" />
+          </div>
+          <button class="btn btn-primary" onclick="toggleNewForm()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nouvelle cliente
+          </button>
+        </div>
+      </header>
+
+      <div class="proto-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        Maquette design — données fictives, non connectée au CRM en production
+      </div>
+
+      <!-- Formulaire nouvelle cliente -->
+      <div class="panel" id="newForm" style="display:none;">
+        <div class="panel-head"><h2>Nouvelle cliente</h2></div>
+        <div class="form-grid" style="max-width:520px;">
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:2;">
+              <label class="form-label" for="nPrenom">Prénom</label>
+              <input class="form-input" id="nPrenom" placeholder="Ex. Léa" />
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="nLettre">Lettre</label>
+              <input class="form-input" id="nLettre" maxlength="1" placeholder="L" />
+              <span class="card-note" id="letterWarn" style="display:none; color:var(--critical);">Lettre déjà utilisée</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="nNom">Nom complet</label>
+            <input class="form-input" id="nNom" placeholder="Ex. Léa Dupont" />
+          </div>
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:1;">
+              <label class="form-label" for="nEmail">Email</label>
+              <input class="form-input" type="email" id="nEmail" placeholder="lea@example.com" />
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="nTel">Téléphone</label>
+              <input class="form-input" id="nTel" placeholder="06 12 34 56 78" />
+            </div>
+          </div>
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:1;">
+              <label class="form-label" for="nCommission">Commission Saga (%)</label>
+              <input class="form-input" type="number" id="nCommission" value="30" />
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="nApporteur">Apporteur</label>
+              <select class="form-select" id="nApporteur">
+                <option value="">Aucun</option>
+                <option value="Nadia R.">Nadia R. (8 %)</option>
+                <option value="Karim B.">Karim B. (6 %)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="nVignette">Vignette Whatnot</label>
+            <div style="display:flex; gap:14px; align-items:flex-start;">
+              <div class="vignette-drop" id="vignettePreview" onclick="document.getElementById('nVignette').click()">
+                <span>Choisir<br/>une image</span>
+              </div>
+              <div style="flex:1;">
+                <input class="form-input" type="file" id="nVignette" accept="image/*" style="display:none;" onchange="pickVignette(this)" />
+                <span class="card-note">
+                  L'image qui illustrera les annonces de ce dressing dans Whatnot. Elle sera reprise automatiquement
+                  par le générateur de boutique, où vous pourrez encore la changer. Format carré conseillé.
+                </span>
+                <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="clearVignette()">Retirer</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary btn-sm" onclick="addCliente()">Créer la fiche</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleNewForm()">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Clientes actives</span></div>
+          <div class="kpi-value tabular" id="kActives">—</div>
+          <div class="kpi-delta" id="kActivesSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">CA total généré</span></div>
+          <div class="kpi-value tabular" id="kCA">—</div>
+          <div class="kpi-delta">toutes clientes confondues</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Ma commission</span></div>
+          <div class="kpi-value tabular" id="kCommission" style="color:var(--brand-strong)">—</div>
+          <div class="kpi-delta" id="kCommissionSub">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Reste à reverser</span></div>
+          <div class="kpi-value tabular" id="kReste">—</div>
+          <div class="kpi-delta" id="kResteSub">—</div>
+        </div>
+      </section>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Toutes les clientes</h2>
+          <div class="filter-bar">
+            <div class="toggle-group" id="statusToggle">
+              <button data-status="all" class="active">Toutes</button>
+              <button data-status="active">Actives</button>
+              <button data-status="inactive">Inactives</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Cliente</th>
+              <th>Apporteur</th>
+              <th class="num">Taux</th>
+              <th class="num">CA total</th>
+              <th class="num">Ma commission</th>
+              <th class="num">Reste à reverser</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="clientesBody"></tbody>
+          <tfoot id="clientesFoot"></tfoot>
+        </table>
+        </div>
+        <div id="emptyResult" class="empty-state" style="display:none; margin-top:14px;">
+          <div class="t">Aucune cliente ne correspond</div>
+          <div class="s">Essayez un autre nom</div>
+        </div>
+      </div>
+
+      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+    </div>
+  </div>
+
+<script src="nav.js"></script>
+<script>
+  renderSagaSidebar('clientes');
+
+  // key = fiche détaillée existante (cliente.html?c=…) quand elle est disponible
+  var CLIENTES_DEFAUT = [
+    { key:'fanny',   prenom:'Fanny',   lettre:'M', apporteur:'Nadia R.', pct:30, ca:6420, commission:1926, reste:735, statut:'active' },
+    { key:'julie',   prenom:'Julie',   lettre:'C', apporteur:'',         pct:30, ca:5180, commission:1554, reste:620, statut:'active' },
+    { key:'camille', prenom:'Camille', lettre:'B', apporteur:'Nadia R.', pct:25, ca:4960, commission:1241, reste:480, statut:'active' },
+    { key:'marion',  prenom:'Marion',  lettre:'F', apporteur:'Karim B.', pct:30, ca:3210, commission:963,  reste:310, statut:'active' },
+    { key:'',        prenom:'Alix',    lettre:'P', apporteur:'',         pct:30, ca:1840, commission:552,  reste:0,   statut:'active' },
+    { key:'',        prenom:'Nora',    lettre:'T', apporteur:'Karim B.', pct:30, ca:960,  commission:288,  reste:0,   statut:'active' },
+    { key:'',        prenom:'Sophie',  lettre:'D', apporteur:'',         pct:30, ca:2380, commission:714,  reste:0,   statut:'inactive' },
+    { key:'',        prenom:'Élise',   lettre:'R', apporteur:'Nadia R.', pct:25, ca:1120, commission:280,  reste:0,   statut:'inactive' }
+  ];
+
+  var clientes = sagaLoad('clientes', CLIENTES_DEFAUT);
+  var vignetteEnCours = '';
+
+  function persist() { sagaSave('clientes', clientes); }
+
+  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+
+  function pickVignette(input) {
+    if (!input.files || !input.files[0]) return;
+    sagaReadImage(input.files[0], 600, function (dataUrl) {
+      vignetteEnCours = dataUrl;
+      document.getElementById('vignettePreview').innerHTML = '<img src="' + dataUrl + '" alt="" />';
+    });
+  }
+
+  function clearVignette() {
+    vignetteEnCours = '';
+    document.getElementById('nVignette').value = '';
+    document.getElementById('vignettePreview').innerHTML = '<span>Choisir<br/>une image</span>';
+  }
+
+  function currentStatus() {
+    var b = document.querySelector('#statusToggle button.active');
+    return b ? b.dataset.status : 'all';
+  }
+
+  function visibleClientes() {
+    var st = currentStatus();
+    var q = document.getElementById('searchInput').value.trim().toLowerCase();
+    return clientes.filter(function (c) {
+      if (st !== 'all' && c.statut !== st) return false;
+      if (q && c.prenom.toLowerCase().indexOf(q) === -1 && c.lettre.toLowerCase() !== q) return false;
+      return true;
+    });
+  }
+
+  function render() {
+    var rows = visibleClientes();
+    var body = document.getElementById('clientesBody');
+    var foot = document.getElementById('clientesFoot');
+
+    document.getElementById('emptyResult').style.display = rows.length ? 'none' : 'flex';
+
+    body.innerHTML = rows.map(function (c) {
+      var href = c.key ? 'cliente.html?c=' + c.key : '';
+      // Les fiches non encore détaillées ouvrent la fiche type, signalée par une astérisque
+      var nameCell = '<div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span> ' + c.prenom + '</div>';
+      var statut = c.statut === 'active'
+        ? '<span class="chip good">Active</span>'
+        : '<span class="chip neutral">Inactive</span>';
+      var reste = c.reste > 0
+        ? '<strong style="color:var(--brand-strong)">' + fmtEUR(c.reste) + '</strong>'
+        : '<span class="muted">—</span>';
+      var vign = c.vignette
+        ? '<img class="vignette-thumb" src="' + c.vignette + '" alt="" />'
+        : '<span class="vignette-thumb empty" title="Aucune vignette">—</span>';
+      return '<tr' + (href ? ' data-href="' + href + '"' : '') + '>' +
+        '<td>' + vign + '</td>' +
+        '<td>' + nameCell + '</td>' +
+        '<td class="muted">' + (c.apporteur || '—') + '</td>' +
+        '<td class="num tabular">' + c.pct + ' %</td>' +
+        '<td class="num tabular">' + fmtEUR(c.ca) + '</td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(c.commission) + '</strong></td>' +
+        '<td class="num tabular">' + reste + '</td>' +
+        '<td>' + statut + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var tCA = rows.reduce(function (s, c) { return s + c.ca; }, 0);
+    var tCom = rows.reduce(function (s, c) { return s + c.commission; }, 0);
+    var tReste = rows.reduce(function (s, c) { return s + c.reste; }, 0);
+
+    foot.innerHTML = rows.length ? '<tr>' +
+      '<td></td><td><strong>Total</strong></td><td></td><td></td>' +
+      '<td class="num tabular"><strong>' + fmtEUR(tCA) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + fmtEUR(tCom) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + fmtEUR(tReste) + '</strong></td>' +
+      '<td></td></tr>' : '';
+
+    initRowLinks(body);
+
+    // Indicateurs — toujours calculés sur l'ensemble, pas sur le filtre
+    var actives = clientes.filter(function (c) { return c.statut === 'active'; }).length;
+    var totalCA = clientes.reduce(function (s, c) { return s + c.ca; }, 0);
+    var totalCom = clientes.reduce(function (s, c) { return s + c.commission; }, 0);
+    var totalReste = clientes.reduce(function (s, c) { return s + c.reste; }, 0);
+    var nbReste = clientes.filter(function (c) { return c.reste > 0; }).length;
+
+    document.getElementById('subTitle').textContent =
+      clientes.length + ' dressings suivis — ' + actives + ' actifs';
+    document.getElementById('kActives').textContent = actives;
+    document.getElementById('kActivesSub').textContent = 'sur ' + clientes.length + ' dressings au total';
+    document.getElementById('kCA').textContent = fmtEUR(totalCA);
+    document.getElementById('kCommission').textContent = fmtEUR(totalCom);
+    document.getElementById('kCommissionSub').textContent =
+      totalCA > 0 ? Math.round(totalCom / totalCA * 100) + ' % du chiffre d\'affaires' : '—';
+    document.getElementById('kReste').textContent = fmtEUR(totalReste);
+    document.getElementById('kResteSub').textContent =
+      nbReste ? 'réparti sur ' + nbReste + ' cliente' + (nbReste > 1 ? 's' : '') : 'tout est à jour';
+  }
+
+  /* ===== Nouvelle cliente ===== */
+  function toggleNewForm() {
+    var f = document.getElementById('newForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    if (f.style.display === 'block') document.getElementById('nPrenom').focus();
+  }
+
+  function addCliente() {
+    var prenom = document.getElementById('nPrenom').value.trim();
+    var lettre = document.getElementById('nLettre').value.trim().toUpperCase();
+    var warn = document.getElementById('letterWarn');
+
+    if (!prenom) { document.getElementById('nPrenom').focus(); return; }
+    if (!lettre) { document.getElementById('nLettre').focus(); return; }
+
+    // La lettre identifie le dressing dans les CSV Whatnot : elle doit rester unique
+    if (clientes.some(function (c) { return c.lettre === lettre; })) {
+      warn.style.display = 'block';
+      document.getElementById('nLettre').focus();
+      return;
+    }
+    warn.style.display = 'none';
+
+    clientes.push({
+      key: '',
+      prenom: prenom,
+      lettre: lettre,
+      apporteur: document.getElementById('nApporteur').value,
+      pct: parseInt(document.getElementById('nCommission').value, 10) || 30,
+      ca: 0, commission: 0, reste: 0,
+      statut: 'active',
+      vignette: vignetteEnCours
+    });
+    persist();
+
+    ['nPrenom','nLettre','nNom','nEmail','nTel'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    clearVignette();
+    toggleNewForm();
+    render();
+  }
+
+  document.getElementById('statusToggle').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#statusToggle button').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    render();
+  });
+
+  document.getElementById('searchInput').addEventListener('input', render);
+  document.getElementById('nLettre').addEventListener('input', function () {
+    document.getElementById('letterWarn').style.display = 'none';
+  });
+
+  render();
+</script>
+</body>
+</html>
