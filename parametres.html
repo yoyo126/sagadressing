@@ -568,7 +568,17 @@
 
   function toggleInviteForm() {
     var f = document.getElementById('inviteForm');
-    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    var ouvert = f.style.display !== 'none';
+    // En fermant (Annuler compris) on repart d'un formulaire vierge
+    if (ouvert) resetInviteForm();
+    f.style.display = ouvert ? 'none' : 'block';
+    if (!ouvert) document.getElementById('invName').focus();
+  }
+
+  function resetInviteForm() {
+    document.getElementById('invName').value = '';
+    document.getElementById('invEmail').value = '';
+    document.getElementById('invRole').selectedIndex = 0;
   }
 
   function sendInvite() {
@@ -583,9 +593,7 @@
       perms: null, last: '—', status: 'invited', owner: false
     });
     renderUsers();
-    document.getElementById('invName').value = '';
-    document.getElementById('invEmail').value = '';
-    toggleInviteForm();
+    toggleInviteForm();   // ferme et vide le formulaire
   }
 
   function removeUser(id) {

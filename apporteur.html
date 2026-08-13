@@ -27,11 +27,11 @@
           <div class="detail-meta" id="aMeta">—</div>
         </div>
         <div class="detail-actions">
-          <button class="btn btn-secondary">
+          <button class="btn btn-secondary" onclick="ouvrirEdition()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             Modifier
           </button>
-          <button class="btn btn-primary">
+          <button class="btn btn-primary" onclick="reglerCommissions()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
             Régler les commissions
           </button>
@@ -100,7 +100,10 @@
               <div class="file-name">Modele_Contrat_Apporteur.docx</div>
               <div class="file-sub">Modèle utilisé pour tous les apporteurs</div>
             </div>
-            <div class="file-actions"><button class="btn btn-ghost btn-sm">Remplacer le modèle</button></div>
+            <div class="file-actions">
+              <input type="file" id="modeleContratInput" accept=".doc,.docx,.pdf,.odt" style="display:none;" onchange="remplacerModele(this)" />
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modeleContratInput').click()">Remplacer le modèle</button>
+            </div>
           </div>
 
           <div id="contratEmpty" class="empty-state">
@@ -239,6 +242,59 @@
         <!-- ===== INFOS ===== -->
         <div class="tab-panel" id="tab-infos-a" data-panel-group="apporteur" style="margin-top:18px;">
           <div class="info-list" id="infoList"></div>
+
+          <div class="form-grid" id="infoForm" style="display:none; max-width:520px; margin-top:4px;">
+            <div class="form-field">
+              <label class="form-label" for="eNom">Nom complet</label>
+              <input class="form-input" id="eNom" />
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ePrenom">Nom affiché (listes, fiches clientes)</label>
+              <input class="form-input" id="ePrenom" placeholder="Ex. Nadia R." />
+            </div>
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:1;">
+                <label class="form-label" for="eEmail">Email</label>
+                <input class="form-input" type="email" id="eEmail" />
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="eTel">Téléphone</label>
+                <input class="form-input" id="eTel" />
+              </div>
+            </div>
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:2;">
+                <label class="form-label" for="eStatutJur">Statut juridique</label>
+                <select class="form-select" id="eStatutJur">
+                  <option>Auto-entrepreneur</option>
+                  <option>Société (SASU, EURL…)</option>
+                  <option>Particulier non professionnel</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="eSiret">SIRET</label>
+                <input class="form-input" id="eSiret" />
+              </div>
+            </div>
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:1;">
+                <label class="form-label" for="ePct">Commission par défaut (%)</label>
+                <input class="form-input" type="number" id="ePct" />
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="eStatut">Statut</label>
+                <select class="form-select" id="eStatut">
+                  <option>Actif</option>
+                  <option>Inactif</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button class="btn btn-primary btn-sm" onclick="enregistrerInfos()">Enregistrer les modifications</button>
+              <button class="btn btn-ghost btn-sm" onclick="annulerEdition()">Annuler</button>
+              <span class="card-note" id="eSaved" style="display:none; color:var(--good);">✓ Enregistré</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -369,7 +425,7 @@
       }
 
       var action = doc
-        ? '<button class="btn btn-ghost btn-sm">Télécharger</button><button class="btn btn-ghost btn-sm" onclick="removeDoc(\'' + t.key + '\')">Supprimer</button>'
+        ? boutonTelecharger(doc) + '<button class="btn btn-ghost btn-sm" onclick="removeDoc(\'' + t.key + '\')">Supprimer</button>'
         : '<button class="btn btn-secondary btn-sm" onclick="focusUpload(\'' + t.key + '\')">Ajouter</button>';
 
       return '<div class="doc-row">' +
@@ -391,7 +447,7 @@
         '<div class="doc-meta"><div class="doc-name">' + docTypeLabel(d.type) + '</div>' +
         '<div class="doc-sub">' + d.nom + ' · ajouté le ' + fmtDateFR(d.ajoute) + '</div></div>' +
         '<div class="doc-state"><span class="chip good">Ajouté</span></div>' +
-        '<div class="file-actions"><button class="btn btn-ghost btn-sm">Télécharger</button></div>' +
+        '<div class="file-actions">' + boutonTelecharger(d) + '</div>' +
       '</div>';
     }).join('');
 
@@ -429,17 +485,32 @@
   function addDoc() {
     var type = document.getElementById('upType').value;
     var expire = document.getElementById('upExpire').value;
-    var existing = A.docs.find(function (d) { return d.type === type; });
-    var nom = docTypeLabel(type).replace(/[^A-Za-zÀ-ÿ0-9]+/g, '_') + '_' + A.prenom.replace(/\W+/g, '') + '.pdf';
+    var fichier = document.getElementById('upFile').files[0];
+    // Le vrai nom du fichier déposé est conservé ; sinon on retombe sur un nom généré
+    var nom = fichier ? fichier.name
+      : docTypeLabel(type).replace(/[^A-Za-zÀ-ÿ0-9]+/g, '_') + '_' + A.prenom.replace(/\W+/g, '') + '.pdf';
 
-    if (existing) {
-      existing.nom = nom; existing.ajoute = TODAY_ISO; existing.expire = expire;
-    } else {
-      A.docs.push({ type: type, nom: nom, ajoute: TODAY_ISO, expire: expire });
+    function enregistre(contenu) {
+      var existing = A.docs.find(function (d) { return d.type === type; });
+      if (existing) {
+        existing.nom = nom; existing.ajoute = TODAY_ISO; existing.expire = expire;
+        if (contenu) existing.contenu = contenu;
+      } else {
+        A.docs.push({ type: type, nom: nom, ajoute: TODAY_ISO, expire: expire, contenu: contenu });
+      }
+      document.getElementById('upExpire').value = '';
+      document.getElementById('upFile').value = '';
+      renderDocs();
     }
-    document.getElementById('upExpire').value = '';
-    document.getElementById('upFile').value = '';
-    renderDocs();
+
+    // On garde le fichier en mémoire pour que "Télécharger" renvoie le vrai document
+    if (fichier) {
+      var reader = new FileReader();
+      reader.onload = function () { enregistre(reader.result); };
+      reader.readAsDataURL(fichier);
+    } else {
+      enregistre(null);
+    }
   }
 
   function removeDoc(typeKey) {
@@ -509,6 +580,126 @@
 
     renderCommissions();
     renderDocs();
+  }
+
+  /* ===== Édition de la fiche apporteur ===== */
+  // On retient l'onglet d'où l'on vient : Annuler doit ramener à l'écran précédent.
+  var ongletAvantEdition = null;
+
+  function ongletActif() {
+    var t = document.querySelector('.tab-item.active');
+    return t ? t.dataset.tab : null;
+  }
+
+  function ouvrirOnglet(nom) {
+    var t = document.querySelector('[data-tab="' + nom + '"]');
+    if (t) t.click();
+  }
+
+  function remplirInfoForm() {
+    document.getElementById('eNom').value = A.nom;
+    document.getElementById('ePrenom').value = A.prenom;
+    document.getElementById('eEmail').value = A.email;
+    document.getElementById('eTel').value = A.tel;
+    document.getElementById('eStatutJur').value = A.statutJur;
+    document.getElementById('eSiret').value = A.siret;
+    document.getElementById('ePct').value = A.pct;
+    document.getElementById('eStatut').value = A.statut;
+  }
+
+  function ouvrirEdition() {
+    var courant = ongletActif();
+    if (courant !== 'tab-infos-a') ongletAvantEdition = courant;
+    ouvrirOnglet('tab-infos-a');
+    remplirInfoForm();
+    document.getElementById('infoList').style.display = 'none';
+    document.getElementById('infoForm').style.display = 'flex';
+    document.getElementById('eNom').focus();
+  }
+
+  function fermerEdition() {
+    document.getElementById('infoForm').style.display = 'none';
+    document.getElementById('infoList').style.display = '';
+  }
+
+  function annulerEdition() {
+    remplirInfoForm();   // les saisies non enregistrées sont abandonnées
+    fermerEdition();
+    if (ongletAvantEdition) {
+      var retour = ongletAvantEdition;
+      ongletAvantEdition = null;
+      ouvrirOnglet(retour);
+    }
+  }
+
+  function enregistrerInfos() {
+    var nom = document.getElementById('eNom').value.trim();
+    if (!nom) { document.getElementById('eNom').focus(); return; }
+
+    A.nom = nom;
+    A.prenom = document.getElementById('ePrenom').value.trim() || nom;
+    A.email = document.getElementById('eEmail').value.trim();
+    A.tel = document.getElementById('eTel').value.trim();
+    A.statutJur = document.getElementById('eStatutJur').value;
+    A.siret = document.getElementById('eSiret').value.trim();
+    A.pct = parseInt(document.getElementById('ePct').value, 10) || 0;
+    A.statut = document.getElementById('eStatut').value;
+    A.initiales = A.prenom.split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+
+    renderApporteur();   // en-tête, KPI, infos et contrat repartent des nouvelles valeurs
+    fermerEdition();
+    ongletAvantEdition = null;
+
+    var ok = document.getElementById('eSaved');
+    ok.style.display = 'inline';
+    clearTimeout(enregistrerInfos._t);
+    enregistrerInfos._t = setTimeout(function () { ok.style.display = 'none'; }, 2500);
+  }
+
+  /* ===== Règlement des commissions ===== */
+  function reglerCommissions() {
+    var enAttente = A.commissions.filter(function (c) { return !c.paye; });
+    if (enAttente.length === 0) {
+      alert('Rien à régler : toutes les commissions de ' + A.prenom + ' sont déjà versées.');
+      return;
+    }
+    var total = enAttente.reduce(function (s, c) { return s + c.montant; }, 0);
+    if (!confirm('Marquer comme versées ' + enAttente.length + ' commission(s) ?\n\n'
+      + 'Total : ' + fmtEUR(total) + '\nBénéficiaire : ' + A.nom)) return;
+
+    enAttente.forEach(function (c) { c.paye = 1; c.datePaiement = TODAY_ISO; });
+    renderApporteur();
+  }
+
+  /* ===== Modèle de contrat ===== */
+  function remplacerModele(input) {
+    if (!input.files || !input.files[0]) return;
+    var f = input.files[0];
+    var row = input.closest('.file-row');
+    row.querySelector('.file-name').textContent = f.name;
+    row.querySelector('.file-sub').textContent =
+      'Modèle utilisé pour tous les apporteurs · remplacé le ' + fmtDateFR(TODAY_ISO);
+    input.value = '';
+  }
+
+  /* ===== Justificatifs : téléchargement ===== */
+  // Le fichier n'est téléchargeable que s'il a réellement été déposé dans la maquette.
+  function boutonTelecharger(doc) {
+    if (doc && doc.contenu) {
+      return '<button class="btn btn-ghost btn-sm" onclick="telechargerDoc(\'' + doc.type + '\')">Télécharger</button>';
+    }
+    return '<button class="btn btn-ghost btn-sm" disabled title="Document de démonstration : aucun fichier réel n\'est associé" style="opacity:.5;">Télécharger</button>';
+  }
+
+  function telechargerDoc(typeKey) {
+    var doc = A.docs.find(function (d) { return d.type === typeKey; });
+    if (!doc || !doc.contenu) return;
+    var a = document.createElement('a');
+    a.href = doc.contenu;
+    a.download = doc.nom;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   /* ===== Contrat d'apporteur ===== */

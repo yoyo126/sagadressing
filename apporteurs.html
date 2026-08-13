@@ -195,8 +195,18 @@
 
   function toggleNewForm() {
     var f = document.getElementById('newForm');
-    f.style.display = f.style.display === 'none' ? 'block' : 'none';
-    if (f.style.display === 'block') document.getElementById('aNom').focus();
+    var ouvert = f.style.display !== 'none';
+    // En fermant (Annuler compris) on repart d'un formulaire vierge
+    if (ouvert) resetNewForm();
+    f.style.display = ouvert ? 'none' : 'block';
+    if (!ouvert) document.getElementById('aNom').focus();
+  }
+
+  function resetNewForm() {
+    document.getElementById('aNom').value = '';
+    document.getElementById('aEmail').value = '';
+    document.getElementById('aPct').value = 8;
+    document.getElementById('aStatutJur').selectedIndex = 0;
   }
 
   function addApporteur() {
@@ -211,8 +221,7 @@
       docsManquants: 5, statut: 'actif'
     });
 
-    ['aNom','aEmail'].forEach(function (id) { document.getElementById(id).value = ''; });
-    toggleNewForm();
+    toggleNewForm();   // ferme et vide le formulaire
     render();
   }
 

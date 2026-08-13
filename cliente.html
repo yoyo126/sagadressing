@@ -27,7 +27,7 @@
           <div class="detail-meta" id="cMeta">—</div>
         </div>
         <div class="detail-actions">
-          <button class="btn btn-secondary" onclick="document.querySelector('[data-tab=&quot;tab-infos&quot;]').click()">
+          <button class="btn btn-secondary" onclick="ouvrirEdition()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             Modifier
           </button>
@@ -219,7 +219,8 @@
               <div class="file-sub">Modèle utilisé pour toutes les clientes · mis à jour le 03/08/2026</div>
             </div>
             <div class="file-actions">
-              <button class="btn btn-ghost btn-sm">Remplacer le modèle</button>
+              <input type="file" id="modeleContratInput" accept=".doc,.docx,.pdf,.odt" style="display:none;" onchange="remplacerModele(this)" />
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modeleContratInput').click()">Remplacer le modèle</button>
             </div>
           </div>
 
@@ -576,7 +577,7 @@
 
             <div style="display:flex; gap:10px; align-items:center;">
               <button class="btn btn-primary btn-sm" onclick="saveInfos()">Enregistrer les modifications</button>
-              <button class="btn btn-ghost btn-sm" onclick="renderInfosForm()">Annuler</button>
+              <button class="btn btn-ghost btn-sm" onclick="annulerEdition()">Annuler</button>
               <span class="card-note" id="iSaved" style="display:none; color:var(--good);">✓ Enregistré</span>
             </div>
           </div>
@@ -804,6 +805,57 @@
     document.getElementById('iApporteurPct').value = defauts[a] !== undefined ? defauts[a] : 8;
   }
 
+  /* Édition de la fiche : on retient l'onglet d'où l'on vient pour qu'Annuler
+     ramène réellement à l'écran précédent au lieu de ne rien faire. */
+  var ongletAvantEdition = null;
+
+  function ongletActif() {
+    var t = document.querySelector('.tab-item.active');
+    return t ? t.dataset.tab : null;
+  }
+
+  function ouvrirOnglet(nom) {
+    var t = document.querySelector('[data-tab="' + nom + '"]');
+    if (t) t.click();
+  }
+
+  function ouvrirEdition() {
+    var courant = ongletActif();
+    if (courant !== 'tab-infos') ongletAvantEdition = courant;
+    ouvrirOnglet('tab-infos');
+  }
+
+  function annulerEdition() {
+    renderInfosForm();                 // remet les champs à leur valeur enregistrée
+    flashInfos('Modifications annulées');
+    if (ongletAvantEdition) {
+      var retour = ongletAvantEdition;
+      ongletAvantEdition = null;
+      ouvrirOnglet(retour);
+    }
+  }
+
+  // Message court sous les boutons de la fiche (réutilise la pastille "Enregistré")
+  function flashInfos(texte) {
+    var ok = document.getElementById('iSaved');
+    ok.textContent = texte;
+    ok.style.color = texte.indexOf('annul') !== -1 ? 'var(--ink-muted)' : 'var(--good)';
+    ok.style.display = 'inline';
+    clearTimeout(flashInfos._t);
+    flashInfos._t = setTimeout(function () { ok.style.display = 'none'; }, 2500);
+  }
+
+  // Remplacement du modèle de contrat : le nom affiché suit le fichier choisi
+  function remplacerModele(input) {
+    if (!input.files || !input.files[0]) return;
+    var f = input.files[0];
+    var row = input.closest('.file-row');
+    row.querySelector('.file-name').textContent = f.name;
+    row.querySelector('.file-sub').textContent =
+      'Modèle utilisé pour toutes les clientes · remplacé le ' + todayLabel();
+    input.value = '';
+  }
+
   function renderInfosForm() {
     vignetteEnCours = null;
     document.getElementById('iPrenom').value = CLIENT.prenom;
@@ -877,9 +929,8 @@
     refreshRecap();
     refreshDirectSaleRecap();
 
-    var ok = document.getElementById('iSaved');
-    ok.style.display = 'inline';
-    setTimeout(function () { ok.style.display = 'none'; }, 2500);
+    ongletAvantEdition = null;
+    flashInfos('✓ Enregistré');
   }
   var MONTHS_FR_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   var TODAY_ISO = '2026-08-01'; // date de référence de la maquette
@@ -975,7 +1026,20 @@
 
   function toggleDirectSaleForm() {
     const form = document.getElementById('directSaleForm');
-    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+    const ouvert = form.style.display !== 'none';
+    // En fermant (Annuler compris) on repart d'un formulaire vierge
+    if (ouvert) resetDirectSaleForm();
+    form.style.display = ouvert ? 'none' : 'flex';
+  }
+
+  function resetDirectSaleForm() {
+    document.getElementById('dsDate').value = '';
+    document.getElementById('dsDescription').value = '';
+    document.getElementById('dsMontant').value = '';
+    document.getElementById('dsFrais').value = '0';
+    document.getElementById('dsMode').selectedIndex = 0;
+    document.getElementById('dsApporteur').checked = false;
+    refreshDirectSaleRecap();
   }
 
   // Calcul d'une vente hors live : net = montant − commission Saga − commission apporteur (si choisie)
@@ -1170,9 +1234,21 @@
 
   function cancelContrat() {
     if (contratVersion === 0) {
+      // Rien n'a encore été généré : on referme complètement l'espace contrat
       document.getElementById('contratWorkspace').style.display = 'none';
       document.getElementById('contratEmpty').style.display = 'flex';
+      return;
     }
+    // Avenant abandonné : on revient au contrat signé en place
+    setFormDisabled(true);
+    setSignStep('signed');
+    const dateSignature = document.getElementById('signedDateLabel').textContent;
+    document.getElementById('stepSentSub').textContent = dateSignature;
+    document.getElementById('stepViewedSub').textContent = dateSignature;
+    document.getElementById('stepSignedSub').textContent = dateSignature;
+    document.getElementById('contratActionsDraft').style.display = 'none';
+    document.getElementById('contratActionsSent').style.display = 'none';
+    document.getElementById('contratActionsSigned').style.display = 'block';
   }
 
   function sendForSignature() {
@@ -1220,12 +1296,13 @@
     ['stepSentSub', 'stepViewedSub', 'stepSignedSub'].forEach(id => document.getElementById(id).textContent = '—');
   }
 
-  function addContractFile(name, subHtml) {
+  function addContractFile(name, subHtml, apercuId) {
     document.getElementById('fichiersEmpty').style.display = 'none';
     const list = document.getElementById('fichiersList');
     list.style.display = 'flex';
     const row = document.createElement('div');
     row.className = 'file-row';
+    row.dataset.apercu = apercuId || 'docPreview';
     row.innerHTML =
       '<div class="file-icon">' + FILE_ICON_PDF + '</div>' +
       '<div class="file-meta">' +
@@ -1233,11 +1310,44 @@
         '<div class="file-sub" data-sub>' + subHtml + '</div>' +
       '</div>' +
       '<div class="file-actions">' +
-        '<button class="btn btn-ghost btn-sm">Voir</button>' +
-        '<button class="btn btn-ghost btn-sm">Télécharger</button>' +
+        '<button class="btn btn-ghost btn-sm" data-voir>Voir</button>' +
+        '<button class="btn btn-ghost btn-sm" data-dl>Télécharger</button>' +
       '</div>';
+    row.querySelector('[data-voir]').onclick = function () { voirDocument(row); };
+    row.querySelector('[data-dl]').onclick = function () { telechargerDocument(row); };
     list.prepend(row);
     return row;
+  }
+
+  // Le document est reconstruit à partir de l'aperçu affiché dans l'onglet Contrat
+  function documentHtml(titre, apercuId) {
+    const apercu = document.getElementById(apercuId || 'docPreview');
+    return '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" />' +
+      '<title>' + titre + '</title>' +
+      '<style>body{font-family:Georgia,serif;max-width:760px;margin:40px auto;padding:0 24px;' +
+      'line-height:1.6;color:#241F1A;} h1,h2,h3{font-family:inherit;} .empty{color:#9C9276;}</style>' +
+      '</head><body>' + apercu.innerHTML + '</body></html>';
+  }
+
+  function voirDocument(row) {
+    const titre = row.querySelector('[data-name]').textContent;
+    const w = window.open('', '_blank');
+    if (!w) { alert("Autorisez les fenêtres pop-up pour afficher le document."); return; }
+    w.document.write(documentHtml(titre, row.dataset.apercu));
+    w.document.close();
+  }
+
+  function telechargerDocument(row) {
+    const titre = row.querySelector('[data-name]').textContent;
+    const blob = new Blob([documentHtml(titre, row.dataset.apercu)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = titre.replace(/\.pdf$/i, '') + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   function updateContractFileToSigned(row, dateLabel) {
@@ -1426,7 +1536,8 @@
 
     addContractFile(
       restitFileName(true),
-      '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Restitution signée</span>Signée sur place le ' + today
+      '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Restitution signée</span>Signée sur place le ' + today,
+      'restitPreview'
     );
   }
 
@@ -1445,7 +1556,8 @@
 
     restitFileRow = addContractFile(
       restitFileName(false),
-      '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyée le ' + today
+      '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyée le ' + today,
+      'restitPreview'
     );
   }
 

@@ -161,8 +161,17 @@
 
   function toggleImport() {
     var p = document.getElementById('importPanel');
-    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    var ouvert = p.style.display !== 'none';
+    // En fermant (Annuler compris) on repart d'un panneau vierge
+    if (ouvert) resetImport();
+    p.style.display = ouvert ? 'none' : 'block';
     document.getElementById('importResult').style.display = 'none';
+  }
+
+  function resetImport() {
+    document.getElementById('csvFile').value = '';
+    document.getElementById('csvSession').value = '';
+    document.getElementById('csvFrais').value = 0;
   }
 
   function runImport() {

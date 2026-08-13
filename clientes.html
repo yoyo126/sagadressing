@@ -282,8 +282,21 @@
   /* ===== Nouvelle cliente ===== */
   function toggleNewForm() {
     var f = document.getElementById('newForm');
-    f.style.display = f.style.display === 'none' ? 'block' : 'none';
-    if (f.style.display === 'block') document.getElementById('nPrenom').focus();
+    var ouvert = f.style.display !== 'none';
+    // En fermant (Annuler compris) on repart d'un formulaire vierge
+    if (ouvert) resetNewForm();
+    f.style.display = ouvert ? 'none' : 'block';
+    if (!ouvert) document.getElementById('nPrenom').focus();
+  }
+
+  function resetNewForm() {
+    ['nPrenom', 'nLettre', 'nNom', 'nEmail', 'nTel'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('nCommission').value = 30;
+    document.getElementById('nApporteur').selectedIndex = 0;
+    document.getElementById('letterWarn').style.display = 'none';
+    clearVignette();
   }
 
   function addCliente() {
@@ -314,11 +327,7 @@
     });
     persist();
 
-    ['nPrenom','nLettre','nNom','nEmail','nTel'].forEach(function (id) {
-      document.getElementById(id).value = '';
-    });
-    clearVignette();
-    toggleNewForm();
+    toggleNewForm();   // ferme et vide le formulaire
     render();
   }
 
