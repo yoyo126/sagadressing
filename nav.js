@@ -117,6 +117,239 @@ function sagaDownload(filename, content, mime) {
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
 }
 
+/* ============ Lives : source unique partagée ============
+   Un live contient ses articles, chacun rattaché à une lettre de dressing.
+   Tous les totaux (par cliente, par live) sont recalculés à partir de cette
+   liste : corriger la lettre d'un article suffit à basculer la vente sur la
+   bonne cliente, partout dans l'application. */
+
+var SAGA_LIVES_DEFAUT = [
+  {
+    id: 'l-20260729', date: '2026-07-29', titre: 'Live du 29 juillet',
+    categorie: 'Sacs & accessoires', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-07-30' },
+    articles: [
+      { id: 'a1',  libelle: 'Sac cabas cuir camel',      lettre: 'M', montant: 240, type: 'vente' },
+      { id: 'a2',  libelle: 'Trench beige T38',          lettre: 'M', montant: 180, type: 'vente' },
+      { id: 'a3',  libelle: 'Lot 3 foulards soie',       lettre: 'M', montant: 95,  type: 'vente' },
+      { id: 'a4',  libelle: 'Escarpins vernis T37',      lettre: 'M', montant: 120, type: 'vente' },
+      { id: 'a5',  libelle: 'Robe portefeuille fleurie', lettre: 'M', montant: 845, type: 'vente' },
+      { id: 'a6',  libelle: 'Pochette brodée — giveaway',lettre: 'M', montant: 60,  type: 'giveaway' },
+      { id: 'a7',  libelle: 'Sac seau daim',             lettre: 'C', montant: 310, type: 'vente' },
+      { id: 'a8',  libelle: 'Blazer oversize noir',      lettre: 'C', montant: 150, type: 'vente' },
+      { id: 'a9',  libelle: 'Lot bijoux fantaisie',      lettre: 'C', montant: 75,  type: 'vente' },
+      { id: 'a10', libelle: 'Manteau laine chiné',       lettre: 'C', montant: 1125,type: 'vente' },
+      { id: 'a11', libelle: 'Ceinture cuir tressé',      lettre: 'B', montant: 65,  type: 'vente' },
+      { id: 'a12', libelle: 'Bottines chelsea T38',      lettre: 'B', montant: 140, type: 'vente' },
+      { id: 'a13', libelle: 'Sac banane matelassé',      lettre: 'B', montant: 1295,type: 'vente' },
+      { id: 'a14', libelle: 'Écharpe cachemire — giveaway', lettre: 'B', montant: 40, type: 'giveaway' }
+    ],
+    paiements: { B: { date: '2026-08-01', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260727', date: '2026-07-27', titre: 'Live du 27 juillet',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-07-28' },
+    articles: [
+      { id: 'b1', libelle: 'Jean droit brut T40',   lettre: 'M', montant: 320, type: 'vente' },
+      { id: 'b2', libelle: 'Chemisier soie ivoire', lettre: 'M', montant: 540, type: 'vente' },
+      { id: 'b3', libelle: 'Cardigan maille torsadée', lettre: 'F', montant: 480, type: 'vente' },
+      { id: 'b4', libelle: 'Jupe plissée midi',     lettre: 'F', montant: 620, type: 'vente' }
+    ],
+    paiements: { M: { date: '2026-07-30', mode: 'Virement' }, F: { date: '2026-07-30', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260724', date: '2026-07-24', titre: 'Live du 24 juillet',
+    categorie: 'Promo 0 frais Whatnot', fraisPct: 18,
+    encaisse: { statut: 'Reçu', date: '2026-07-25' },
+    articles: [
+      { id: 'c1', libelle: 'Doudoune sans manches',  lettre: 'B', montant: 980,  type: 'vente' },
+      { id: 'c2', libelle: 'Lot 5 t-shirts basiques',lettre: 'B', montant: 1130, type: 'vente' },
+      { id: 'c3', libelle: 'Sac à dos toile',        lettre: 'C', montant: 760,  type: 'vente' },
+      { id: 'c4', libelle: 'Robe longue bohème',     lettre: 'F', montant: 890,  type: 'vente' },
+      { id: 'c5', libelle: 'Baskets rétro T39',      lettre: 'T', montant: 1450, type: 'vente' }
+    ],
+    paiements: { C: { date: '2026-07-28', mode: 'PayPal' }, F: { date: '2026-07-28', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260720', date: '2026-07-20', titre: 'Live du 20 juillet',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-07-21' },
+    articles: [
+      { id: 'd1', libelle: 'Veste en jean brodée', lettre: 'F', montant: 1500, type: 'vente' },
+      { id: 'd2', libelle: 'Lot accessoires été',  lettre: 'B', montant: 550,  type: 'vente' }
+    ],
+    paiements: { F: { date: '2026-07-24', mode: 'Virement' }, B: { date: '2026-07-24', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260717', date: '2026-07-17', titre: 'Live du 17 juillet',
+    categorie: "Robes d'été", fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-07-18' },
+    articles: [
+      { id: 'e1', libelle: 'Robe lin écrue',       lettre: 'M', montant: 870,  type: 'vente' },
+      { id: 'e2', libelle: 'Robe satin bordeaux',  lettre: 'C', montant: 1120, type: 'vente' },
+      { id: 'e3', libelle: 'Combinaison fluide',   lettre: 'B', montant: 880,  type: 'vente' }
+    ],
+    paiements: { M: { date: '2026-07-22', mode: 'Virement' }, C: { date: '2026-07-22', mode: 'Virement' }, B: { date: '2026-07-22', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260713', date: '2026-07-13', titre: 'Live du 13 juillet',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-07-14' },
+    articles: [
+      { id: 'f1', libelle: 'Blouson cuir vintage', lettre: 'C', montant: 1400, type: 'vente' },
+      { id: 'f2', libelle: 'Lot 4 pulls hiver',    lettre: 'M', montant: 920,  type: 'vente' }
+    ],
+    paiements: { C: { date: '2026-07-17', mode: 'Virement' }, M: { date: '2026-07-17', mode: 'Virement' } }
+  }
+];
+
+function sagaLives() { return sagaLoad('lives', SAGA_LIVES_DEFAUT); }
+function sagaSaveLives(lives) { return sagaSave('lives', lives); }
+
+function sagaLive(id) {
+  return sagaLives().filter(function (l) { return l.id === id; })[0] || null;
+}
+
+/* Correspondance lettre de dressing → cliente, connue de toutes les pages
+   même avant que la liste des clientes ait été ouverte une première fois. */
+var SAGA_DRESSINGS_DEFAUT = {
+  M: { prenom: 'Fanny',   fiche: 'fanny',   commission: 30, apporteur: 'Nadia R.', apporteurPct: 8 },
+  C: { prenom: 'Julie',   fiche: 'julie',   commission: 30, apporteur: '',         apporteurPct: 0 },
+  B: { prenom: 'Camille', fiche: 'camille', commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 },
+  F: { prenom: 'Marion',  fiche: 'marion',  commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
+  P: { prenom: 'Alix',    fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
+  T: { prenom: 'Nora',    fiche: '',        commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
+  D: { prenom: 'Sophie',  fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
+  R: { prenom: 'Élise',   fiche: '',        commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 }
+};
+
+/* Taux appliqués à une lettre de dressing.
+   Priorité à la fiche cliente saisie, puis à la liste, puis au défaut. */
+function sagaTauxDressing(lettre) {
+  var d = SAGA_DRESSINGS_DEFAUT[lettre] || {};
+  var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
+  var fiches = sagaLoad('clients_data', {});
+  var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
+    .filter(function (f) { return f.lettre === lettre; })[0];
+
+  function choisir() {
+    for (var i = 0; i < arguments.length; i++) {
+      if (arguments[i] !== undefined && arguments[i] !== null && arguments[i] !== '') return arguments[i];
+    }
+    return arguments[arguments.length - 1];
+  }
+
+  return {
+    prenom: choisir(fiche && fiche.prenom, c && c.prenom, d.prenom, 'Dressing ' + lettre),
+    commission: choisir(fiche && fiche.commission, c && c.pct, d.commission, 30),
+    apporteur: fiche ? (fiche.apporteur || '') : (c ? (c.apporteur || '') : (d.apporteur || '')),
+    apporteurPct: fiche ? (fiche.apporteurPct || 0) : (d.apporteurPct || 0)
+  };
+}
+
+/* Clé de fiche (?c=…) correspondant à une lettre de dressing */
+function sagaFicheDressing(lettre) {
+  var fiches = sagaLoad('clients_data', {});
+  var cle = Object.keys(fiches).filter(function (k) { return fiches[k].lettre === lettre; })[0];
+  if (cle) return cle;
+  var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
+  if (c && c.key) return c.key;
+  return (SAGA_DRESSINGS_DEFAUT[lettre] || {}).fiche || '';
+}
+
+/* Décompte d'un dressing sur un live, recalculé depuis ses articles.
+   base = ventes − frais Whatnot ; net = base − giveaways − commissions */
+function sagaDecompte(live, lettre) {
+  var arts = live.articles.filter(function (a) { return a.lettre === lettre; });
+  var ventes = arts.filter(function (a) { return a.type !== 'giveaway'; })
+                   .reduce(function (s, a) { return s + a.montant; }, 0);
+  var giveaways = arts.filter(function (a) { return a.type === 'giveaway'; })
+                      .reduce(function (s, a) { return s + a.montant; }, 0);
+  var t = sagaTauxDressing(lettre);
+  // Une vente hors Whatnot ne supporte pas les frais de la plateforme
+  var soumisFrais = arts.filter(function (a) { return a.type === 'vente'; })
+                        .reduce(function (s, a) { return s + a.montant; }, 0);
+  var horsLive = arts.filter(function (a) { return a.type === 'horslive'; })
+                     .reduce(function (s, a) { return s + a.montant; }, 0);
+  var base = soumisFrais * (1 - (live.fraisPct || 0) / 100) + horsLive;
+  var commSaga = base * t.commission / 100;
+  var commApporteur = t.apporteur ? base * t.apporteurPct / 100 : 0;
+  var paiement = (live.paiements || {})[lettre] || null;
+  return {
+    lettre: lettre, prenom: t.prenom, articles: arts,
+    ventes: ventes, giveaways: giveaways, base: base,
+    commSaga: commSaga, commApporteur: commApporteur, apporteur: t.apporteur,
+    net: base - giveaways - commSaga - commApporteur,
+    paye: !!paiement, paiement: paiement
+  };
+}
+
+/* Lettres présentes sur un live, dans l'ordre d'apparition */
+function sagaLettresDuLive(live) {
+  var vues = [];
+  live.articles.forEach(function (a) { if (vues.indexOf(a.lettre) === -1) vues.push(a.lettre); });
+  return vues;
+}
+
+function sagaTotauxLive(live) {
+  var t = { ventes: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, net: 0, reste: 0, clientes: 0 };
+  sagaLettresDuLive(live).forEach(function (lettre) {
+    var d = sagaDecompte(live, lettre);
+    t.clientes++;
+    t.ventes += d.ventes; t.giveaways += d.giveaways; t.base += d.base;
+    t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
+    if (!d.paye) t.reste += d.net;
+  });
+  return t;
+}
+
+var SAGA_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+function sagaEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+
+function sagaDateFR(iso) {
+  if (!iso) return '—';
+  var p = iso.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+function sagaDateLongue(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso + 'T00:00:00');
+  return d.getDate() + ' ' + SAGA_MOIS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+/* Ouvre un document imprimable : l'utilisateur choisit « Enregistrer au format PDF »
+   dans la boîte d'impression du navigateur. */
+function sagaImprimer(titre, corps) {
+  var w = window.open('', '_blank');
+  if (!w) { alert("Autorisez les fenêtres pop-up pour générer le PDF."); return; }
+  w.document.write(
+    '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" /><title>' + titre + '</title><style>' +
+    'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#241F1A;' +
+    'max-width:820px;margin:32px auto;padding:0 28px;line-height:1.5;}' +
+    'h1{font-size:1.5rem;margin:0 0 4px;} h2{font-size:1rem;margin:26px 0 8px;border-bottom:1px solid #E7DFCF;padding-bottom:5px;}' +
+    '.sous{color:#726952;font-size:.85rem;margin:0 0 18px;}' +
+    'table{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:10px;}' +
+    'th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #EFE8DA;}' +
+    'th{color:#726952;font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;}' +
+    'td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}' +
+    'tfoot td{font-weight:700;border-top:2px solid #241F1A;border-bottom:0;}' +
+    '.recap{background:#FBF6EE;border:1px solid #E7DFCF;border-radius:8px;padding:12px 14px;margin:10px 0 4px;}' +
+    '.recap div{display:flex;justify-content:space-between;padding:3px 0;font-size:.85rem;}' +
+    '.recap .total{border-top:1px solid #E7DFCF;margin-top:6px;padding-top:8px;font-weight:700;}' +
+    '.pied{margin-top:28px;color:#9C9276;font-size:.72rem;}' +
+    '@media print{body{margin:0;} .noprint{display:none;}}' +
+    '</style></head><body>' + corps +
+    '<p class="pied">Saga Dressing — document généré le ' + sagaDateLongue(new Date().toISOString().slice(0, 10)) + '</p>' +
+    '</body></html>'
+  );
+  w.document.close();
+  w.focus();
+  setTimeout(function () { w.print(); }, 400);
+}
+
 function renderSpark(el, values) {
   if (!el) return;
   el.innerHTML = '';

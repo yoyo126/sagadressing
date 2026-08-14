@@ -19,8 +19,12 @@
         <div class="topbar-actions">
           <div class="search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="Rechercher un live…" />
+            <input type="text" id="searchLives" placeholder="Rechercher un live…" />
           </div>
+          <button class="btn btn-secondary" onclick="imprimerTousLesLives()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/></svg>
+            Récap PDF de tous les lives
+          </button>
           <button class="btn btn-primary" onclick="toggleImport()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Importer un CSV Whatnot
@@ -97,57 +101,12 @@
               <th>Statut</th>
             </tr>
           </thead>
-          <tbody>
-            <tr data-href="live.html" data-status="open">
-              <td><strong>Live du 29 juillet</strong><div class="muted" style="font-size:.75rem;">Sacs &amp; accessoires</div></td>
-              <td class="num tabular">3</td>
-              <td class="num tabular">4 640 €</td>
-              <td class="num tabular">1 392 €</td>
-              <td class="num tabular">2 052 €</td>
-              <td><span class="chip warn">En cours</span></td>
-            </tr>
-            <tr data-href="live.html" data-status="done">
-              <td><strong>Live du 27 juillet</strong><div class="muted" style="font-size:.75rem;">Mix saison</div></td>
-              <td class="num tabular">2</td>
-              <td class="num tabular">1 960 €</td>
-              <td class="num tabular">588 €</td>
-              <td class="num tabular">0 €</td>
-              <td><span class="chip good">Soldée</span></td>
-            </tr>
-            <tr data-href="live.html" data-status="open">
-              <td><strong>Live du 24 juillet</strong><div class="muted" style="font-size:.75rem;">Promo 0 frais Whatnot</div></td>
-              <td class="num tabular">4</td>
-              <td class="num tabular">5 210 €</td>
-              <td class="num tabular">1 563 €</td>
-              <td class="num tabular">480 €</td>
-              <td><span class="chip critical">Retard</span></td>
-            </tr>
-            <tr data-href="live.html" data-status="done">
-              <td><strong>Live du 20 juillet</strong><div class="muted" style="font-size:.75rem;">Mix saison</div></td>
-              <td class="num tabular">2</td>
-              <td class="num tabular">2 050 €</td>
-              <td class="num tabular">615 €</td>
-              <td class="num tabular">0 €</td>
-              <td><span class="chip good">Soldée</span></td>
-            </tr>
-            <tr data-href="live.html" data-status="done">
-              <td><strong>Live du 17 juillet</strong><div class="muted" style="font-size:.75rem;">Robes d'été</div></td>
-              <td class="num tabular">3</td>
-              <td class="num tabular">2 870 €</td>
-              <td class="num tabular">861 €</td>
-              <td class="num tabular">0 €</td>
-              <td><span class="chip good">Soldée</span></td>
-            </tr>
-            <tr data-href="live.html" data-status="done">
-              <td><strong>Live du 13 juillet</strong><div class="muted" style="font-size:.75rem;">Mix saison</div></td>
-              <td class="num tabular">2</td>
-              <td class="num tabular">2 320 €</td>
-              <td class="num tabular">696 €</td>
-              <td class="num tabular">0 €</td>
-              <td><span class="chip good">Soldée</span></td>
-            </tr>
-          </tbody>
+          <tbody id="livesBody"></tbody>
         </table>
+        </div>
+        <div id="livesEmpty" class="empty-state" style="display:none; margin-top:14px;">
+          <div class="t">Aucun live ne correspond</div>
+          <div class="s">Essayez un autre nom ou changez de filtre</div>
         </div>
       </div>
 
@@ -158,6 +117,103 @@
 <script src="nav.js"></script>
 <script>
   renderSagaSidebar('lives');
+
+  var LIVES = sagaLives();
+
+  function statutLive(t) {
+    if (t.reste <= 0) return { cle: 'done', chip: '<span class="chip good">Soldée</span>' };
+    return { cle: 'open', chip: '<span class="chip warn">En cours</span>' };
+  }
+
+  function renderLives() {
+    var q = document.getElementById('searchLives').value.trim().toLowerCase();
+    var filtre = document.querySelector('#statusToggle button.active').dataset.status;
+
+    var lignes = LIVES.slice()
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; })
+      .map(function (l) { return { live: l, totaux: sagaTotauxLive(l) }; })
+      .filter(function (x) {
+        var st = statutLive(x.totaux).cle;
+        if (filtre !== 'all' && st !== filtre) return false;
+        if (q && (x.live.titre + ' ' + x.live.categorie).toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+
+    document.getElementById('livesBody').innerHTML = lignes.map(function (x) {
+      var t = x.totaux;
+      return '<tr data-href="live.html?l=' + x.live.id + '">' +
+        '<td><strong>' + x.live.titre + '</strong>' +
+          '<div class="muted" style="font-size:.75rem;">' + x.live.categorie + '</div></td>' +
+        '<td class="num tabular">' + t.clientes + '</td>' +
+        '<td class="num tabular">' + sagaEUR(t.ventes) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(t.commSaga) + '</td>' +
+        '<td class="num tabular">' + (t.reste > 0
+            ? '<strong style="color:var(--brand-strong)">' + sagaEUR(t.reste) + '</strong>'
+            : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + statutLive(t).chip + '</td>' +
+      '</tr>';
+    }).join('');
+
+    document.getElementById('livesEmpty').style.display = lignes.length ? 'none' : 'flex';
+    initRowLinks(document.getElementById('livesBody'));
+  }
+
+  /* Récapitulatif de tous les lives : synthèse par live, puis détail par cliente */
+  function imprimerTousLesLives() {
+    var lives = LIVES.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var g = { ventes: 0, commSaga: 0, commApporteur: 0, net: 0, reste: 0 };
+
+    var corps = '<h1>Récapitulatif de tous les lives</h1>' +
+      '<p class="sous">' + lives.length + ' session(s) — de ' +
+      sagaDateLongue(lives[lives.length - 1].date) + ' à ' + sagaDateLongue(lives[0].date) + '</p>' +
+      '<h2>Synthèse par live</h2>' +
+      '<table><thead><tr><th>Live</th><th>Date</th><th class="num">Clientes</th><th class="num">Ventes</th>' +
+      '<th class="num">Comm. Saga</th><th class="num">Net reversé</th><th class="num">Reste dû</th></tr></thead><tbody>' +
+      lives.map(function (l) {
+        var t = sagaTotauxLive(l);
+        g.ventes += t.ventes; g.commSaga += t.commSaga;
+        g.commApporteur += t.commApporteur; g.net += t.net; g.reste += t.reste;
+        return '<tr><td>' + l.titre + '</td><td>' + sagaDateFR(l.date) + '</td>' +
+          '<td class="num">' + t.clientes + '</td>' +
+          '<td class="num">' + sagaEUR(t.ventes) + '</td>' +
+          '<td class="num">' + sagaEUR(t.commSaga) + '</td>' +
+          '<td class="num">' + sagaEUR(t.net) + '</td>' +
+          '<td class="num">' + (t.reste > 0 ? sagaEUR(t.reste) : '—') + '</td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td></td><td></td>' +
+      '<td class="num">' + sagaEUR(g.ventes) + '</td>' +
+      '<td class="num">' + sagaEUR(g.commSaga) + '</td>' +
+      '<td class="num">' + sagaEUR(g.net) + '</td>' +
+      '<td class="num">' + sagaEUR(g.reste) + '</td></tr></tfoot></table>';
+
+    // Cumul par cliente, tous lives confondus
+    var parCliente = {};
+    lives.forEach(function (l) {
+      sagaLettresDuLive(l).forEach(function (lettre) {
+        var d = sagaDecompte(l, lettre);
+        var e = parCliente[lettre] || (parCliente[lettre] = { prenom: d.prenom, lives: 0, ventes: 0, commSaga: 0, net: 0, reste: 0 });
+        e.lives++; e.ventes += d.ventes; e.commSaga += d.commSaga; e.net += d.net;
+        if (!d.paye) e.reste += d.net;
+      });
+    });
+
+    corps += '<h2>Cumul par cliente</h2>' +
+      '<table><thead><tr><th>Cliente</th><th class="num">Lives</th><th class="num">Ventes</th>' +
+      '<th class="num">Comm. Saga</th><th class="num">Net reversé</th><th class="num">Reste dû</th></tr></thead><tbody>' +
+      Object.keys(parCliente).sort(function (a, b) { return parCliente[b].ventes - parCliente[a].ventes; })
+        .map(function (lettre) {
+          var e = parCliente[lettre];
+          return '<tr><td>' + e.prenom + ' (' + lettre + ')</td>' +
+            '<td class="num">' + e.lives + '</td>' +
+            '<td class="num">' + sagaEUR(e.ventes) + '</td>' +
+            '<td class="num">' + sagaEUR(e.commSaga) + '</td>' +
+            '<td class="num">' + sagaEUR(e.net) + '</td>' +
+            '<td class="num">' + (e.reste > 0 ? sagaEUR(e.reste) : '—') + '</td></tr>';
+        }).join('') +
+      '</tbody></table>';
+
+    sagaImprimer('Recap_tous_les_lives', corps);
+  }
 
   function toggleImport() {
     var p = document.getElementById('importPanel');
@@ -177,18 +233,22 @@
   function runImport() {
     document.getElementById('importResult').style.display = 'block';
   }
-  initRowLinks();
 
   document.getElementById('statusToggle').addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     document.querySelectorAll('#statusToggle button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    const status = btn.dataset.status;
-    document.querySelectorAll('tbody tr[data-status]').forEach(tr => {
-      tr.style.display = (status === 'all' || tr.dataset.status === status) ? '' : 'none';
-    });
+    renderLives();
   });
+
+  var rechercheTimer = null;
+  document.getElementById('searchLives').addEventListener('input', function () {
+    clearTimeout(rechercheTimer);
+    rechercheTimer = setTimeout(renderLives, 250);
+  });
+
+  renderLives();
 </script>
 </body>
 </html>

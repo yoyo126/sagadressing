@@ -700,6 +700,7 @@
     }
 
     // Tableau des ventes
+    synchroniserLives();
     document.getElementById('livesTableBody').innerHTML = CLIENT.lives.map(function (l, i) {
       var label = l.horsLive
         ? l.label + ' <span class="chip neutral" style="margin-left:6px;">Hors live</span>'
@@ -715,7 +716,9 @@
       var action = l.paye
         ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); cancelPayment(' + i + ')">Annuler</button>'
         : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payOne(' + i + ')">Payer</button>';
-      return '<tr' + (l.horsLive ? '' : ' data-href="live.html"') +
+      action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerLigne(' + i + ')">PDF</button>';
+      var lienLive = l.horsLive ? '' : lienVersLive(l.date);
+      return '<tr' + (lienLive ? ' data-href="' + lienLive + '"' : '') +
         ' data-date="' + l.date + '" data-ventes="' + l.ventes + '" data-commission="' + l.commission +
         '" data-net="' + l.net + '" data-paye="' + l.paye + '">' +
         '<td>' + fmtDateShortFR(l.date) + '</td>' +
@@ -746,6 +749,103 @@
     }
 
     renderInfosForm();
+  }
+
+  /* Le live détaillé est retrouvé par sa date : on l'ouvre filtré sur cette
+     cliente, pour ne voir que ses articles à elle et pas ceux des autres. */
+  function liveDeLaDate(date) {
+    return sagaLives().filter(function (l) { return l.date === date; })[0] || null;
+  }
+
+  /* Toute session listée sur la fiche doit avoir un live détaillé ouvrable.
+     Les sessions plus anciennes que le détail article par article sont créées
+     avec une ligne de synthèse, que l'on peut ensuite détailler dans le live. */
+  function synchroniserLives() {
+    var lives = sagaLives();
+    var modifie = false;
+
+    CLIENT.lives.forEach(function (l) {
+      if (l.horsLive) return;
+      var live = lives.filter(function (x) { return x.date === l.date; })[0];
+
+      if (!live) {
+        live = {
+          id: 'l-' + l.date.replace(/-/g, ''),
+          date: l.date,
+          titre: 'Live du ' + fmtDateShortFR(l.date),
+          categorie: 'Mix saison',
+          fraisPct: 0,
+          encaisse: { statut: 'Reçu', date: l.date },
+          articles: [],
+          paiements: {}
+        };
+        lives.push(live);
+        modifie = true;
+      }
+
+      // La cliente n'apparaît pas encore dans ce live : on y porte son total
+      if (!live.articles.some(function (a) { return a.lettre === CLIENT.lettre; })) {
+        live.articles.push({
+          id: 'sy-' + CLIENT.lettre + '-' + l.date,
+          libelle: 'Ventes du live — à détailler',
+          lettre: CLIENT.lettre,
+          montant: l.ventes,
+          type: 'vente'
+        });
+        if (l.paye) {
+          live.paiements = live.paiements || {};
+          live.paiements[CLIENT.lettre] = {
+            date: l.datePaiement || l.date,
+            mode: l.modePaiement || 'Virement'
+          };
+        }
+        modifie = true;
+      }
+    });
+
+    if (modifie) sagaSaveLives(lives);
+  }
+
+  function lienVersLive(date) {
+    var live = liveDeLaDate(date);
+    return live ? 'live.html?l=' + live.id + '&c=' + CLIENT.lettre : '';
+  }
+
+  /* Récapitulatif imprimable d'une ligne de la fiche.
+     Si le live détaillé existe, on reprend le détail article par article. */
+  function imprimerLigne(i) {
+    var l = CLIENT.lives[i];
+    if (!l) return;
+    var live = l.horsLive ? null : liveDeLaDate(l.date);
+
+    var corps = '<h1>' + CLIENT.prenom + ' — ' + l.label + '</h1>' +
+      '<p class="sous">Dressing ' + CLIENT.lettre + ' · ' + sagaDateLongue(l.date) +
+      (l.horsLive ? ' · vente hors Whatnot' : '') + '</p>' +
+      '<div class="recap">' +
+        '<div><span>Ventes</span><span>' + fmtEUR(l.ventes) + '</span></div>' +
+        '<div><span>− Commission Saga (' + CLIENT.commission + ' %)</span><span>' + fmtEUR(l.commission) + '</span></div>' +
+        (l.apporteurMontant > 0 ? '<div><span>− Commission apporteur (' + CLIENT.apporteur + ')</span><span>' + fmtEUR(l.apporteurMontant) + '</span></div>' : '') +
+        (l.frais > 0 ? '<div><span>− Frais d\'envoi</span><span>' + fmtEUR(l.frais) + '</span></div>' : '') +
+        '<div class="total"><span>Net à reverser</span><span>' + fmtEUR(l.net) + '</span></div>' +
+      '</div>' +
+      (l.paye
+        ? '<p class="sous">Réglé' + (l.datePaiement ? ' le ' + fmtDateFR(l.datePaiement) : '') +
+          (l.modePaiement ? ' par ' + l.modePaiement : '') + '.</p>'
+        : '<p class="sous">En attente de règlement.</p>');
+
+    if (live) {
+      var arts = live.articles.filter(function (a) { return a.lettre === CLIENT.lettre; });
+      if (arts.length) {
+        corps += '<h2>Détail des ' + arts.length + ' article(s)</h2>' +
+          '<table><thead><tr><th>Article</th><th class="num">Montant</th><th>Type</th></tr></thead><tbody>' +
+          arts.map(function (a) {
+            var t = a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente';
+            return '<tr><td>' + a.libelle + '</td><td class="num">' + fmtEUR(a.montant) + '</td><td>' + t + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      }
+    }
+
+    sagaImprimer('Recap_' + CLIENT.prenom + '_' + l.date, corps);
   }
 
   /* ============ Fiche modifiable ============

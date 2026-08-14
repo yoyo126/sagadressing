@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Live du 29 juillet — Saga Dressing (maquette)</title>
+<title>Live — Saga Dressing (maquette)</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,26 +11,30 @@
     <aside class="sidebar" id="sidebarRoot"></aside>
 
     <div class="main">
-      <a class="back-link" href="lives.html">
+      <a class="back-link" id="backLink" href="lives.html">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>
-        Lives
+        <span id="backLabel">Lives</span>
       </a>
 
       <div class="detail-header">
-        <div class="avatar-lg" style="background:linear-gradient(145deg,#EADFC8,#C9A063); color:#2A2115;">29</div>
+        <div class="avatar-lg" id="liveAvatar" style="background:linear-gradient(145deg,#EADFC8,#C9A063); color:#2A2115;">—</div>
         <div class="detail-title-block">
           <div class="detail-title-row">
-            <h1>Live du 29 juillet</h1>
-            <span class="chip warn">En cours</span>
+            <h1 id="liveTitre">—</h1>
+            <span class="chip warn" id="liveChip">—</span>
           </div>
-          <div class="detail-meta">3 clientes · sacs &amp; accessoires · frais Whatnot 0 % · reçu le 30 juillet</div>
+          <div class="detail-meta" id="liveMeta">—</div>
         </div>
         <div class="detail-actions">
-          <button class="btn btn-secondary" onclick="alert('Ouvrirait le formulaire d\'édition du live (date, frais Whatnot, catégorie).')">
+          <button class="btn btn-secondary" onclick="ouvrirEditionLive()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            Modifier
+            Modifier le live
           </button>
-          <button class="btn btn-primary" onclick="payAllRows()">
+          <button class="btn btn-secondary" onclick="imprimerRecap()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/></svg>
+            <span id="btnRecapLabel">Récap PDF</span>
+          </button>
+          <button class="btn btn-primary" id="btnPayerTout" onclick="payerTout()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
             Tout marquer payé
           </button>
@@ -42,14 +46,45 @@
         Maquette design — données fictives, non connectée au CRM en production
       </div>
 
-      <div class="stat-inline-row">
-        <div class="stat-inline"><span class="label">Ventes totales</span><span class="value tabular">4 640 €</span></div>
-        <div class="stat-inline"><span class="label">Commission Saga</span><span class="value tabular">1 392 €</span></div>
-        <div class="stat-inline"><span class="label">Commission apporteurs</span><span class="value tabular">278 €</span></div>
-        <div class="stat-inline"><span class="label">Reste à reverser</span><span class="value tabular" id="liveReste" style="color:var(--brand-strong)">1 890 €</span></div>
+      <!-- Bandeau affiché quand on arrive depuis la fiche d'une cliente -->
+      <div class="alert-bar" id="filtreBar" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span id="filtreTexte">—</span>
+        <button class="btn btn-secondary btn-sm alert-action" onclick="voirToutLeLive()">Voir tout le live</button>
       </div>
 
-      <div class="panel">
+      <!-- Édition des informations du live -->
+      <div class="panel" id="editLivePanel" style="display:none;">
+        <div class="panel-head"><h2>Informations du live</h2></div>
+        <div class="form-grid" style="max-width:520px;">
+          <div class="form-field">
+            <label class="form-label" for="eTitre">Intitulé</label>
+            <input class="form-input" id="eTitre" />
+          </div>
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:1;">
+              <label class="form-label" for="eDate">Date</label>
+              <input class="form-input" type="date" id="eDate" />
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="eFrais">Frais Whatnot (%)</label>
+              <input class="form-input" type="number" id="eFrais" step="0.1" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="eCategorie">Catégorie</label>
+            <input class="form-input" id="eCategorie" placeholder="Ex. Sacs &amp; accessoires" />
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="enregistrerLive()">Enregistrer</button>
+            <button class="btn btn-ghost btn-sm" onclick="annulerEditionLive()">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-inline-row" id="statsRow"></div>
+
+      <div class="panel" id="panelRepartition">
         <div class="panel-head">
           <h2>Répartition par cliente</h2>
           <span class="panel-link" style="color:var(--ink-faint);">base = ventes − frais Whatnot</span>
@@ -69,59 +104,57 @@
               <th></th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td><div class="name-cell"><span class="tag-avatar">M</span> Fanny</div></td>
-              <td class="num tabular">1 480 €</td>
-              <td class="num tabular">60 €</td>
-              <td class="num tabular">1 480 €</td>
-              <td class="num tabular">444 €</td>
-              <td class="num tabular">86 €</td>
-              <td class="num tabular"><strong>890 €</strong></td>
-              <td><span class="chip warn">En attente</span></td>
-              <td><button class="btn btn-secondary btn-sm" onclick="payRow(this)">Payer</button></td>
-            </tr>
-            <tr>
-              <td><div class="name-cell"><span class="tag-avatar">C</span> Julie</div></td>
-              <td class="num tabular">1 660 €</td>
-              <td class="num tabular">0 €</td>
-              <td class="num tabular">1 660 €</td>
-              <td class="num tabular">498 €</td>
-              <td class="num tabular">0 €</td>
-              <td class="num tabular"><strong>1 162 €</strong></td>
-              <td><span class="chip warn">En attente</span></td>
-              <td><button class="btn btn-secondary btn-sm" onclick="payRow(this)">Payer</button></td>
-            </tr>
-            <tr>
-              <td><div class="name-cell"><span class="tag-avatar">B</span> Camille</div></td>
-              <td class="num tabular">1 500 €</td>
-              <td class="num tabular">40 €</td>
-              <td class="num tabular">1 500 €</td>
-              <td class="num tabular">450 €</td>
-              <td class="num tabular">192 €</td>
-              <td class="num tabular"><strong>818 €</strong></td>
-              <td><span class="chip good">Payé</span></td>
-              <td><button class="btn btn-ghost btn-sm" disabled style="opacity:.5;">Annuler</button></td>
-            </tr>
-          </tbody>
+          <tbody id="repartitionBody"></tbody>
+          <tfoot id="repartitionFoot"></tfoot>
         </table>
         </div>
       </div>
 
       <div class="content-grid">
         <div class="panel">
-          <div class="panel-head"><h2>Ventes du live</h2><span class="panel-link" style="color:var(--ink-faint);">import CSV Whatnot</span></div>
+          <div class="panel-head">
+            <h2 id="articlesTitre">Ventes du live</h2>
+            <button class="btn btn-secondary btn-sm" onclick="toggleArticleForm()">Ajouter un article</button>
+          </div>
+
+          <div id="articleForm" class="form-grid" style="display:none; margin-bottom:16px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--surface-alt);">
+            <div class="form-field">
+              <label class="form-label" for="aLibelle">Article</label>
+              <input class="form-input" id="aLibelle" placeholder="Ex. Sac cabas cuir camel" />
+            </div>
+            <div class="form-field" style="flex-direction:row; gap:12px;">
+              <div style="flex:1;">
+                <label class="form-label" for="aLettre">Dressing</label>
+                <select class="form-select" id="aLettre"></select>
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="aMontant">Montant (€)</label>
+                <input class="form-input" type="number" id="aMontant" step="0.01" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="aType">Type</label>
+              <select class="form-select" id="aType">
+                <option value="vente">Vente Whatnot</option>
+                <option value="horslive">Vente hors Whatnot (pas de frais plateforme)</option>
+                <option value="giveaway">Giveaway (déduit du net)</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-primary btn-sm" id="aSubmit" onclick="enregistrerArticle()">Ajouter l'article</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleArticleForm()">Annuler</button>
+            </div>
+          </div>
+
           <div class="table-scroll">
           <table>
-            <thead><tr><th>Article</th><th>Dressing</th><th class="num">Montant</th><th>Type</th></tr></thead>
-            <tbody>
-              <tr><td>PDD 30€ M</td><td class="muted">M</td><td class="num tabular">30 €</td><td class="muted">Vente</td></tr>
-              <tr><td>PDD 15€ C</td><td class="muted">C</td><td class="num tabular">15 €</td><td class="muted">Vente</td></tr>
-              <tr><td>PDD 60€ B</td><td class="muted">B</td><td class="num tabular">60 €</td><td class="muted">Vente</td></tr>
-              <tr><td>PDD 10€ M — giveaway</td><td class="muted">M</td><td class="num tabular">0 €</td><td class="muted">Giveaway</td></tr>
-              <tr><td>PDD 45€ C</td><td class="muted">C</td><td class="num tabular">45 €</td><td class="muted">Vente</td></tr>
-            </tbody>
+            <thead><tr><th>Article</th><th>Dressing</th><th class="num">Montant</th><th>Type</th><th></th></tr></thead>
+            <tbody id="articlesBody"></tbody>
           </table>
+          </div>
+          <div id="articlesEmpty" class="empty-state" style="display:none; margin-top:14px;">
+            <div class="t">Aucun article</div>
+            <div class="s">Ajoutez les ventes de ce live, ou importez le CSV Whatnot</div>
           </div>
         </div>
 
@@ -134,14 +167,11 @@
               <strong>Commission apporteur</strong> = base × % apporteur<br/>
               <strong>Net reversé</strong> = base − giveaways − commission Saga − commission apporteur
             </p>
+            <p class="card-note">Les ventes hors Whatnot ne supportent pas les frais de plateforme.</p>
           </div>
           <div class="panel">
             <div class="panel-head"><h2>Encaissement Whatnot</h2></div>
-            <div class="info-list">
-              <div class="info-row"><span class="k">Statut</span><span class="v"><span class="chip good">Reçu</span></span></div>
-              <div class="info-row"><span class="k">Date</span><span class="v">30 juillet 2026</span></div>
-              <div class="info-row"><span class="k">Montant</span><span class="v tabular">4 640 €</span></div>
-            </div>
+            <div class="info-list" id="encaisseList"></div>
           </div>
         </div>
       </div>
@@ -154,39 +184,410 @@
 <script>
   renderSagaSidebar('lives');
 
-  // Passe une cliente au statut réglé et met à jour le total restant du live
-  // Le total est recalculé au chargement pour ne jamais diverger des lignes
-  function payRow(btn) {
-    var tr = btn.closest('tr');
-    tr.querySelector('.chip').outerHTML = '<span class="chip good">Payé</span>';
-    btn.outerHTML = '<button class="btn btn-ghost btn-sm" disabled style="opacity:.5;">Annuler</button>';
-    refreshLiveTotal();
+  var TODAY_ISO = '2026-08-01';   // date de référence de la maquette
+
+  var params = new URLSearchParams(window.location.search);
+  var LIVES = sagaLives();
+  var LIVE = sagaLive(params.get('l')) || LIVES[0];
+  var FILTRE = params.get('c') || '';   // lettre de dressing, vide = tout le live
+  var articleEnEdition = null;
+
+  function persist() {
+    var i = LIVES.map(function (l) { return l.id; }).indexOf(LIVE.id);
+    if (i === -1) LIVES.push(LIVE); else LIVES[i] = LIVE;
+    sagaSaveLives(LIVES);
   }
 
-  function payAllRows() {
-    var pending = document.querySelectorAll('button.btn-secondary.btn-sm');
-    var todo = Array.prototype.filter.call(pending, function (b) { return b.textContent.trim() === 'Payer'; });
-    if (todo.length === 0) { alert('Toutes les clientes de ce live sont déjà réglées.'); return; }
-    if (!confirm('Marquer comme réglées les ' + todo.length + ' cliente(s) en attente sur ce live ?')) return;
-    todo.forEach(payRow);
+  function lettresDuLive() { return sagaLettresDuLive(LIVE); }
+
+  // Le filtre n'a de sens que si la lettre est présente sur ce live
+  function filtreValide() { return FILTRE && lettresDuLive().indexOf(FILTRE) !== -1; }
+
+  function libelleType(t) {
+    return t === 'giveaway' ? 'Giveaway' : t === 'horslive' ? 'Hors Whatnot' : 'Vente';
   }
 
-  // Le « reste à reverser » du bandeau suit les paiements
-  function refreshLiveTotal() {
-    var reste = 0;
-    document.querySelectorAll('tbody tr').forEach(function (tr) {
-      var chip = tr.querySelector('.chip');
-      if (!chip || chip.textContent.trim() !== 'En attente') return;
-      var cells = tr.querySelectorAll('td.num');
-      if (cells.length < 6) return;
-      var net = parseFloat(cells[5].textContent.replace(/[^0-9,.-]/g, '').replace(',', '.')) || 0;
-      reste += net;
+  /* ============ En-tête ============ */
+  function renderEntete() {
+    var d = new Date(LIVE.date + 'T00:00:00');
+    document.getElementById('liveAvatar').textContent = d.getDate();
+    document.getElementById('liveTitre').textContent = LIVE.titre;
+
+    var t = sagaTotauxLive(LIVE);
+    var chip = document.getElementById('liveChip');
+    if (t.reste <= 0) { chip.className = 'chip good'; chip.textContent = 'Soldée'; }
+    else { chip.className = 'chip warn'; chip.textContent = 'En cours'; }
+
+    document.getElementById('liveMeta').textContent =
+      t.clientes + ' cliente' + (t.clientes > 1 ? 's' : '') + ' · ' + LIVE.categorie +
+      ' · frais Whatnot ' + (LIVE.fraisPct || 0) + ' % · ' +
+      (LIVE.encaisse && LIVE.encaisse.date ? 'reçu le ' + sagaDateLongue(LIVE.encaisse.date) : 'encaissement en attente');
+
+    document.getElementById('encaisseList').innerHTML =
+      '<div class="info-row"><span class="k">Statut</span><span class="v"><span class="chip good">' +
+        ((LIVE.encaisse && LIVE.encaisse.statut) || 'En attente') + '</span></span></div>' +
+      '<div class="info-row"><span class="k">Date</span><span class="v">' +
+        sagaDateLongue(LIVE.encaisse && LIVE.encaisse.date) + '</span></div>' +
+      '<div class="info-row"><span class="k">Montant</span><span class="v tabular">' + sagaEUR(t.ventes) + '</span></div>';
+  }
+
+  /* ============ Bandeau de filtre par cliente ============ */
+  function renderFiltre() {
+    var bar = document.getElementById('filtreBar');
+    var back = document.getElementById('backLink');
+    if (!filtreValide()) {
+      bar.style.display = 'none';
+      back.href = 'lives.html';
+      document.getElementById('backLabel').textContent = 'Lives';
+      document.getElementById('btnRecapLabel').textContent = 'Récap PDF du live';
+      document.getElementById('articlesTitre').textContent = 'Ventes du live';
+      document.getElementById('panelRepartition').style.display = '';
+      document.getElementById('btnPayerTout').style.display = '';
+      return;
+    }
+    var d = sagaDecompte(LIVE, FILTRE);
+    bar.style.display = 'flex';
+    document.getElementById('filtreTexte').innerHTML =
+      'Vue filtrée sur <strong>' + d.prenom + ' (' + FILTRE + ')</strong> — ' +
+      d.articles.length + ' article' + (d.articles.length > 1 ? 's' : '') + ' sur ce live.';
+    back.href = 'cliente.html?c=' + ficheCliente(FILTRE);
+    document.getElementById('backLabel').textContent = d.prenom;
+    document.getElementById('btnRecapLabel').textContent = 'Récap PDF de ' + d.prenom;
+    document.getElementById('articlesTitre').textContent = 'Ventes de ' + d.prenom + ' sur ce live';
+    document.getElementById('btnPayerTout').style.display = 'none';
+  }
+
+  function ficheCliente(lettre) { return sagaFicheDressing(lettre); }
+
+  /* ============ Indicateurs ============ */
+  function renderStats() {
+    var row = document.getElementById('statsRow');
+    if (filtreValide()) {
+      var d = sagaDecompte(LIVE, FILTRE);
+      row.innerHTML =
+        stat('Ventes de ' + d.prenom, sagaEUR(d.ventes)) +
+        stat('Commission Saga', sagaEUR(d.commSaga)) +
+        stat('Giveaways', sagaEUR(d.giveaways)) +
+        stat('Net à reverser', sagaEUR(d.net), true);
+      return;
+    }
+    var t = sagaTotauxLive(LIVE);
+    row.innerHTML =
+      stat('Ventes totales', sagaEUR(t.ventes)) +
+      stat('Commission Saga', sagaEUR(t.commSaga)) +
+      stat('Commission apporteurs', sagaEUR(t.commApporteur)) +
+      stat('Reste à reverser', sagaEUR(t.reste), true);
+  }
+
+  function stat(label, valeur, accent) {
+    return '<div class="stat-inline"><span class="label">' + label + '</span>' +
+      '<span class="value tabular"' + (accent ? ' style="color:var(--brand-strong)"' : '') + '>' + valeur + '</span></div>';
+  }
+
+  /* ============ Répartition par cliente ============ */
+  function renderRepartition() {
+    var lettres = lettresDuLive();
+    if (filtreValide()) lettres = [FILTRE];
+
+    document.getElementById('repartitionBody').innerHTML = lettres.map(function (lettre) {
+      var d = sagaDecompte(LIVE, lettre);
+      var statut = d.paye
+        ? '<span class="chip good">Payé</span><div class="muted" style="font-size:.72rem; margin-top:3px;">' +
+          sagaDateFR(d.paiement.date) + ' · ' + d.paiement.mode + '</div>'
+        : '<span class="chip warn">En attente</span>';
+      var action = d.paye
+        ? '<button class="btn btn-ghost btn-sm" onclick="annulerPaiement(\'' + lettre + '\')">Annuler</button>'
+        : '<button class="btn btn-secondary btn-sm" onclick="payerCliente(\'' + lettre + '\')">Payer</button>';
+      var lien = ficheCliente(lettre);
+      return '<tr>' +
+        '<td><div class="name-cell"><span class="tag-avatar">' + lettre + '</span> ' +
+          (lien ? '<a href="cliente.html?c=' + lien + '" style="color:inherit;">' + d.prenom + '</a>' : d.prenom) +
+        '</div></td>' +
+        '<td class="num tabular">' + sagaEUR(d.ventes) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(d.giveaways) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(d.base) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(d.commSaga) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(d.commApporteur) + '</td>' +
+        '<td class="num tabular"><strong>' + sagaEUR(d.net) + '</strong></td>' +
+        '<td>' + statut + '</td>' +
+        '<td style="text-align:right; white-space:nowrap;">' + action +
+          '<button class="btn btn-ghost btn-sm" onclick="imprimerCliente(\'' + lettre + '\')">PDF</button></td>' +
+      '</tr>';
+    }).join('');
+
+    var foot = document.getElementById('repartitionFoot');
+    if (filtreValide() || lettres.length < 2) { foot.innerHTML = ''; return; }
+    var t = sagaTotauxLive(LIVE);
+    foot.innerHTML = '<tr><td><strong>Total</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.ventes) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.giveaways) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.base) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.commSaga) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.commApporteur) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.net) + '</strong></td><td></td><td></td></tr>';
+  }
+
+  /* ============ Articles ============ */
+  function articlesAffiches() {
+    return filtreValide()
+      ? LIVE.articles.filter(function (a) { return a.lettre === FILTRE; })
+      : LIVE.articles;
+  }
+
+  function renderArticles() {
+    var arts = articlesAffiches();
+    document.getElementById('articlesEmpty').style.display = arts.length ? 'none' : 'flex';
+    document.getElementById('articlesBody').innerHTML = arts.map(function (a) {
+      return '<tr>' +
+        '<td>' + a.libelle + '</td>' +
+        '<td><span class="tag-avatar" style="width:22px;height:22px;font-size:.7rem;">' + a.lettre + '</span></td>' +
+        '<td class="num tabular">' + sagaEUR(a.montant) + '</td>' +
+        '<td class="muted">' + libelleType(a.type) + '</td>' +
+        '<td style="text-align:right; white-space:nowrap;">' +
+          '<button class="btn btn-ghost btn-sm" onclick="editerArticle(\'' + a.id + '\')">Modifier</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="supprimerArticle(\'' + a.id + '\')">Supprimer</button>' +
+        '</td></tr>';
+    }).join('');
+  }
+
+  // La liste des dressings propose les lettres du live + toutes les clientes connues
+  function renderChoixLettres() {
+    var lettres = lettresDuLive().slice();
+    sagaLoad('clientes', []).forEach(function (c) {
+      if (lettres.indexOf(c.lettre) === -1) lettres.push(c.lettre);
     });
-    var el = document.getElementById('liveReste');
-    if (el) el.textContent = Math.round(reste).toLocaleString('fr-FR') + ' €';
+    document.getElementById('aLettre').innerHTML = lettres.map(function (l) {
+      var t = sagaTauxDressing(l);
+      return '<option value="' + l + '">' + l + ' — ' + t.prenom + '</option>';
+    }).join('');
   }
 
-  refreshLiveTotal();
+  function toggleArticleForm() {
+    var f = document.getElementById('articleForm');
+    var ouvert = f.style.display !== 'none';
+    if (ouvert) resetArticleForm();
+    f.style.display = ouvert ? 'none' : 'flex';
+    if (!ouvert) document.getElementById('aLibelle').focus();
+  }
+
+  function resetArticleForm() {
+    articleEnEdition = null;
+    document.getElementById('aLibelle').value = '';
+    document.getElementById('aMontant').value = '';
+    document.getElementById('aType').value = 'vente';
+    if (filtreValide()) document.getElementById('aLettre').value = FILTRE;
+    document.getElementById('aSubmit').textContent = "Ajouter l'article";
+  }
+
+  function editerArticle(id) {
+    var a = LIVE.articles.filter(function (x) { return x.id === id; })[0];
+    if (!a) return;
+    articleEnEdition = id;
+    document.getElementById('articleForm').style.display = 'flex';
+    document.getElementById('aLibelle').value = a.libelle;
+    document.getElementById('aLettre').value = a.lettre;
+    document.getElementById('aMontant').value = a.montant;
+    document.getElementById('aType').value = a.type;
+    document.getElementById('aSubmit').textContent = 'Enregistrer la correction';
+    document.getElementById('aLibelle').focus();
+  }
+
+  function enregistrerArticle() {
+    var libelle = document.getElementById('aLibelle').value.trim();
+    var montant = parseFloat(document.getElementById('aMontant').value);
+    if (!libelle) { document.getElementById('aLibelle').focus(); return; }
+    if (isNaN(montant)) { document.getElementById('aMontant').focus(); return; }
+
+    var champs = {
+      libelle: libelle,
+      lettre: document.getElementById('aLettre').value,
+      montant: montant,
+      type: document.getElementById('aType').value
+    };
+
+    if (articleEnEdition) {
+      var a = LIVE.articles.filter(function (x) { return x.id === articleEnEdition; })[0];
+      Object.keys(champs).forEach(function (k) { a[k] = champs[k]; });
+    } else {
+      champs.id = 'a' + Date.now();
+      LIVE.articles.push(champs);
+    }
+    persist();
+    toggleArticleForm();
+    renderTout();
+  }
+
+  function supprimerArticle(id) {
+    var a = LIVE.articles.filter(function (x) { return x.id === id; })[0];
+    if (!a) return;
+    if (!confirm('Supprimer « ' + a.libelle + ' » (' + sagaEUR(a.montant) + ') ?')) return;
+    LIVE.articles = LIVE.articles.filter(function (x) { return x.id !== id; });
+    persist();
+    renderTout();
+  }
+
+  /* ============ Informations du live ============ */
+  function ouvrirEditionLive() {
+    document.getElementById('eTitre').value = LIVE.titre;
+    document.getElementById('eDate').value = LIVE.date;
+    document.getElementById('eFrais').value = LIVE.fraisPct || 0;
+    document.getElementById('eCategorie').value = LIVE.categorie;
+    document.getElementById('editLivePanel').style.display = 'block';
+    document.getElementById('eTitre').focus();
+  }
+
+  function annulerEditionLive() {
+    document.getElementById('editLivePanel').style.display = 'none';
+  }
+
+  function enregistrerLive() {
+    var titre = document.getElementById('eTitre').value.trim();
+    if (!titre) { document.getElementById('eTitre').focus(); return; }
+    LIVE.titre = titre;
+    LIVE.date = document.getElementById('eDate').value || LIVE.date;
+    LIVE.fraisPct = parseFloat(document.getElementById('eFrais').value) || 0;
+    LIVE.categorie = document.getElementById('eCategorie').value.trim();
+    persist();
+    annulerEditionLive();
+    renderTout();
+  }
+
+  /* ============ Paiements ============ */
+  function demanderPaiement(montant, quoi) {
+    var date = prompt('Date du paiement (JJ/MM/AAAA) — ' + quoi + '\n\nMontant : ' + sagaEUR(montant),
+                      sagaDateFR(TODAY_ISO));
+    if (date === null) return null;
+    var p = date.trim().split('/');
+    if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) {
+      alert('Date invalide. Format attendu : JJ/MM/AAAA');
+      return null;
+    }
+    var mode = prompt('Mode de paiement :\n\n1 — Virement\n2 — Espèces\n3 — PayPal', '1');
+    if (mode === null) return null;
+    var modes = { '1': 'Virement', '2': 'Espèces', '3': 'PayPal' };
+    return { date: p[2] + '-' + p[1] + '-' + p[0], mode: modes[mode.trim()] || 'Virement' };
+  }
+
+  function payerCliente(lettre) {
+    var d = sagaDecompte(LIVE, lettre);
+    if (d.paye) return;
+    var p = demanderPaiement(d.net, d.prenom + ' — ' + LIVE.titre);
+    if (!p) return;
+    LIVE.paiements = LIVE.paiements || {};
+    LIVE.paiements[lettre] = p;
+    persist();
+    renderTout();
+  }
+
+  function annulerPaiement(lettre) {
+    var d = sagaDecompte(LIVE, lettre);
+    if (!d.paye) return;
+    if (!confirm('Annuler le paiement de ' + d.prenom + ' ?\n\n'
+      + 'Montant : ' + sagaEUR(d.net)
+      + '\nEnregistré le ' + sagaDateFR(d.paiement.date) + ' (' + d.paiement.mode + ')'
+      + '\n\nLa cliente repassera en attente de règlement.')) return;
+    delete LIVE.paiements[lettre];
+    persist();
+    renderTout();
+  }
+
+  function payerTout() {
+    var enAttente = lettresDuLive().filter(function (l) { return !sagaDecompte(LIVE, l).paye; });
+    if (enAttente.length === 0) { alert('Toutes les clientes de ce live sont déjà réglées.'); return; }
+    var total = enAttente.reduce(function (s, l) { return s + sagaDecompte(LIVE, l).net; }, 0);
+    var p = demanderPaiement(total, enAttente.length + ' cliente(s) — ' + LIVE.titre);
+    if (!p) return;
+    LIVE.paiements = LIVE.paiements || {};
+    enAttente.forEach(function (l) { LIVE.paiements[l] = { date: p.date, mode: p.mode }; });
+    persist();
+    renderTout();
+  }
+
+  /* ============ Récapitulatifs PDF ============ */
+  function tableauArticles(arts) {
+    return '<table><thead><tr><th>Article</th><th>Dressing</th><th class="num">Montant</th><th>Type</th></tr></thead><tbody>' +
+      arts.map(function (a) {
+        return '<tr><td>' + a.libelle + '</td><td>' + a.lettre + '</td>' +
+          '<td class="num">' + sagaEUR(a.montant) + '</td><td>' + libelleType(a.type) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function blocDecompte(d) {
+    return '<div class="recap">' +
+      '<div><span>Ventes</span><span>' + sagaEUR(d.ventes) + '</span></div>' +
+      '<div><span>Base après frais Whatnot (' + (LIVE.fraisPct || 0) + ' %)</span><span>' + sagaEUR(d.base) + '</span></div>' +
+      '<div><span>− Giveaways</span><span>' + sagaEUR(d.giveaways) + '</span></div>' +
+      '<div><span>− Commission Saga</span><span>' + sagaEUR(d.commSaga) + '</span></div>' +
+      (d.apporteur ? '<div><span>− Commission apporteur (' + d.apporteur + ')</span><span>' + sagaEUR(d.commApporteur) + '</span></div>' : '') +
+      '<div class="total"><span>Net à reverser</span><span>' + sagaEUR(d.net) + '</span></div>' +
+      '</div>' +
+      (d.paye ? '<p class="sous">Réglé le ' + sagaDateFR(d.paiement.date) + ' par ' + d.paiement.mode + '.</p>'
+              : '<p class="sous">En attente de règlement.</p>');
+  }
+
+  function imprimerCliente(lettre) {
+    var d = sagaDecompte(LIVE, lettre);
+    sagaImprimer('Recap_' + d.prenom + '_' + LIVE.date,
+      '<h1>' + d.prenom + ' — ' + LIVE.titre + '</h1>' +
+      '<p class="sous">Dressing ' + lettre + ' · ' + sagaDateLongue(LIVE.date) + ' · ' + LIVE.categorie + '</p>' +
+      '<h2>Décompte</h2>' + blocDecompte(d) +
+      '<h2>Détail des ' + d.articles.length + ' article(s)</h2>' + tableauArticles(d.articles));
+  }
+
+  function imprimerLiveComplet() {
+    var lettres = lettresDuLive();
+    var t = sagaTotauxLive(LIVE);
+    var corps = '<h1>' + LIVE.titre + '</h1>' +
+      '<p class="sous">' + sagaDateLongue(LIVE.date) + ' · ' + LIVE.categorie +
+      ' · frais Whatnot ' + (LIVE.fraisPct || 0) + ' % · ' + lettres.length + ' dressing(s)</p>' +
+      '<h2>Répartition par cliente</h2>' +
+      '<table><thead><tr><th>Cliente</th><th class="num">Ventes</th><th class="num">Giveaways</th>' +
+      '<th class="num">Comm. Saga</th><th class="num">Comm. apporteur</th><th class="num">Net</th><th>Statut</th></tr></thead><tbody>' +
+      lettres.map(function (l) {
+        var d = sagaDecompte(LIVE, l);
+        return '<tr><td>' + d.prenom + ' (' + l + ')</td>' +
+          '<td class="num">' + sagaEUR(d.ventes) + '</td>' +
+          '<td class="num">' + sagaEUR(d.giveaways) + '</td>' +
+          '<td class="num">' + sagaEUR(d.commSaga) + '</td>' +
+          '<td class="num">' + sagaEUR(d.commApporteur) + '</td>' +
+          '<td class="num">' + sagaEUR(d.net) + '</td>' +
+          '<td>' + (d.paye ? 'Payé le ' + sagaDateFR(d.paiement.date) : 'En attente') + '</td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td>' +
+      '<td class="num">' + sagaEUR(t.ventes) + '</td>' +
+      '<td class="num">' + sagaEUR(t.giveaways) + '</td>' +
+      '<td class="num">' + sagaEUR(t.commSaga) + '</td>' +
+      '<td class="num">' + sagaEUR(t.commApporteur) + '</td>' +
+      '<td class="num">' + sagaEUR(t.net) + '</td><td></td></tr></tfoot></table>';
+
+    lettres.forEach(function (l) {
+      var d = sagaDecompte(LIVE, l);
+      corps += '<h2>' + d.prenom + ' (' + l + ') — ' + d.articles.length + ' article(s)</h2>' + tableauArticles(d.articles);
+    });
+
+    sagaImprimer('Recap_' + LIVE.titre.replace(/\W+/g, '_'), corps);
+  }
+
+  function imprimerRecap() {
+    if (filtreValide()) imprimerCliente(FILTRE); else imprimerLiveComplet();
+  }
+
+  function voirToutLeLive() {
+    window.location.href = 'live.html?l=' + LIVE.id;
+  }
+
+  /* ============ Rendu ============ */
+  function renderTout() {
+    renderEntete();
+    renderFiltre();
+    renderStats();
+    renderRepartition();
+    renderChoixLettres();
+    renderArticles();
+    if (filtreValide()) document.getElementById('aLettre').value = FILTRE;
+  }
+
+  renderTout();
 </script>
 </body>
 </html>
