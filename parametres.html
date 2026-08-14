@@ -30,6 +30,59 @@
           <div class="tab-item" data-tab="tab-icloud">Agenda iCloud</div>
           <div class="tab-item" data-tab="tab-users">Utilisateurs</div>
           <div class="tab-item" data-tab="tab-email">Envoi des emails</div>
+          <div class="tab-item" data-tab="tab-journal">Journal d'activité</div>
+          <div class="tab-item" data-tab="tab-versions">Versions</div>
+        </div>
+
+        <!-- ============ JOURNAL D'ACTIVITÉ ============ -->
+        <div class="tab-panel" id="tab-journal" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>Journal d'activité</h2>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span class="panel-link" style="color:var(--ink-faint);" id="journalCount">—</span>
+              <button class="btn btn-ghost btn-sm" onclick="exporterJournal()">Exporter en CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="viderJournal()" style="color:var(--critical);">Vider</button>
+            </div>
+          </div>
+          <p class="card-note" style="margin-bottom:14px;">
+            Chaque action enregistrée dans le CRM est horodatée et rattachée à son auteur :
+            créations, modifications, suppressions, paiements et génération de documents.
+          </p>
+
+          <div class="filter-bar" style="margin-bottom:14px;">
+            <div class="form-field" style="min-width:220px;">
+              <label class="form-label" for="journalRecherche">Rechercher</label>
+              <input class="form-input" id="journalRecherche" placeholder="Action, cible, utilisateur…" />
+            </div>
+            <div class="form-field" style="min-width:200px;">
+              <label class="form-label" for="journalUser">Utilisateur</label>
+              <select class="form-select" id="journalUser"></select>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Élément</th><th>Détail</th></tr></thead>
+              <tbody id="journalBody"></tbody>
+            </table>
+          </div>
+          <div id="journalVide" class="empty-state" style="display:none; margin-top:14px;">
+            <div class="t">Aucune activité enregistrée</div>
+            <div class="s">Les actions effectuées dans le CRM apparaîtront ici</div>
+          </div>
+        </div>
+
+        <!-- ============ VERSIONS ============ -->
+        <div class="tab-panel" id="tab-versions" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>Versions du CRM</h2>
+            <span class="chip good" id="versionCourante">—</span>
+          </div>
+          <p class="card-note" style="margin-bottom:18px;">
+            Historique des évolutions apportées à l'application. La version en cours est indiquée
+            en haut, la plus récente en premier.
+          </p>
+          <div id="versionsListe"></div>
         </div>
 
         <!-- ============ LOGO & IDENTITÉ ============ -->
@@ -215,21 +268,40 @@
               <span class="panel-link" style="color:var(--ink-faint);" id="userCount">—</span>
               <button class="btn btn-primary btn-sm" onclick="toggleInviteForm()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Inviter
+                Créer un utilisateur
               </button>
             </div>
           </div>
 
           <div id="inviteForm" style="display:none; margin-bottom:18px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface-alt);">
-            <div class="form-grid" style="max-width:460px;">
-              <div class="form-field">
-                <label class="form-label" for="invName">Nom complet</label>
-                <input class="form-input" id="invName" placeholder="Ex. Camille Dubois" />
+            <div class="form-grid" style="max-width:520px;">
+              <div class="form-field" style="flex-direction:row; gap:12px;">
+                <div style="flex:1;">
+                  <label class="form-label" for="invPrenom">Prénom</label>
+                  <input class="form-input" id="invPrenom" placeholder="Ex. Camille" />
+                </div>
+                <div style="flex:1;">
+                  <label class="form-label" for="invNom">Nom</label>
+                  <input class="form-input" id="invNom" placeholder="Ex. Dubois" />
+                </div>
               </div>
               <div class="form-field">
                 <label class="form-label" for="invEmail">Adresse email</label>
                 <input class="form-input" type="email" id="invEmail" placeholder="camille@sagadressing.fr" />
-                <span class="card-note">L'invitation lui sera envoyée à cette adresse. Elle choisira son mot de passe elle-même — vous ne le connaîtrez jamais.</span>
+                <span class="card-note">Sert d'identifiant de connexion. L'invitation part à cette adresse ; l'utilisateur choisit son mot de passe lui-même — vous ne le connaîtrez jamais.</span>
+              </div>
+              <div class="form-field" style="flex-direction:row; gap:12px;">
+                <div style="flex:1;">
+                  <label class="form-label" for="invTel">Téléphone <span class="muted">(facultatif)</span></label>
+                  <input class="form-input" id="invTel" placeholder="06 00 00 00 00" />
+                </div>
+                <div style="flex:1;">
+                  <label class="form-label" for="invStatut">Statut à la création</label>
+                  <select class="form-select" id="invStatut">
+                    <option value="invited">Invitation à envoyer</option>
+                    <option value="active">Compte actif immédiatement</option>
+                  </select>
+                </div>
               </div>
               <div class="form-field">
                 <label class="form-label" for="invRole">Rôle</label>
@@ -238,9 +310,10 @@
                   <option value="lecture">Lecture seule — consulte sans rien modifier</option>
                   <option value="admin">Administratrice — tous les droits, y compris les utilisateurs</option>
                 </select>
+                <span class="card-note">Les droits détaillés restent ajustables ensuite, section par section.</span>
               </div>
               <div style="display:flex; gap:10px;">
-                <button class="btn btn-primary btn-sm" onclick="sendInvite()">Envoyer l'invitation</button>
+                <button class="btn btn-primary btn-sm" onclick="sendInvite()">Créer le compte</button>
                 <button class="btn btn-ghost btn-sm" onclick="toggleInviteForm()">Annuler</button>
               </div>
             </div>
@@ -588,17 +661,21 @@
 
   var ROLE_LABELS = { admin:'Administratrice', gestion:'Gestionnaire', lecture:'Lecture seule', custom:'Droits personnalisés' };
 
-  var users = [
-    { id:1, name:'Sarah Danino',   email:'sarah@sagadressing.fr',  role:'admin',   perms:null, last:"Aujourd'hui à 09:12", status:'active', owner:true },
-    { id:2, name:'Léa Martin',     email:'lea@sagadressing.fr',    role:'gestion', perms:null, last:'Hier à 18:40',        status:'active', owner:false },
-    { id:3, name:'Thomas Bernard', email:'thomas@sagadressing.fr', role:'lecture', perms:null, last:'12 juillet',          status:'active', owner:false },
-    { id:4, name:'Camille Dubois', email:'camille@sagadressing.fr',role:'gestion', perms:null, last:'—',                   status:'invited', owner:false }
+  var USERS_DEFAUT = [
+    { id:1, prenom:'Sarah',  nom:'Danino',  email:'sarah@sagadressing.fr',  tel:'', role:'admin',   perms:null, last:"Aujourd'hui", status:'active',  owner:true,  creele:'2026-01-12' },
+    { id:2, prenom:'Léa',    nom:'Martin',  email:'lea@sagadressing.fr',    tel:'', role:'gestion', perms:null, last:'Hier',        status:'active',  owner:false, creele:'2026-03-04' },
+    { id:3, prenom:'Thomas', nom:'Bernard', email:'thomas@sagadressing.fr', tel:'', role:'lecture', perms:null, last:'12 juillet',  status:'active',  owner:false, creele:'2026-05-20' },
+    { id:4, prenom:'Camille',nom:'Dubois',  email:'camille@sagadressing.fr',tel:'', role:'gestion', perms:null, last:'—',           status:'invited', owner:false, creele:'2026-07-28' }
   ];
+
+  var users = sagaLoad('utilisateurs_crm', USERS_DEFAUT);
+  function persistUsers() { sagaSave('utilisateurs_crm', users); }
+  function nomComplet(u) { return ((u.prenom || '') + ' ' + (u.nom || '')).trim() || u.name || '—'; }
 
   var editingUserId = null;
 
   function initials(name) {
-    return name.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+    return String(name).split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
   }
 
   function permsOf(user) {
@@ -618,8 +695,9 @@
         ? '<button class="btn btn-ghost btn-sm" disabled style="opacity:.4; cursor:not-allowed;" title="Le propriétaire ne peut pas être supprimé">Supprimer</button>'
         : '<button class="btn btn-ghost btn-sm" onclick="removeUser(' + u.id + ')">Supprimer</button>';
       return '<tr>' +
-        '<td><div class="name-cell"><span class="tag-avatar">' + initials(u.name) + '</span>' +
-          '<div><div>' + u.name + '</div><div class="muted" style="font-size:.75rem;">' + u.email + '</div>' + ownerNote + '</div></div></td>' +
+        '<td><div class="name-cell"><span class="tag-avatar">' + initials(nomComplet(u)) + '</span>' +
+          '<div><div>' + nomComplet(u) + '</div><div class="muted" style="font-size:.82rem;">' + u.email + '</div>' +
+          (u.tel ? '<div class="muted" style="font-size:.82rem;">' + u.tel + '</div>' : '') + ownerNote + '</div></div></td>' +
         '<td>' + roleChip + '</td>' +
         '<td class="muted">' + u.last + '</td>' +
         '<td>' + statusChip + '</td>' +
@@ -648,7 +726,7 @@
     document.getElementById('idTel').value = id.tel || '';
     document.getElementById('idEmail').value = id.email || '';
     document.getElementById('idSiret').value = id.siret || '';
-    afficherLogo(sagaLogo());
+    afficherLogo(sagaLoad('logo_ecran', '') || sagaLogo());
     majApercuEntete();
   }
 
@@ -660,16 +738,25 @@
 
   function choisirLogo(input) {
     if (!input.files || !input.files[0]) return;
-    sagaReadImage(input.files[0], 600, function (dataUrl) {
-      sagaSave('logo', dataUrl);
-      afficherLogo(dataUrl);
-      majApercuEntete();
-      input.value = '';
+    var fichier = input.files[0];
+    // Deux versions : PNG transparent pour l'écran, JPEG opaque pour les PDF
+    sagaReadImageFormat(fichier, 600, 'image/png', function (png) {
+      sagaSave('logo_ecran', png);
+      sagaReadImageFormat(fichier, 600, 'image/jpeg', function (jpeg) {
+        sagaSave('logo', jpeg);
+        afficherLogo(png);
+        majApercuEntete();
+        renderSagaSidebar('parametres');
+        sagaTracer('Modification du logo', '', fichier.name);
+        input.value = '';
+      });
     });
   }
 
   function retirerLogo() {
     sagaSave('logo', '');
+    sagaSave('logo_ecran', '');
+    renderSagaSidebar('parametres');
     document.getElementById('logoFile').value = '';
     afficherLogo('');
     majApercuEntete();
@@ -684,6 +771,8 @@
       siret: document.getElementById('idSiret').value.trim()
     });
     majApercuEntete();
+    renderSagaSidebar('parametres');
+    sagaTracer('Modification identité', document.getElementById('idNom').value.trim());
     var ok = document.getElementById('idSaved');
     ok.style.display = 'inline';
     clearTimeout(enregistrerIdentite._t);
@@ -692,7 +781,7 @@
 
   // Reproduit à l'écran l'en-tête que porteront les PDF
   function majApercuEntete() {
-    var logo = sagaLogo();
+    var logo = sagaLoad('logo_ecran', '') || sagaLogo();
     var nom = document.getElementById('idNom').value.trim() || 'Saga Dressing';
     var lignes = [
       document.getElementById('idAdresse').value.trim(),
@@ -746,6 +835,92 @@
     document.getElementById(id).addEventListener('input', majApercuEntete);
   });
 
+  /* ============ Journal d'activité ============ */
+
+  function renderJournal() {
+    var q = document.getElementById('journalRecherche').value.trim().toLowerCase();
+    var qui = document.getElementById('journalUser').value;
+    var entrees = sagaJournal().filter(function (e) {
+      if (qui && e.utilisateur !== qui) return false;
+      if (!q) return true;
+      return (e.action + ' ' + e.cible + ' ' + e.detail + ' ' + e.utilisateur).toLowerCase().indexOf(q) !== -1;
+    });
+
+    document.getElementById('journalCount').textContent =
+      entrees.length + ' entrée' + (entrees.length > 1 ? 's' : '');
+    document.getElementById('journalVide').style.display = entrees.length ? 'none' : 'flex';
+
+    document.getElementById('journalBody').innerHTML = entrees.map(function (e) {
+      return '<tr>' +
+        '<td class="muted" style="white-space:nowrap;">' + sagaHorodatage(e.date) + '</td>' +
+        '<td>' + e.utilisateur + '</td>' +
+        '<td>' + e.action + '</td>' +
+        '<td>' + (e.cible || '<span class="muted">—</span>') + '</td>' +
+        '<td class="muted">' + (e.detail || '—') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function remplirFiltreJournal() {
+    var noms = [];
+    sagaJournal().forEach(function (e) { if (noms.indexOf(e.utilisateur) === -1) noms.push(e.utilisateur); });
+    var sel = document.getElementById('journalUser');
+    var courant = sel.value;
+    sel.innerHTML = '<option value="">Tous les utilisateurs</option>' +
+      noms.map(function (n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
+    sel.value = courant;
+  }
+
+  function exporterJournal() {
+    var entrees = sagaJournal();
+    if (entrees.length === 0) { alert('Le journal est vide.'); return; }
+    var lignes = ['Date;Utilisateur;Action;Element;Detail'];
+    entrees.forEach(function (e) {
+      lignes.push([sagaHorodatage(e.date), e.utilisateur, e.action, e.cible, e.detail]
+        .map(function (v) { return String(v).replace(/;/g, ','); }).join(';'));
+    });
+    sagaDownload('journal_saga_' + sagaAujourdhui() + '.csv', '\ufeff' + lignes.join('\r\n'), 'text/csv');
+  }
+
+  function viderJournal() {
+    if (!confirm("Vider le journal d'activité ?\n\n"
+      + sagaJournal().length + ' entrée(s) seront définitivement supprimées.')) return;
+    sagaSave('journal', []);
+    sagaTracer('Purge du journal', '', '');
+    remplirFiltreJournal();
+    renderJournal();
+  }
+
+  var journalTimer = null;
+  document.getElementById('journalRecherche').addEventListener('input', function () {
+    clearTimeout(journalTimer);
+    journalTimer = setTimeout(renderJournal, 250);
+  });
+  document.getElementById('journalUser').addEventListener('change', renderJournal);
+
+  /* ============ Versions ============ */
+
+  function renderVersions() {
+    document.getElementById('versionCourante').textContent = 'Version ' + SAGA_VERSION;
+    document.getElementById('versionsListe').innerHTML = SAGA_VERSIONS.map(function (v, i) {
+      return '<div class="version-entree">' +
+        '<div class="version-tete">' +
+          '<span class="version-num">' + v.version + '</span>' +
+          '<div><div class="version-titre">' + v.titre + '</div>' +
+            '<div class="muted" style="font-size:.84rem;">' + sagaDateLongue(v.date) + '</div></div>' +
+          (i === 0 ? '<span class="chip good" style="margin-left:auto;">Version actuelle</span>' : '') +
+        '</div>' +
+        '<ul class="version-points">' +
+          v.points.map(function (p) { return '<li>' + p + '</li>'; }).join('') +
+        '</ul>' +
+      '</div>';
+    }).join('');
+  }
+
+  remplirFiltreJournal();
+  renderJournal();
+  renderVersions();
+
   chargerIdentite();
 
   function toggleInviteForm() {
@@ -754,26 +929,49 @@
     // En fermant (Annuler compris) on repart d'un formulaire vierge
     if (ouvert) resetInviteForm();
     f.style.display = ouvert ? 'none' : 'block';
-    if (!ouvert) document.getElementById('invName').focus();
+    if (!ouvert) document.getElementById('invPrenom').focus();
   }
 
   function resetInviteForm() {
-    document.getElementById('invName').value = '';
-    document.getElementById('invEmail').value = '';
+    ['invPrenom', 'invNom', 'invEmail', 'invTel'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
     document.getElementById('invRole').selectedIndex = 0;
+    document.getElementById('invStatut').selectedIndex = 0;
   }
 
   function sendInvite() {
-    var name = document.getElementById('invName').value.trim();
+    var prenom = document.getElementById('invPrenom').value.trim();
+    var nom = document.getElementById('invNom').value.trim();
     var email = document.getElementById('invEmail').value.trim();
-    if (!name) { document.getElementById('invName').focus(); return; }
-    if (!email) { document.getElementById('invEmail').focus(); return; }
+    if (!prenom) { document.getElementById('invPrenom').focus(); return; }
+    if (!nom) { document.getElementById('invNom').focus(); return; }
+    if (!email || email.indexOf('@') === -1) {
+      alert('Renseignez une adresse email valide : elle sert d\'identifiant de connexion.');
+      document.getElementById('invEmail').focus();
+      return;
+    }
+    if (users.some(function (u) { return u.email.toLowerCase() === email.toLowerCase(); })) {
+      alert('Un compte utilise déjà cette adresse email.');
+      document.getElementById('invEmail').focus();
+      return;
+    }
 
+    var statut = document.getElementById('invStatut').value;
     users.push({
-      id: Date.now(), name: name, email: email,
+      id: Date.now(),
+      prenom: prenom, nom: nom, email: email,
+      tel: document.getElementById('invTel').value.trim(),
       role: document.getElementById('invRole').value,
-      perms: null, last: '—', status: 'invited', owner: false
+      perms: null,
+      last: statut === 'active' ? 'Jamais connecté' : '—',
+      status: statut,
+      owner: false,
+      creele: sagaAujourdhui()
     });
+    persistUsers();
+    sagaTracer('Création utilisateur', prenom + ' ' + nom, ROLE_LABELS[document.getElementById('invRole').value]);
+
     renderUsers();
     toggleInviteForm();   // ferme et vide le formulaire
   }
@@ -781,8 +979,10 @@
   function removeUser(id) {
     var u = users.find(function (x) { return x.id === id; });
     if (!u) return;
-    if (!confirm('Supprimer le compte de ' + u.name + ' ?\n\nIl perdra immédiatement l\'accès au CRM. Les données qu\'il a saisies sont conservées.')) return;
+    if (!confirm('Supprimer le compte de ' + nomComplet(u) + ' ?\n\nIl perdra immédiatement l\'accès au CRM. Les données qu\'il a saisies sont conservées.')) return;
     users = users.filter(function (x) { return x.id !== id; });
+    persistUsers();
+    sagaTracer('Suppression utilisateur', nomComplet(u));
     if (editingUserId === id) closePerms();
     renderUsers();
   }
@@ -797,7 +997,7 @@
     var u = users.find(function (x) { return x.id === id; });
     if (!u) return;
     editingUserId = id;
-    document.getElementById('permUserName').textContent = u.name;
+    document.getElementById('permUserName').textContent = nomComplet(u);
     document.getElementById('permRole').value = u.perms ? 'custom' : u.role;
     renderPermTable(permsOf(u), u.owner);
     document.getElementById('permSaved').style.display = 'none';
@@ -842,6 +1042,8 @@
       u.role = role;
       u.perms = null;
     }
+    persistUsers();
+    sagaTracer('Modification des droits', nomComplet(u), role === 'custom' ? 'Droits personnalisés' : ROLE_LABELS[role]);
     renderUsers();
     var saved = document.getElementById('permSaved');
     saved.style.display = 'inline';

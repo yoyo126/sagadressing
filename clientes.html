@@ -182,6 +182,24 @@
   var clientes = sagaLoad('clientes', CLIENTES_DEFAUT);
   var vignetteEnCours = '';
 
+  /* Une fiche n'était ouvrable que si la cliente possédait une clé, ce qui
+     n'était le cas que des quatre exemples d'origine. On en attribue une à
+     toutes, y compris aux clientes créées depuis l'application. */
+  function cleDepuis(prenom, lettre) {
+    var base = (prenom || 'cliente').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return base + '-' + (lettre || '').toLowerCase();
+  }
+
+  (function completerLesCles() {
+    var modifie = false;
+    clientes.forEach(function (c) {
+      if (!c.key) { c.key = cleDepuis(c.prenom, c.lettre); modifie = true; }
+    });
+    if (modifie) persist();
+  })();
+
   function persist() { sagaSave('clientes', clientes); }
 
   function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
@@ -224,8 +242,7 @@
     document.getElementById('emptyResult').style.display = rows.length ? 'none' : 'flex';
 
     body.innerHTML = rows.map(function (c) {
-      var href = c.key ? 'cliente.html?c=' + c.key : '';
-      // Les fiches non encore détaillées ouvrent la fiche type, signalée par une astérisque
+      var href = 'cliente.html?c=' + c.key;
       var nomComplet = c.nom || c.prenom;
       var nameCell = '<div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span>' +
         '<span><span class="name-main">' + nomComplet + '</span>' +
@@ -320,8 +337,9 @@
     }
     warn.style.display = 'none';
 
+    var cle = cleDepuis(prenom, lettre);
     clientes.push({
-      key: '',
+      key: cle,
       prenom: prenom,
       nom: document.getElementById('nNom').value.trim() || prenom,
       email: document.getElementById('nEmail').value.trim(),
@@ -334,9 +352,35 @@
       vignette: vignetteEnCours
     });
     persist();
+    creerFicheDetaillee(cle, prenom, lettre);
+    sagaTracer('Création cliente', prenom + ' (' + lettre + ')');
 
     toggleNewForm();   // ferme et vide le formulaire
     render();
+  }
+
+  /* La page fiche lit `clients_data` : sans cette entrée, une cliente créée
+     ici n'aurait aucune fiche à ouvrir. */
+  function creerFicheDetaillee(cle, prenom, lettre) {
+    var fiches = sagaLoad('clients_data', {});
+    if (fiches[cle]) return;
+    fiches[cle] = {
+      prenom: prenom,
+      nom: document.getElementById('nNom').value.trim() || prenom,
+      lettre: lettre,
+      statut: 'Active',
+      tel: document.getElementById('nTel').value.trim(),
+      email: document.getElementById('nEmail').value.trim(),
+      adresse: '',
+      commission: parseInt(document.getElementById('nCommission').value, 10) || 30,
+      apporteur: document.getElementById('nApporteur').value || null,
+      apporteurPct: document.getElementById('nApporteur').value ? 8 : 0,
+      depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
+      pending: null,
+      lives: [],
+      notes: []
+    };
+    sagaSave('clients_data', fiches);
   }
 
   document.getElementById('statusToggle').addEventListener('click', function (e) {

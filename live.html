@@ -75,10 +75,16 @@
             <label class="form-label" for="eCategorie">Catégorie</label>
             <input class="form-input" id="eCategorie" placeholder="Ex. Sacs &amp; accessoires" />
           </div>
-          <div style="display:flex; gap:10px; align-items:center;">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" onclick="enregistrerLive()">Enregistrer</button>
             <button class="btn btn-ghost btn-sm" onclick="annulerEditionLive()">Annuler</button>
+            <button class="btn btn-ghost btn-sm" onclick="supprimerLive()"
+                    style="margin-left:auto; color:var(--critical);">Supprimer ce live</button>
           </div>
+          <p class="card-note">
+            Supprimer le live retire ses articles et ses règlements. À utiliser si un import CSV
+            s'est mal passé.
+          </p>
         </div>
       </div>
 
@@ -192,7 +198,7 @@
   var params = new URLSearchParams(window.location.search);
   var LIVES = sagaLives();
   var LIVE = sagaLive(params.get('l')) || LIVES[0];
-  var FILTRE = params.get('c') || '';   // lettre de dressing, vide = tout le live
+  var FILTRE = params.get('c') || '';   // lettre de dressing, vide = tout le live (modifiable au clic)
   var articleEnEdition = null;
 
   function persist() {
@@ -250,11 +256,14 @@
     }
     var d = sagaDecompte(LIVE, FILTRE);
     bar.style.display = 'flex';
+    var infos = sagaInfosCliente(FILTRE);
+    var fiche = ficheCliente(FILTRE);
     document.getElementById('filtreTexte').innerHTML =
-      'Vue filtrée sur <strong>' + d.prenom + ' (' + FILTRE + ')</strong> — ' +
-      d.articles.length + ' article' + (d.articles.length > 1 ? 's' : '') + ' sur ce live.';
-    back.href = 'cliente.html?c=' + ficheCliente(FILTRE);
-    document.getElementById('backLabel').textContent = d.prenom;
+      'Vue filtrée sur <strong>' + infos.nom + ' (' + FILTRE + ')</strong> — ' +
+      d.articles.length + ' article' + (d.articles.length > 1 ? 's' : '') + ' sur ce live.' +
+      (fiche ? ' <a href="cliente.html?c=' + fiche + '" style="color:var(--brand-strong);">Ouvrir sa fiche</a>' : '');
+    back.href = 'lives.html';
+    document.getElementById('backLabel').textContent = 'Lives';
     document.getElementById('btnRecapLabel').textContent = 'Récap PDF de ' + d.prenom;
     document.getElementById('articlesTitre').textContent = 'Ventes de ' + d.prenom + ' sur ce live';
     document.getElementById('btnPayerTout').style.display = 'none';
@@ -299,12 +308,14 @@
           sagaDateFR(d.paiement.date) + ' · ' + d.paiement.mode + '</div>'
         : '<span class="chip warn">En attente</span>';
       var action = d.paye
-        ? '<button class="btn btn-ghost btn-sm" onclick="annulerPaiement(\'' + lettre + '\')">Annuler</button>'
-        : '<button class="btn btn-secondary btn-sm" onclick="payerCliente(\'' + lettre + '\')">Payer</button>';
-      var lien = ficheCliente(lettre);
-      return '<tr>' +
-        '<td><div class="name-cell"><span class="tag-avatar">' + lettre + '</span> ' +
-          (lien ? '<a href="cliente.html?c=' + lien + '" style="color:inherit;">' + d.prenom + '</a>' : d.prenom) +
+        ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); annulerPaiement(\'' + lettre + '\')">Annuler</button>'
+        : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payerCliente(\'' + lettre + '\')">Payer</button>';
+      var infos = sagaInfosCliente(lettre);
+      // Cliquer sur la ligne filtre le live sur cette cliente, sur place
+      return '<tr class="ligne-cliente" onclick="filtrerSur(\'' + lettre + '\')" title="Voir le détail de ' + infos.nom + ' sur ce live">' +
+        '<td><div class="name-cell"><span class="tag-avatar">' + lettre + '</span>' +
+          '<span><span class="name-main">' + infos.nom + '</span>' +
+          '<span class="name-sub">dressing ' + lettre + ' · ' + d.articles.length + ' article(s)</span></span>' +
         '</div></td>' +
         '<td class="num tabular">' + sagaEUR(d.ventes) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.giveaways) + '</td>' +
@@ -314,7 +325,7 @@
         '<td class="num tabular"><strong>' + sagaEUR(d.net) + '</strong></td>' +
         '<td>' + statut + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' + action +
-          '<button class="btn btn-ghost btn-sm" onclick="imprimerCliente(\'' + lettre + '\')">PDF</button></td>' +
+          '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerCliente(\'' + lettre + '\')">PDF</button></td>' +
       '</tr>';
     }).join('');
 
@@ -579,7 +590,7 @@
     pdf.tableau(colonnesArticles(), lignesArticles(d.articles),
       { libelle: 'Total', montant: sagaEUR(d.ventes + d.giveaways) });
 
-    pdf.enregistrer('Recap_' + d.prenom + '_' + LIVE.date);
+    sagaApercuPdf(pdf, 'Recap_' + d.prenom + '_' + LIVE.date, 'Récapitulatif ' + d.prenom + ' — ' + LIVE.titre);
   }
 
   function imprimerLiveComplet() {
@@ -619,15 +630,43 @@
         { libelle: 'Net à reverser', montant: sagaEUR(d.net) });
     });
 
-    pdf.enregistrer('Recap_' + LIVE.titre.replace(/\W+/g, '_'));
+    sagaApercuPdf(pdf, 'Recap_' + LIVE.titre.replace(/\W+/g, '_'), 'Récapitulatif — ' + LIVE.titre);
   }
 
   function imprimerRecap() {
     if (filtreValide()) imprimerCliente(FILTRE); else imprimerLiveComplet();
   }
 
+  // Le filtre change sans quitter la page ; l'adresse suit pour rester partageable
+  function filtrerSur(lettre) {
+    FILTRE = (FILTRE === lettre) ? '' : lettre;
+    majAdresse();
+    renderTout();
+  }
+
   function voirToutLeLive() {
-    window.location.href = 'live.html?l=' + LIVE.id;
+    FILTRE = '';
+    majAdresse();
+    renderTout();
+  }
+
+  function majAdresse() {
+    var url = 'live.html?l=' + LIVE.id + (FILTRE ? '&c=' + FILTRE : '');
+    window.history.replaceState(null, '', url);
+  }
+
+  /* ============ Suppression d'un live ============
+     Utile quand un import s'est mal passé : on repart proprement. */
+  function supprimerLive() {
+    var t = sagaTotauxLive(LIVE);
+    if (!confirm('Supprimer « ' + LIVE.titre + ' » ?\n\n'
+      + LIVE.articles.length + ' article(s) · ' + t.clientes + ' cliente(s) · ' + sagaEUR(t.ventes) + ' de ventes'
+      + '\n\nCette suppression est définitive.')) return;
+
+    var restants = LIVES.filter(function (l) { return l.id !== LIVE.id; });
+    sagaSaveLives(restants);
+    sagaTracer('Suppression live', LIVE.titre, sagaDateFR(LIVE.date));
+    window.location.href = 'lives.html';
   }
 
   /* ============ Rendu ============ */

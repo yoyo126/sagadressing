@@ -262,6 +262,10 @@
                 <input class="form-input" id="eTel" />
               </div>
             </div>
+            <div class="form-field">
+              <label class="form-label" for="eAdresse">Adresse</label>
+              <input class="form-input" id="eAdresse" placeholder="Ex. 8 rue des Lilas, 75020 Paris" />
+            </div>
             <div class="form-field" style="flex-direction:row; gap:12px;">
               <div style="flex:2;">
                 <label class="form-label" for="eStatutJur">Statut juridique</label>
@@ -385,10 +389,21 @@
 
   function currentKey() {
     var k = new URLSearchParams(window.location.search).get('a');
-    return (k && APPORTEURS[k.toLowerCase()]) ? k.toLowerCase() : 'nadia';
+    return k ? k.toLowerCase() : 'nadia';
   }
 
-  var A = APPORTEURS[currentKey()];
+  /* Les apporteurs créés depuis la liste vivent dans `apporteurs_data` :
+     sans cette lecture, leur fiche renverrait sur l'exemple Nadia. */
+  var FICHES = sagaLoad('apporteurs_data', {});
+  Object.keys(FICHES).forEach(function (k) { if (!APPORTEURS[k]) APPORTEURS[k] = FICHES[k]; });
+
+  var A = APPORTEURS[currentKey()] || APPORTEURS.nadia;
+
+  function persistApporteur() {
+    var fiches = sagaLoad('apporteurs_data', {});
+    fiches[currentKey()] = A;
+    sagaSave('apporteurs_data', fiches);
+  }
 
   function docTypeLabel(key) {
     var t = DOC_TYPES.find(function (x) { return x.key === key; });
@@ -563,6 +578,7 @@
 
     document.getElementById('infoList').innerHTML = [
       ['Nom complet', A.nom], ['Email', A.email], ['Téléphone', A.tel],
+      ['Adresse', A.adresse || '—'],
       ['Statut juridique', A.statutJur], ['SIRET', A.siret || '—'],
       ['Commission par défaut', A.pct + ' %'],
       ['Clientes apportées', A.clientes.length ? A.clientes.join(', ') : '—']
@@ -602,6 +618,7 @@
     document.getElementById('ePrenom').value = A.prenom;
     document.getElementById('eEmail').value = A.email;
     document.getElementById('eTel').value = A.tel;
+    document.getElementById('eAdresse').value = A.adresse || '';
     document.getElementById('eStatutJur').value = A.statutJur;
     document.getElementById('eSiret').value = A.siret;
     document.getElementById('ePct').value = A.pct;
@@ -641,12 +658,15 @@
     A.prenom = document.getElementById('ePrenom').value.trim() || nom;
     A.email = document.getElementById('eEmail').value.trim();
     A.tel = document.getElementById('eTel').value.trim();
+    A.adresse = document.getElementById('eAdresse').value.trim();
     A.statutJur = document.getElementById('eStatutJur').value;
     A.siret = document.getElementById('eSiret').value.trim();
     A.pct = parseInt(document.getElementById('ePct').value, 10) || 0;
     A.statut = document.getElementById('eStatut').value;
     A.initiales = A.prenom.split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
 
+    persistApporteur();
+    sagaTracer('Modification apporteur', A.nom);
     renderApporteur();   // en-tête, KPI, infos et contrat repartent des nouvelles valeurs
     fermerEdition();
     ongletAvantEdition = null;

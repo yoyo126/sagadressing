@@ -14,17 +14,19 @@
       <header class="topbar">
         <div>
           <h1>Tableau de bord</h1>
-          <p class="topbar-sub">Vue d'ensemble de l'activité — samedi 1 août 2026</p>
+          <p class="topbar-sub" id="dashDate">Vue d'ensemble de l'activité</p>
         </div>
         <div class="topbar-actions">
           <div class="toggle-group" id="periodToggle">
             <button data-period="7j">7 jours</button>
             <button data-period="30j" class="active">30 jours</button>
             <button data-period="90j">90 jours</button>
+            <button data-period="an">Année</button>
           </div>
-          <div class="search">
+          <div class="search" style="position:relative;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="Rechercher une cliente, un live…" />
+            <input type="text" id="searchGlobal" placeholder="Rechercher une cliente, un live…" autocomplete="off" />
+            <div id="searchResults" class="search-results" style="display:none;"></div>
           </div>
         </div>
       </header>
@@ -77,29 +79,7 @@
         </div>
       </section>
 
-      <section class="content-grid">
-        <div class="panel">
-          <div class="panel-head">
-            <h2>Activité récente</h2>
-            <a class="panel-link" href="lives.html">Voir tout →</a>
-          </div>
-          <div class="table-scroll">
-          <table>
-            <thead><tr><th>Date</th><th>Cliente</th><th>Origine</th><th class="num">Ventes</th><th class="num">Commission</th><th class="num">Net reversé</th><th>Statut</th></tr></thead>
-            <tbody>
-              <tr data-href="live.html"><td>29 juil.</td><td><div class="name-cell"><span class="tag-avatar">M</span> Fanny</div></td><td class="muted">Live du 29/07</td><td class="num tabular">1 480 €</td><td class="num tabular">444 €</td><td class="num tabular">890 €</td><td><span class="chip good">Payé</span></td></tr>
-              <tr><td>28 juil.</td><td><div class="name-cell"><span class="tag-avatar">F</span> Marion</div></td><td><span class="chip neutral">Hors live</span></td><td class="num tabular">260 €</td><td class="num tabular">78 €</td><td class="num tabular">182 €</td><td><span class="chip warn">En attente</span></td></tr>
-              <tr data-href="live.html"><td>27 juil.</td><td><div class="name-cell"><span class="tag-avatar">C</span> Julie</div></td><td class="muted">Live du 27/07</td><td class="num tabular">960 €</td><td class="num tabular">288 €</td><td class="num tabular">620 €</td><td><span class="chip warn">En attente</span></td></tr>
-              <tr data-href="live.html"><td>24 juil.</td><td><div class="name-cell"><span class="tag-avatar">B</span> Camille</div></td><td class="muted">Live du 24/07</td><td class="num tabular">2 110 €</td><td class="num tabular">633 €</td><td class="num tabular">480 €</td><td><span class="chip critical">Retard</span></td></tr>
-              <tr><td>22 juil.</td><td><div class="name-cell"><span class="tag-avatar">M</span> Fanny</div></td><td><span class="chip neutral">Hors live</span></td><td class="num tabular">245 €</td><td class="num tabular">74 €</td><td class="num tabular">171 €</td><td><span class="chip warn">En attente</span></td></tr>
-              <tr data-href="live.html"><td>20 juil.</td><td><div class="name-cell"><span class="tag-avatar">F</span> Marion</div></td><td class="muted">Live du 20/07</td><td class="num tabular">1 050 €</td><td class="num tabular">315 €</td><td class="num tabular">310 €</td><td><span class="chip warn">En attente</span></td></tr>
-              <tr><td>18 juil.</td><td><div class="name-cell"><span class="tag-avatar">B</span> Camille</div></td><td><span class="chip neutral">Hors live</span></td><td class="num tabular">180 €</td><td class="num tabular">54 €</td><td class="num tabular">126 €</td><td><span class="chip good">Payé</span></td></tr>
-              <tr data-href="live.html"><td>17 juil.</td><td><div class="name-cell"><span class="tag-avatar">M</span> Fanny</div></td><td class="muted">Live du 17/07</td><td class="num tabular">870 €</td><td class="num tabular">261 €</td><td class="num tabular">522 €</td><td><span class="chip good">Payé</span></td></tr>
-            </tbody>
-          </table>
-          </div>
-        </div>
-
+      <section class="content-grid content-grid-simple">
         <div class="side-col">
           <div class="panel">
             <div class="panel-head">
@@ -153,7 +133,8 @@
 
           <div class="panel">
             <div class="panel-head"><h2>Agenda</h2><a class="panel-link" href="agenda.html">Tout voir →</a></div>
-            <ul class="agenda-list">
+            <ul class="agenda-list" id="dashAgenda"></ul>
+            <ul class="agenda-list" style="display:none;">
               <li><div class="agenda-date"><span class="d">4</span><span class="m">Août</span></div><div class="agenda-body"><div class="agenda-title"><span class="agenda-kind">Récup.</span>Camille (B) — dressing</div><div class="agenda-meta">12 caisses à récupérer, dépôt Rungis</div></div></li>
               <li><div class="agenda-date"><span class="d">5</span><span class="m">Août</span></div><div class="agenda-body"><div class="agenda-title"><span class="agenda-kind">Live</span>Marion (F) — programmé</div><div class="agenda-meta">20h30, catégorie sacs & accessoires</div></div></li>
               <li><div class="agenda-date"><span class="d">9</span><span class="m">Août</span></div><div class="agenda-body"><div class="agenda-title"><span class="agenda-kind">Autre</span>Réception fournisseur</div><div class="agenda-meta">Livraison housses + étiquettes</div></div></li>
@@ -162,12 +143,7 @@
 
           <div class="panel">
             <div class="panel-head"><h2>Reste à reverser</h2><span class="panel-link" style="color:var(--ink-faint);">par cliente</span></div>
-            <ul class="bar-list">
-              <li><div class="bar-row-top"><span>Fanny (M)</span><span class="tabular">735 €</span></div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div></li>
-              <li><div class="bar-row-top"><span>Julie (C)</span><span class="tabular">620 €</span></div><div class="bar-track"><div class="bar-fill" style="width:84%"></div></div></li>
-              <li><div class="bar-row-top"><span>Camille (B)</span><span class="tabular">480 €</span></div><div class="bar-track"><div class="bar-fill" style="width:65%"></div></div></li>
-              <li><div class="bar-row-top"><span>Marion (F)</span><span class="tabular">310 €</span></div><div class="bar-track"><div class="bar-fill" style="width:42%"></div></div></li>
-            </ul>
+            <ul class="bar-list" id="resteListe"></ul>
           </div>
         </div>
       </section>
@@ -182,30 +158,198 @@
   renderSagaSidebar('dashboard');
   initRowLinks();
 
-  const DATA = {
-    "7j":  { ca:"2 365 €", caDelta:"+6 % vs période précédente", caBreakdown:"2 180 € en live · <strong style=\"color:var(--brand-strong)\">185 € hors live</strong>", commission:"710 €", commissionDelta:"+3 % vs période précédente", reste:"640 €", resteMeta:"auprès de 2 clientes", lives:"2", livesMeta:"prochain : mardi — Marion (F)",
-             caSpark:[40,55,48,60,52,70,65,80,74,90], commissionSpark:[30,42,38,46,40,55,50,62,58,70], resteSpark:[70,60,65,50,55,45,48,40,35,30] },
-    "30j": { ca:"8 925 €", caDelta:"+12 % vs période précédente", caBreakdown:"8 240 € en live · <strong style=\"color:var(--brand-strong)\">685 € hors live</strong>", commission:"2 678 €", commissionDelta:"+8 % vs période précédente", reste:"2 145 €", resteMeta:"auprès de 4 clientes", lives:"3", livesMeta:"prochain : mardi — Marion (F)",
-             caSpark:[35,42,38,50,46,58,55,68,72,90], commissionSpark:[28,34,30,40,36,46,44,54,58,72], resteSpark:[50,55,60,58,65,62,70,68,75,80] },
-    "90j": { ca:"23 500 €", caDelta:"+19 % vs période précédente", caBreakdown:"21 960 € en live · <strong style=\"color:var(--brand-strong)\">1 540 € hors live</strong>", commission:"7 050 €", commissionDelta:"+15 % vs période précédente", reste:"4 380 €", resteMeta:"auprès de 6 clientes", lives:"8", livesMeta:"prochain : mardi — Marion (F)",
-             caSpark:[30,34,38,44,42,50,56,62,70,90], commissionSpark:[26,28,32,36,34,42,46,52,60,74], resteSpark:[40,44,48,52,50,58,62,66,72,78] }
-  };
+  document.getElementById('dashDate').textContent =
+    "Vue d'ensemble de l'activité — " + sagaDateJourLongue(sagaAujourdhui());
 
-  function applyPeriod(period) {
-    const d = DATA[period];
-    document.querySelector('[data-field="ca"]').textContent = d.ca;
-    document.querySelector('[data-field="caDelta"]').lastChild.textContent = d.caDelta;
-    document.querySelector('[data-field="caBreakdown"]').innerHTML = d.caBreakdown;
-    document.querySelector('[data-field="commission"]').textContent = d.commission;
-    document.querySelector('[data-field="commissionDelta"]').lastChild.textContent = d.commissionDelta;
-    document.querySelector('[data-field="reste"]').textContent = d.reste;
-    document.querySelector('[data-field="resteMeta"]').textContent = d.resteMeta;
-    document.querySelector('[data-field="lives"]').innerHTML = d.lives + " <small>prévus</small>";
-    document.querySelector('[data-field="livesMeta"]').textContent = d.livesMeta;
-    renderSpark(document.querySelector('[data-field="caSpark"]'), d.caSpark);
-    renderSpark(document.querySelector('[data-field="commissionSpark"]'), d.commissionSpark);
-    renderSpark(document.querySelector('[data-field="resteSpark"]'), d.resteSpark);
+  /* ============ Indicateurs calculés sur les données réelles ============ */
+
+  function ventesDuCRM() {
+    var res = [];
+    sagaLives().forEach(function (live) {
+      sagaLettresDuLive(live).forEach(function (lettre) {
+        var d = sagaDecompte(live, lettre);
+        res.push({ date: live.date, source: 'live', lettre: lettre, nom: sagaInfosCliente(lettre).nom,
+                   ventes: d.ventes, saga: d.commSaga, net: d.net, paye: d.paye });
+      });
+    });
+    var fiches = sagaLoad('clients_data', {});
+    Object.keys(fiches).forEach(function (cle) {
+      (fiches[cle].lives || []).forEach(function (l) {
+        if (!l.horsLive) return;
+        res.push({ date: l.date, source: 'direct', lettre: fiches[cle].lettre,
+                   nom: fiches[cle].nom || fiches[cle].prenom,
+                   ventes: l.ventes, saga: l.commission, net: l.net, paye: !!l.paye });
+      });
+    });
+    return res;
   }
+
+  var VENTES = ventesDuCRM();
+
+  var PERIODES = { '7j': 7, '30j': 30, '90j': 90, 'an': 365 };
+
+  function bornes(periode) {
+    var jours = PERIODES[periode] || 30;
+    var fin = new Date(sagaAujourdhui() + 'T00:00:00');
+    var debut = new Date(fin); debut.setDate(debut.getDate() - jours);
+    var precedent = new Date(debut); precedent.setDate(precedent.getDate() - jours);
+    return { debut: iso(debut), fin: iso(fin), precedent: iso(precedent) };
+  }
+
+  function iso(d) {
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  function cumul(du, au) {
+    return VENTES.filter(function (v) { return v.date > du && v.date <= au; })
+      .reduce(function (a, v) {
+        a.ca += v.ventes; a.saga += v.saga; a.net += v.net;
+        a[v.source] += v.ventes;
+        if (!v.paye) { a.reste += v.net; a.clientesDues[v.lettre] = true; }
+        return a;
+      }, { ca: 0, saga: 0, net: 0, live: 0, direct: 0, reste: 0, clientesDues: {} });
+  }
+
+  function evolution(actuel, precedent) {
+    if (!precedent) return '';
+    var pct = Math.round((actuel - precedent) / precedent * 100);
+    return (pct >= 0 ? '+' : '') + pct + ' % vs période précédente';
+  }
+
+  // Répartition en dix tranches, pour la courbe miniature
+  function courbe(du, au, champ) {
+    var d0 = new Date(du + 'T00:00:00'), d1 = new Date(au + 'T00:00:00');
+    var pas = (d1 - d0) / 10;
+    var out = [];
+    for (var i = 0; i < 10; i++) {
+      var a = iso(new Date(d0.getTime() + pas * i));
+      var b = iso(new Date(d0.getTime() + pas * (i + 1)));
+      out.push(VENTES.filter(function (v) { return v.date > a && v.date <= b; })
+        .reduce(function (s, v) { return s + v[champ]; }, 0));
+    }
+    return out.every(function (v) { return v === 0; }) ? out.map(function () { return 1; }) : out;
+  }
+
+  function applyPeriod(periode) {
+    var b = bornes(periode);
+    var t = cumul(b.debut, b.fin);
+    var precedent = cumul(b.precedent, b.debut);
+    var nbDues = Object.keys(t.clientesDues).length;
+
+    document.querySelector('[data-field="ca"]').textContent = sagaEUR(t.ca);
+    document.querySelector('[data-field="caDelta"]').lastChild.textContent = evolution(t.ca, precedent.ca);
+    document.querySelector('[data-field="caDelta"]').style.display = precedent.ca ? '' : 'none';
+    document.querySelector('[data-field="caBreakdown"]').innerHTML =
+      sagaEUR(t.live) + ' en live · <strong style="color:var(--brand-strong)">' + sagaEUR(t.direct) + ' hors live</strong>';
+    document.querySelector('[data-field="commission"]').textContent = sagaEUR(t.saga);
+    document.querySelector('[data-field="commissionDelta"]').lastChild.textContent = evolution(t.saga, precedent.saga);
+    document.querySelector('[data-field="commissionDelta"]').style.display = precedent.saga ? '' : 'none';
+    document.querySelector('[data-field="reste"]').textContent = sagaEUR(t.reste);
+    document.querySelector('[data-field="resteMeta"]').textContent =
+      nbDues ? 'auprès de ' + nbDues + ' cliente' + (nbDues > 1 ? 's' : '') : 'tout est à jour';
+
+    var prochains = sagaAgenda().filter(function (e) {
+      return e.type === 'Live' && e.date >= sagaAujourdhui();
+    }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    document.querySelector('[data-field="lives"]').innerHTML = prochains.length + ' <small>prévus</small>';
+    document.querySelector('[data-field="livesMeta"]').textContent = prochains.length
+      ? 'prochain : ' + sagaDateFR(prochains[0].date) + ' — ' + prochains[0].titre
+      : 'aucun live programmé';
+
+    renderSpark(document.querySelector('[data-field="caSpark"]'), courbe(b.debut, b.fin, 'ventes'));
+    renderSpark(document.querySelector('[data-field="commissionSpark"]'), courbe(b.debut, b.fin, 'saga'));
+    renderSpark(document.querySelector('[data-field="resteSpark"]'), courbe(b.debut, b.fin, 'net'));
+
+    renderResteParCliente(t);
+  }
+
+  function renderResteParCliente(t) {
+    var parCliente = {};
+    VENTES.filter(function (v) { return !v.paye; }).forEach(function (v) {
+      parCliente[v.lettre] = parCliente[v.lettre] || { nom: v.nom, lettre: v.lettre, montant: 0 };
+      parCliente[v.lettre].montant += v.net;
+    });
+    var lignes = Object.keys(parCliente).map(function (k) { return parCliente[k]; })
+      .sort(function (a, b) { return b.montant - a.montant; }).slice(0, 6);
+    var max = lignes.length ? lignes[0].montant : 1;
+
+    document.getElementById('resteListe').innerHTML = lignes.length
+      ? lignes.map(function (c) {
+          return '<li><div class="bar-row-top"><span>' + c.nom + ' (' + c.lettre + ')</span>' +
+            '<span class="tabular">' + sagaEUR(c.montant) + '</span></div>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' +
+            Math.round(c.montant / max * 100) + '%"></div></div></li>';
+        }).join('')
+      : '<li class="card-note">Tous les reversements sont à jour.</li>';
+  }
+
+  /* ============ Agenda du tableau de bord ============ */
+  function renderAgendaDash() {
+    var MOIS_COURT = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+    var prochains = sagaAgenda().filter(function (e) { return e.date >= sagaAujourdhui(); })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; }).slice(0, 4);
+
+    document.getElementById('dashAgenda').innerHTML = prochains.length
+      ? prochains.map(function (e) {
+          var d = new Date(e.date + 'T00:00:00');
+          var meta = [e.heure ? e.heure.replace(':', 'h') : '', e.commentaire].filter(Boolean).join(' — ');
+          return '<li><div class="agenda-date' + (e.date === sagaAujourdhui() ? ' today' : '') + '">' +
+            '<span class="d">' + d.getDate() + '</span><span class="m">' + MOIS_COURT[d.getMonth()] + '</span></div>' +
+            '<div class="agenda-body"><div class="agenda-title"><span class="agenda-kind">' + e.type + '</span>' +
+            e.titre + '</div><div class="agenda-meta">' + (meta || 'Sans commentaire') + '</div></div></li>';
+        }).join('')
+      : '<li class="card-note">Rien de prévu pour le moment.</li>';
+  }
+
+  /* ============ Recherche globale ============ */
+  function chercher(q) {
+    q = q.trim().toLowerCase();
+    var res = [];
+    if (q.length < 1) return res;
+
+    sagaToutesClientes().forEach(function (c) {
+      if ((c.nom + ' ' + c.prenom + ' ' + c.lettre).toLowerCase().indexOf(q) === -1) return;
+      res.push({ type: 'Cliente', libelle: (c.nom || c.prenom) + ' (' + c.lettre + ')',
+                 href: 'cliente.html?c=' + (sagaFicheDressing(c.lettre) || '') });
+    });
+
+    sagaLives().forEach(function (l) {
+      if ((l.titre + ' ' + l.categorie).toLowerCase().indexOf(q) === -1) return;
+      res.push({ type: 'Live', libelle: l.titre + ' — ' + l.categorie, href: 'live.html?l=' + l.id });
+    });
+
+    sagaAgenda().forEach(function (e) {
+      if ((e.titre + ' ' + e.commentaire).toLowerCase().indexOf(q) === -1) return;
+      res.push({ type: 'Agenda', libelle: e.titre + ' — ' + sagaDateFR(e.date), href: 'agenda.html' });
+    });
+
+    return res.slice(0, 10);
+  }
+
+  function renderRecherche() {
+    var q = document.getElementById('searchGlobal').value;
+    var box = document.getElementById('searchResults');
+    var res = chercher(q);
+
+    if (!q.trim()) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = res.length
+      ? res.map(function (r) {
+          return '<a class="search-result" href="' + r.href + '">' +
+            '<span class="search-result-type">' + r.type + '</span>' +
+            '<span>' + r.libelle + '</span></a>';
+        }).join('')
+      : '<div class="search-result muted">Aucun résultat pour « ' + q.trim() + ' »</div>';
+  }
+
+  var rechercheTimer = null;
+  document.getElementById('searchGlobal').addEventListener('input', function () {
+    clearTimeout(rechercheTimer);
+    rechercheTimer = setTimeout(renderRecherche, 200);
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.search')) document.getElementById('searchResults').style.display = 'none';
+  });
 
   document.getElementById("periodToggle").addEventListener("click", (e) => {
     const btn = e.target.closest("button");
@@ -215,6 +359,7 @@
     applyPeriod(btn.dataset.period);
   });
 
+  renderAgendaDash();
   applyPeriod("30j");
 </script>
 </body>

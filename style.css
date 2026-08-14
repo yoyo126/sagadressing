@@ -529,3 +529,185 @@ tfoot td { padding: 12px 8px; font-size: 0.85rem; border-top: 2px solid var(--li
   body { background: #fff; }
   a[href]::after { content: ""; }
 }
+
+
+/* ============================================================
+   Lisibilité — révision de l'échelle typographique
+   Les tailles d'origine descendaient jusqu'à 0.6rem, illisibles
+   à l'usage. Base agrandie et plancher relevé partout.
+   ============================================================ */
+
+html { font-size: 17.5px; }
+body { line-height: 1.55; }
+
+/* Titres */
+.topbar h1 { font-size: 1.75rem; }
+.topbar-sub { font-size: 0.95rem; }
+.panel-head h2 { font-size: 1.12rem; }
+.detail-title-row h1 { font-size: 1.6rem; }
+.detail-meta { font-size: 0.9rem; }
+
+/* Menu latéral */
+.nav-item { font-size: 0.95rem; padding: 10px 12px; }
+.nav-label { font-size: 0.76rem; }
+.brand-word-main { font-size: 1.15rem; }
+.brand-word-sub { font-size: 0.72rem; }
+.user-name { font-size: 0.9rem; }
+.user-role { font-size: 0.78rem; }
+.user-avatar { font-size: 0.82rem; width: 34px; height: 34px; }
+
+/* Tableaux */
+table { font-size: 0.92rem; }
+thead th { font-size: 0.76rem; padding: 0 8px 10px; }
+tbody td { padding: 11px 8px; }
+.name-sub { font-size: 0.82rem; }
+
+/* Indicateurs */
+.kpi-label { font-size: 0.8rem; }
+.kpi-value { font-size: 1.85rem; }
+.kpi-delta { font-size: 0.86rem; }
+.stat-inline .label { font-size: 0.78rem; }
+.stat-inline .value { font-size: 1.15rem; }
+
+/* Contrôles */
+.btn { font-size: 0.92rem; }
+.btn-sm { font-size: 0.86rem; padding: 7px 13px; }
+.form-label { font-size: 0.8rem; }
+.form-input, .form-select, .form-textarea { font-size: 0.95rem; padding: 10px 12px; }
+.search input { font-size: 0.95rem; }
+.toggle-group button { font-size: 0.88rem; padding: 7px 14px; }
+.tab-item { font-size: 0.96rem; }
+.check-row { font-size: 0.92rem; }
+
+/* Pastilles et libellés secondaires */
+.chip { font-size: 0.8rem; padding: 4px 11px; }
+.tag-avatar { font-size: 0.8rem; width: 26px; height: 26px; }
+.card-note { font-size: 0.86rem; }
+.muted { font-size: inherit; }
+.agenda-kind { font-size: 0.72rem; }
+.agenda-title { font-size: 0.96rem; }
+.agenda-meta { font-size: 0.85rem; }
+.agenda-date .d { font-size: 1.15rem; }
+.agenda-date .m { font-size: 0.7rem; }
+.file-name { font-size: 0.95rem; }
+.file-sub, .doc-sub { font-size: 0.84rem; }
+.doc-name { font-size: 0.95rem; }
+.sign-step .label { font-size: 0.82rem; }
+.sign-step .sub { font-size: 0.74rem; }
+.sign-state { font-size: 0.84rem; }
+.note-meta { font-size: 0.82rem; }
+.empty-state .t { font-size: 1rem; }
+.empty-state .s { font-size: 0.88rem; }
+.footnote { font-size: 0.82rem; }
+.proto-badge { font-size: 0.86rem; }
+.info-row .k, .info-row .v { font-size: 0.92rem; }
+.picker-tag { font-size: 0.85rem; }
+.contact-item { font-size: 0.88rem; }
+.doc-preview { font-size: 0.9rem; }
+
+/* ---------- Calendrier ---------- */
+.date-input { cursor: pointer; background-image: none; }
+.cal-pop {
+  position: absolute; z-index: 900; width: 306px; padding: 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 12px 32px -10px rgba(36,31,26,0.28), 0 2px 6px rgba(36,31,26,0.08);
+}
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.cal-head > button {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface-alt); color: var(--ink); cursor: pointer; font-size: 1.1rem; line-height: 1;
+}
+.cal-head > button:hover { background: var(--brand-soft); border-color: var(--brand); }
+.cal-mois { display: flex; gap: 6px; flex: 1; }
+.cal-select {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-alt);
+  color: var(--ink); font: inherit; font-size: 0.9rem; padding: 5px 6px; cursor: pointer;
+}
+.cal-grille { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { font-size: 0.74rem; text-transform: uppercase; color: var(--ink-faint); text-align: center; padding-bottom: 6px; }
+.cal-jour {
+  height: 36px; border: 0; border-radius: 8px; background: none; color: var(--ink);
+  font: inherit; font-size: 0.92rem; cursor: pointer;
+}
+.cal-jour:hover { background: var(--surface-alt); }
+.cal-jour.hors { visibility: hidden; }
+.cal-jour.aujourdhui { box-shadow: inset 0 0 0 1.5px var(--brand); font-weight: 600; }
+.cal-jour.choisi { background: var(--brand); color: #fff; font-weight: 600; }
+.cal-pied { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.cal-pied button {
+  flex: 1; padding: 7px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface-alt); color: var(--ink); font: inherit; font-size: 0.86rem; cursor: pointer;
+}
+.cal-pied button:hover { background: var(--brand-soft); border-color: var(--brand); }
+
+/* ---------- Logo dans le menu ---------- */
+.brand-logo { justify-content: center; padding: 6px 8px 16px; }
+.brand-logo img { max-width: 100%; max-height: 62px; object-fit: contain; }
+
+/* ---------- Aperçu d'un PDF ---------- */
+.pdf-modal {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(28,23,18,0.55);
+  display: flex; align-items: center; justify-content: center; padding: 28px;
+}
+.pdf-modal-box {
+  background: var(--surface); border-radius: 14px; width: min(940px, 100%); height: 100%;
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 60px -18px rgba(0,0,0,0.5);
+}
+.pdf-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap;
+}
+.pdf-modal-actions { display: flex; gap: 8px; }
+.pdf-modal-vue { flex: 1; width: 100%; border: 0; background: var(--surface-alt); }
+
+/* Calendrier de l'agenda : jours cliquables et jour sélectionné */
+.calendar-mini .dow { font-size: 0.74rem; }
+.calendar-mini .day { font-size: 0.9rem; }
+.calendar-mini .day[data-iso] { cursor: pointer; }
+.calendar-mini .day[data-iso]:hover { background: var(--surface-alt); color: var(--ink); }
+.calendar-mini .day.selected { background: var(--brand-soft); color: var(--brand-strong); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--brand); }
+.calendar-mini .day.today.selected { background: var(--brand); color: #FFF9EF; }
+
+/* Actions au survol d'une ligne d'agenda */
+.agenda-list li .file-actions { opacity: 0; transition: opacity .12s ease; }
+.agenda-list li:hover .file-actions,
+.agenda-list li:focus-within .file-actions { opacity: 1; }
+
+/* ---------- Résultats de la recherche globale ---------- */
+.content-grid-simple { grid-template-columns: 1fr; }
+.search-results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 800;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 30px -12px rgba(36,31,26,0.3); overflow: hidden; max-height: 340px; overflow-y: auto;
+}
+.search-result {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  font-size: 0.9rem; border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.search-result:last-child { border-bottom: 0; }
+.search-result:hover { background: var(--surface-alt); }
+.search-result-type {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+  background: var(--brand-soft); color: var(--brand-strong);
+  padding: 2px 7px; border-radius: 5px; flex-shrink: 0;
+}
+
+/* Ligne de répartition cliquable dans un live */
+.ligne-cliente { cursor: pointer; }
+.ligne-cliente:hover { background: var(--surface-alt); }
+
+/* ---------- Historique des versions ---------- */
+.version-entree { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.version-entree:last-child { border-bottom: 0; }
+.version-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.version-num {
+  font-family: "Iowan Old Style", Georgia, serif; font-size: 0.95rem; font-weight: 600;
+  background: var(--brand-soft); color: var(--brand-strong);
+  padding: 4px 11px; border-radius: 999px; flex-shrink: 0;
+}
+.version-titre { font-size: 1rem; }
+.version-points { margin: 0; padding-left: 34px; color: var(--ink-muted); font-size: 0.9rem; line-height: 1.7; }
+
+/* Le logo du menu respire, sans cadre imposé */
+.brand-logo { justify-content: flex-start; padding: 2px 4px 16px; }
+.brand-logo img { max-height: 54px; }

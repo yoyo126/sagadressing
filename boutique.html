@@ -37,6 +37,16 @@
               <h2>Dressings à inclure</h2>
               <span class="panel-link" style="color:var(--ink-faint);" id="dressCount">—</span>
             </div>
+            <div class="picker" style="margin-bottom:12px;">
+              <div class="picker-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="dressSearch" placeholder="Rechercher une cliente (nom ou lettre)…" autocomplete="off" />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <button class="btn btn-ghost btn-sm" onclick="selectDressings(true)">Tout sélectionner</button>
+              <button class="btn btn-ghost btn-sm" onclick="selectDressings(false)">Tout désélectionner</button>
+            </div>
             <div id="dressList" class="dress-list"></div>
             <p class="card-note" style="margin-top:12px;">
               La vignette provient de la fiche cliente. Vous pouvez la remplacer ici pour cette boutique
@@ -157,7 +167,15 @@
     { prenom:'Marion',  lettre:'F', statut:'active', vignette:'' }
   ];
 
-  var clientes = sagaLoad('clientes', CLIENTES_FALLBACK).filter(function (c) { return c.statut === 'active'; });
+  /* Toutes les clientes connues de l'application, pas seulement celles
+     déjà enregistrées dans la liste : la boutique reste alignée sur le CRM. */
+  var clientes = sagaToutesClientes().map(function (c) {
+    var entree = sagaLoad('clientes', []).filter(function (x) { return x.lettre === c.lettre; })[0] || {};
+    return {
+      prenom: c.prenom, nom: c.nom || c.prenom, lettre: c.lettre,
+      statut: entree.statut || 'active', vignette: entree.vignette || ''
+    };
+  }).filter(function (c) { return c.statut === 'active'; });
   var config = sagaLoad('boutique_config', { paliers: PALIERS_DEFAUT.slice(), selection: {}, images: {} });
 
   if (!config.paliersActifs) {
@@ -170,6 +188,12 @@
 
   function persist() { sagaSave('boutique_config', config); }
 
+  var rechercheDressTimer = null;
+  document.getElementById('dressSearch').addEventListener('input', function () {
+    clearTimeout(rechercheDressTimer);
+    rechercheDressTimer = setTimeout(renderDressings, 200);
+  });
+
   function imageDe(lettre) {
     var override = config.images[lettre];
     if (override) return override;
@@ -177,8 +201,24 @@
     return (c && c.vignette) || '';
   }
 
+  function dressingsVisibles() {
+    var q = (document.getElementById('dressSearch').value || '').trim().toLowerCase();
+    if (!q) return clientes;
+    return clientes.filter(function (c) {
+      return (c.nom + ' ' + c.prenom + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  function selectDressings(tout) {
+    dressingsVisibles().forEach(function (c) { config.selection[c.lettre] = tout; });
+    persist();
+    renderDressings();
+    refreshApercu();
+  }
+
   function renderDressings() {
-    document.getElementById('dressList').innerHTML = clientes.map(function (c) {
+    var liste = dressingsVisibles();
+    document.getElementById('dressList').innerHTML = liste.map(function (c) {
       var img = imageDe(c.lettre);
       var vign = img
         ? '<img class="vignette-thumb" src="' + img + '" alt="" />'
@@ -188,15 +228,15 @@
         '<input type="checkbox" ' + (config.selection[c.lettre] ? 'checked' : '') +
           ' onchange="toggleDress(\'' + c.lettre + '\', this.checked)" />' +
         vign +
-        '<span class="dress-name"><strong>' + c.lettre + '</strong> · ' + c.prenom + perso +
+        '<span class="dress-name"><strong>' + c.lettre + '</strong> · ' + (c.nom || c.prenom) + perso +
           (img ? '' : '<div class="muted" style="font-size:.7rem;">Aucune vignette</div>') + '</span>' +
         '<input type="file" accept="image/*" id="img_' + c.lettre + '" style="display:none;" onchange="changeImage(\'' + c.lettre + '\', this)" />' +
         '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.lettre + '\').click()">Changer</button>' +
       '</label>';
-    }).join('') || '<p class="card-note">Aucune cliente active. Créez-en une depuis la page Clientes.</p>';
+    }).join('') || '<p class="card-note">Aucune cliente ne correspond.</p>';
 
     var n = clientes.filter(function (c) { return config.selection[c.lettre]; }).length;
-    document.getElementById('dressCount').textContent = n + ' sur ' + clientes.length;
+    document.getElementById('dressCount').textContent = n + ' sélectionné(s) sur ' + clientes.length;
   }
 
   function toggleDress(lettre, checked) {

@@ -33,9 +33,16 @@ function renderSagaSidebar(activeKey) {
     g.items.push(item);
   });
 
+  // Le logo déposé dans Paramètres remplace la marque partout où elle apparaît
+  const logo = sagaLoad('logo_ecran', '') || sagaLoad('logo', '');
+  const identite = sagaLoad('identite', {});
+  const nomMarque = identite.nom || 'Saga Dressing';
+
   let html = '';
-  html += '<div class="brand"><div class="brand-mark serif">S</div><div class="brand-word">' +
-          '<span class="brand-word-main">Saga</span><span class="brand-word-sub">Dressing</span></div></div>';
+  html += logo
+    ? '<div class="brand brand-logo"><img src="' + logo + '" alt="' + nomMarque + '" /></div>'
+    : '<div class="brand"><div class="brand-mark serif">S</div><div class="brand-word">' +
+      '<span class="brand-word-main">Saga</span><span class="brand-word-sub">Dressing</span></div></div>';
   html += '<nav class="nav">';
   groups.forEach(g => {
     html += '<div class="nav-label">' + g.name + '</div>';
@@ -51,6 +58,9 @@ function renderSagaSidebar(activeKey) {
           '<div class="user-meta"><div class="user-name">Sarah</div><div class="user-role">Gérante</div></div></div></div>';
 
   root.innerHTML = html;
+
+  // Une fois la page en place, les champs date deviennent de vrais calendriers
+  setTimeout(function () { sagaInitCalendriers(); }, 0);
 }
 
 /* ============ Persistance locale (maquette) ============
@@ -86,7 +96,31 @@ function sagaReset() {
 }
 
 /* Réduit une image avant stockage : sans ça, quelques photos suffisent
-   à saturer l'espace disponible du navigateur. */
+   à saturer l'espace disponible du navigateur.
+   `mime` permet de garder la transparence en PNG pour l'affichage écran,
+   là où le PDF exige un JPEG opaque. */
+function sagaReadImageFormat(file, maxSize, mime, callback) {
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      var ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      var ctx = canvas.getContext('2d');
+      if (mime === 'image/jpeg') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL(mime, 0.85));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function sagaReadImage(file, maxSize, callback) {
   var reader = new FileReader();
   reader.onload = function (e) {
@@ -208,6 +242,18 @@ var SAGA_LIVES_DEFAUT = [
     paiements: { C: { date: '2026-07-17', mode: 'Virement' }, M: { date: '2026-07-17', mode: 'Virement' } }
   }
 ];
+
+/* Agenda : mêmes événements pour toutes les pages qui l'affichent */
+var SAGA_AGENDA_DEFAUT = [
+  { id: 'e1', type: 'Live',   date: '2026-08-18', heure: '19:00', titre: 'Julie Renard (C)',      commentaire: 'Mix saison' },
+  { id: 'e2', type: 'Récup.', date: '2026-08-17', heure: '',      titre: 'Camille Bertin (B)',    commentaire: '12 caisses à récupérer, dépôt Rungis' },
+  { id: 'e3', type: 'Live',   date: '2026-08-20', heure: '20:30', titre: 'Marion Fabre (F)',      commentaire: 'Catégorie sacs & accessoires' },
+  { id: 'e4', type: 'Autre',  date: '2026-08-24', heure: '',      titre: 'Réception fournisseur', commentaire: 'Livraison housses + étiquettes' },
+  { id: 'e5', type: 'Récup.', date: '2026-08-27', heure: '14:00', titre: 'Nora Tissot (T)',       commentaire: 'Première collecte, 4 caisses estimées' },
+  { id: 'e6', type: 'Live',   date: '2026-09-02', heure: '20:00', titre: 'Fanny Moreau (M)',      commentaire: 'Fin de saison été' }
+];
+
+function sagaAgenda() { return sagaLoad('agenda', SAGA_AGENDA_DEFAUT); }
 
 function sagaLives() { return sagaLoad('lives', SAGA_LIVES_DEFAUT); }
 function sagaSaveLives(lives) { return sagaSave('lives', lives); }
@@ -353,6 +399,28 @@ function sagaTotauxLive(live) {
   return t;
 }
 
+/* ============ Date du jour ============
+   Le CRM travaille sur la date réelle du poste : toutes les pages
+   partagent cette référence, il n'y a plus de date figée en dur. */
+function sagaAujourdhui() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+    ('0' + d.getDate()).slice(-2);
+}
+
+var SAGA_JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+
+function sagaDateJourLongue(iso) {
+  var d = new Date((iso || sagaAujourdhui()) + 'T00:00:00');
+  return SAGA_JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + SAGA_MOIS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// Décalage en jours par rapport à aujourd'hui (négatif = passé)
+function sagaDecalageJours(iso) {
+  return Math.round((new Date(iso + 'T00:00:00') - new Date(sagaAujourdhui() + 'T00:00:00')) / 86400000);
+}
+
 var SAGA_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
 function sagaEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
@@ -397,6 +465,278 @@ function sagaImprimer(titre, corps) {
   w.document.close();
   w.focus();
   setTimeout(function () { w.print(); }, 400);
+}
+
+/* ============ Utilisateurs ============
+   Les comptes vivent ici pour que toutes les pages sachent qui agit. */
+var SAGA_ROLES = {
+  admin:   { label: 'Administratrice', detail: 'Tous les droits, y compris la gestion des utilisateurs' },
+  gestion: { label: 'Gestionnaire',    detail: 'Gère les clientes, lives, paiements et documents' },
+  lecture: { label: 'Lecture seule',   detail: 'Consulte sans rien modifier' }
+};
+
+var SAGA_UTILISATEURS_DEFAUT = [
+  { id: 1, prenom: 'Sarah', nom: 'Danino', email: 'sarah@sagadressing.fr',
+    role: 'admin', statut: 'actif', creele: '2026-01-12', proprietaire: true }
+];
+
+function sagaUtilisateurs() { return sagaLoad('utilisateurs', SAGA_UTILISATEURS_DEFAUT); }
+function sagaSaveUtilisateurs(u) { return sagaSave('utilisateurs', u); }
+
+function sagaUtilisateurCourant() {
+  var id = sagaLoad('utilisateur_courant', null);
+  var tous = sagaUtilisateurs();
+  return tous.filter(function (u) { return u.id === id; })[0] || tous[0];
+}
+
+function sagaNomComplet(u) { return u ? ((u.prenom || '') + ' ' + (u.nom || '')).trim() : '—'; }
+
+function sagaInitiales(u) {
+  if (!u) return '?';
+  return ((u.prenom || ' ')[0] + (u.nom || ' ')[0]).toUpperCase().trim() || '?';
+}
+
+/* ============ Journal d'activité ============
+   Trace horodatée de ce qui se passe dans le CRM, par utilisateur.
+   Volontairement plafonné pour ne pas saturer le stockage du navigateur. */
+var SAGA_JOURNAL_MAX = 500;
+
+function sagaJournal() { return sagaLoad('journal', []); }
+
+function sagaTracer(action, cible, detail) {
+  var u = sagaUtilisateurCourant();
+  var entrees = sagaJournal();
+  entrees.unshift({
+    date: new Date().toISOString(),
+    utilisateur: sagaNomComplet(u),
+    utilisateurId: u ? u.id : null,
+    action: action,
+    cible: cible || '',
+    detail: detail || ''
+  });
+  if (entrees.length > SAGA_JOURNAL_MAX) entrees = entrees.slice(0, SAGA_JOURNAL_MAX);
+  sagaSave('journal', entrees);
+}
+
+function sagaHorodatage(iso) {
+  var d = new Date(iso);
+  return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' +
+    d.getFullYear() + ' à ' + ('0' + d.getHours()).slice(-2) + 'h' + ('0' + d.getMinutes()).slice(-2);
+}
+
+/* ============ Versions du CRM ============
+   Historique des évolutions, consultable depuis Paramètres. */
+var SAGA_VERSION = '1.4.0';
+
+var SAGA_VERSIONS = [
+  { version: '1.4.0', date: '2026-08-14', titre: 'Lisibilité, journal et calendriers', points: [
+    'Typographie agrandie sur toute l\'application',
+    'Logo repris dans le menu et sur tous les documents',
+    'Sélecteurs de date remplacés par un calendrier complet',
+    'Journal d\'activité et gestion complète des utilisateurs',
+    'Agenda : consultation, modification et suppression d\'un événement',
+    'Suppression d\'un live en cas d\'erreur d\'import',
+    'Aperçu du PDF avant enregistrement'
+  ]},
+  { version: '1.3.0', date: '2026-08-14', titre: 'Documents PDF', points: [
+    'Générateur de PDF intégré : logo, en-tête et mise en page soignée',
+    'Contrats et bons de restitution enregistrés et re-téléchargeables',
+    'Rapports reconstruits sur les données réelles des lives',
+    'Reversements toujours par virement : seule la date est demandée'
+  ]},
+  { version: '1.2.0', date: '2026-08-13', titre: 'Lives détaillés', points: [
+    'Chaque live porte ses articles, rattachés à une lettre de dressing',
+    'Vue filtrée par cliente depuis sa fiche',
+    'Articles modifiables : libellé, dressing, montant, type',
+    'Récapitulatifs par cliente, par live et tous lives confondus'
+  ]},
+  { version: '1.1.0', date: '2026-08-13', titre: 'Fiabilisation des boutons', points: [
+    'Audit complet : plus aucun bouton sans effet',
+    'Annuler restaure et referme réellement les formulaires',
+    'Agenda : plusieurs clientes par événement'
+  ]},
+  { version: '1.0.0', date: '2026-08-12', titre: 'Première maquette', points: [
+    'Clientes, lives, apporteurs, agenda, rapports, boutique et paramètres'
+  ]}
+];
+
+/* ============ Calendrier ============
+   Remplace le sélecteur natif, trop petit et illisible : un vrai calendrier
+   mensuel s'ouvre sous le champ, avec navigation et raccourci « Aujourd'hui ».
+   Le champ reste un input date : la valeur lue par les pages ne change pas. */
+
+function sagaInitCalendriers(racine) {
+  (racine || document).querySelectorAll('input[type="date"]:not([data-cal])').forEach(function (input) {
+    input.dataset.cal = '1';
+    input.readOnly = true;                 // la saisie passe par le calendrier
+    input.classList.add('date-input');
+    input.addEventListener('click', function (e) {
+      e.preventDefault();
+      sagaOuvrirCalendrier(input);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sagaOuvrirCalendrier(input); }
+    });
+  });
+}
+
+function sagaFermerCalendrier() {
+  var ouvert = document.querySelector('.cal-pop');
+  if (ouvert) ouvert.remove();
+  document.removeEventListener('mousedown', sagaCalHorsClic, true);
+}
+
+function sagaCalHorsClic(e) {
+  var pop = document.querySelector('.cal-pop');
+  if (pop && !pop.contains(e.target) && !e.target.dataset.cal) sagaFermerCalendrier();
+}
+
+function sagaOuvrirCalendrier(input) {
+  var dejaOuvert = document.querySelector('.cal-pop');
+  sagaFermerCalendrier();
+  if (dejaOuvert && dejaOuvert.dataset.pour === input.id) return;
+
+  var pop = document.createElement('div');
+  pop.className = 'cal-pop';
+  pop.dataset.pour = input.id || '';
+  document.body.appendChild(pop);
+
+  var valeur = input.value || sagaAujourdhui();
+  var curseur = new Date(valeur + 'T00:00:00');
+  var moisAffiche = new Date(curseur.getFullYear(), curseur.getMonth(), 1);
+
+  function dessiner() {
+    var annee = moisAffiche.getFullYear(), mois = moisAffiche.getMonth();
+    var premier = new Date(annee, mois, 1);
+    var decalage = (premier.getDay() + 6) % 7;          // semaine démarrant lundi
+    var nbJours = new Date(annee, mois + 1, 0).getDate();
+    var nbJoursPrec = new Date(annee, mois, 0).getDate();
+    var aujourdhui = sagaAujourdhui();
+
+    var cases = [];
+    for (var i = decalage - 1; i >= 0; i--) cases.push({ jour: nbJoursPrec - i, hors: true });
+    for (var j = 1; j <= nbJours; j++) cases.push({ jour: j, hors: false });
+    while (cases.length % 7 !== 0) cases.push({ jour: cases.length - decalage - nbJours + 1, hors: true });
+
+    pop.innerHTML =
+      '<div class="cal-head">' +
+        '<button type="button" data-nav="-1" aria-label="Mois précédent">‹</button>' +
+        '<div class="cal-mois">' +
+          '<select class="cal-select" data-select="mois">' +
+            SAGA_MOIS.map(function (m, i) {
+              return '<option value="' + i + '"' + (i === mois ? ' selected' : '') + '>' +
+                m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<select class="cal-select" data-select="annee">' +
+            (function () {
+              var out = '', base = new Date().getFullYear();
+              for (var a = base - 8; a <= base + 3; a++) {
+                out += '<option value="' + a + '"' + (a === annee ? ' selected' : '') + '>' + a + '</option>';
+              }
+              return out;
+            })() +
+          '</select>' +
+        '</div>' +
+        '<button type="button" data-nav="1" aria-label="Mois suivant">›</button>' +
+      '</div>' +
+      '<div class="cal-grille">' +
+        ['L','M','M','J','V','S','D'].map(function (d) { return '<span class="cal-dow">' + d + '</span>'; }).join('') +
+        cases.map(function (c) {
+          if (c.hors) return '<span class="cal-jour hors"></span>';
+          var iso = annee + '-' + ('0' + (mois + 1)).slice(-2) + '-' + ('0' + c.jour).slice(-2);
+          var classes = 'cal-jour';
+          if (iso === input.value) classes += ' choisi';
+          if (iso === aujourdhui) classes += ' aujourdhui';
+          return '<button type="button" class="' + classes + '" data-iso="' + iso + '">' + c.jour + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="cal-pied">' +
+        '<button type="button" data-aujourdhui>Aujourd\'hui</button>' +
+        '<button type="button" data-effacer>Effacer</button>' +
+      '</div>';
+  }
+
+  function choisir(iso) {
+    input.value = iso;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    sagaFermerCalendrier();
+  }
+
+  pop.addEventListener('click', function (e) {
+    var nav = e.target.closest('[data-nav]');
+    if (nav) { moisAffiche.setMonth(moisAffiche.getMonth() + parseInt(nav.dataset.nav, 10)); dessiner(); return; }
+    var jour = e.target.closest('[data-iso]');
+    if (jour) { choisir(jour.dataset.iso); return; }
+    if (e.target.closest('[data-aujourdhui]')) { choisir(sagaAujourdhui()); return; }
+    if (e.target.closest('[data-effacer]')) { choisir(''); return; }
+  });
+
+  pop.addEventListener('change', function (e) {
+    var sel = e.target.closest('[data-select]');
+    if (!sel) return;
+    if (sel.dataset.select === 'mois') moisAffiche.setMonth(parseInt(sel.value, 10));
+    else moisAffiche.setFullYear(parseInt(sel.value, 10));
+    dessiner();
+  });
+
+  dessiner();
+
+  // Positionnement sous le champ, recalé s'il déborde de l'écran
+  var r = input.getBoundingClientRect();
+  pop.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  var gauche = window.scrollX + r.left;
+  pop.style.left = Math.min(gauche, window.scrollX + window.innerWidth - pop.offsetWidth - 12) + 'px';
+  if (r.bottom + pop.offsetHeight + 12 > window.innerHeight) {
+    pop.style.top = (window.scrollY + r.top - pop.offsetHeight - 6) + 'px';
+  }
+
+  setTimeout(function () { document.addEventListener('mousedown', sagaCalHorsClic, true); }, 0);
+}
+
+/* ============ Aperçu d'un PDF avant enregistrement ============
+   Le document s'affiche dans une fenêtre : on le relit, puis on décide
+   de l'enregistrer ou non. */
+function sagaApercuPdf(pdf, nomFichier, titre) {
+  var fond = document.createElement('div');
+  fond.className = 'pdf-modal';
+  fond.innerHTML =
+    '<div class="pdf-modal-box">' +
+      '<div class="pdf-modal-head">' +
+        '<div><strong>' + (titre || 'Aperçu du document') + '</strong>' +
+          '<div class="muted" style="font-size:.8rem;">' + nomFichier + '.pdf</div></div>' +
+        '<div class="pdf-modal-actions">' +
+          '<a class="btn btn-ghost btn-sm" data-onglet target="_blank" rel="noopener">Ouvrir dans un onglet</a>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button>' +
+          '<button class="btn btn-primary btn-sm" data-enregistrer>Enregistrer le PDF</button>' +
+        '</div>' +
+      '</div>' +
+      '<iframe class="pdf-modal-vue" title="Aperçu"></iframe>' +
+    '</div>';
+  document.body.appendChild(fond);
+
+  /* Un lien blob: est affiché de façon fiable par le lecteur PDF intégré,
+     là où une URL data: est refusée dans une iframe par plusieurs navigateurs. */
+  var blob = new Blob([pdf.octets()], { type: 'application/pdf' });
+  var url = URL.createObjectURL(blob);
+  fond.querySelector('.pdf-modal-vue').src = url;
+  fond.querySelector('[data-onglet]').href = url;
+
+  function fermer() {
+    fond.remove();
+    URL.revokeObjectURL(url);
+    document.removeEventListener('keydown', auClavier);
+  }
+  function auClavier(e) { if (e.key === 'Escape') fermer(); }
+
+  fond.querySelector('[data-fermer]').onclick = fermer;
+  fond.querySelector('[data-enregistrer]').onclick = function () {
+    pdf.enregistrer(nomFichier);
+    fermer();
+  };
+  fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+  document.addEventListener('keydown', auClavier);
 }
 
 function renderSpark(el, values) {

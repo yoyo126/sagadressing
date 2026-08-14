@@ -16,6 +16,12 @@
           <h1>Agenda</h1>
           <p class="topbar-sub">Récupérations de dressing, lives programmés, autres rendez-vous</p>
         </div>
+        <div class="topbar-actions">
+          <div class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchAgenda" placeholder="Rechercher un événement…" />
+          </div>
+        </div>
       </header>
 
       <div class="proto-badge">
@@ -29,73 +35,33 @@
 
       <section class="content-grid">
         <div class="panel">
-          <div class="panel-head"><h2>Cette semaine</h2></div>
-          <ul class="agenda-list" id="agendaThisWeek">
-            <li>
-              <div class="agenda-date today"><span class="d">1</span><span class="m">Août</span></div>
-              <div class="agenda-body">
-                <div class="agenda-title"><span class="agenda-kind">Live</span>Julie (C) — programmé<span class="sync-badge" data-sync-badge title="Synchronisé avec iCloud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17 8.5a4 4 0 0 1-.5 7.99"/></svg></span></div>
-                <div class="agenda-meta">19h00, mix saison</div>
-              </div>
-            </li>
-            <li>
-              <div class="agenda-date"><span class="d">4</span><span class="m">Août</span></div>
-              <div class="agenda-body">
-                <div class="agenda-title"><span class="agenda-kind">Récup.</span>Camille (B) — dressing<span class="sync-badge" data-sync-badge title="Synchronisé avec iCloud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17 8.5a4 4 0 0 1-.5 7.99"/></svg></span></div>
-                <div class="agenda-meta">12 caisses à récupérer, dépôt Rungis</div>
-              </div>
-            </li>
-            <li>
-              <div class="agenda-date"><span class="d">5</span><span class="m">Août</span></div>
-              <div class="agenda-body">
-                <div class="agenda-title"><span class="agenda-kind">Live</span>Marion (F) — programmé<span class="sync-badge" data-sync-badge title="Synchronisé avec iCloud"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17 8.5a4 4 0 0 1-.5 7.99"/></svg></span></div>
-                <div class="agenda-meta">20h30, catégorie sacs &amp; accessoires</div>
-              </div>
-            </li>
-          </ul>
-
-          <div class="panel-head" style="margin-top:22px;"><h2>Plus tard</h2></div>
-          <ul class="agenda-list">
-            <li>
-              <div class="agenda-date"><span class="d">9</span><span class="m">Août</span></div>
-              <div class="agenda-body">
-                <div class="agenda-title"><span class="agenda-kind">Autre</span>Réception fournisseur</div>
-                <div class="agenda-meta">Livraison housses + étiquettes</div>
-              </div>
-            </li>
-            <li>
-              <div class="agenda-date"><span class="d">14</span><span class="m">Août</span></div>
-              <div class="agenda-body">
-                <div class="agenda-title"><span class="agenda-kind">Récup.</span>Nora (T) — dressing</div>
-                <div class="agenda-meta">Première collecte, 4 caisses estimées</div>
-              </div>
-            </li>
-            <li>
-              <div class="agenda-date"><span class="d">19</span><span class="m">Août</span></div>
-              <div class="agenda-body">
-                <div class="agenda-title"><span class="agenda-kind">Live</span>Fanny (M) — programmé</div>
-                <div class="agenda-meta">20h00, fin de saison été</div>
-              </div>
-            </li>
-          </ul>
+          <div class="panel-head">
+            <h2 id="listeTitre">À venir</h2>
+            <button class="btn btn-ghost btn-sm" id="btnToutVoir" onclick="voirTout()" style="display:none;">Tout voir</button>
+          </div>
+          <ul class="agenda-list" id="agendaListe"></ul>
+          <div id="agendaVide" class="empty-state" style="display:none; margin-top:14px;">
+            <div class="t">Aucun événement</div>
+            <div class="s">Ajoutez une récupération, un live ou un rendez-vous depuis le formulaire</div>
+          </div>
         </div>
 
         <div class="side-col">
           <div class="panel">
-            <div class="panel-head"><h2>Août 2026</h2></div>
-            <div class="calendar-mini">
-              <span class="dow">L</span><span class="dow">M</span><span class="dow">M</span><span class="dow">J</span><span class="dow">V</span><span class="dow">S</span><span class="dow">D</span>
-              <span class="day muted">27</span><span class="day muted">28</span><span class="day muted">29</span><span class="day muted">30</span><span class="day muted">31</span><span class="day today">1</span><span class="day">2</span>
-              <span class="day">3</span><span class="day has-event">4</span><span class="day has-event">5</span><span class="day">6</span><span class="day">7</span><span class="day">8</span><span class="day has-event">9</span>
-              <span class="day">10</span><span class="day">11</span><span class="day">12</span><span class="day">13</span><span class="day has-event">14</span><span class="day">15</span><span class="day">16</span>
-              <span class="day">17</span><span class="day">18</span><span class="day has-event">19</span><span class="day">20</span><span class="day">21</span><span class="day">22</span><span class="day">23</span>
-              <span class="day">24</span><span class="day">25</span><span class="day">26</span><span class="day">27</span><span class="day">28</span><span class="day">29</span><span class="day">30</span>
-              <span class="day">31</span><span class="day muted">1</span><span class="day muted">2</span><span class="day muted">3</span><span class="day muted">4</span><span class="day muted">5</span><span class="day muted">6</span>
+            <div class="panel-head">
+              <h2 id="calTitre">—</h2>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-ghost btn-sm" onclick="changerMois(-1)">‹</button>
+                <button class="btn btn-ghost btn-sm" onclick="allerAujourdhui()">Aujourd'hui</button>
+                <button class="btn btn-ghost btn-sm" onclick="changerMois(1)">›</button>
+              </div>
             </div>
+            <div class="calendar-mini" id="calendrier"></div>
+            <p class="card-note" style="margin-top:10px;">Cliquez sur un jour pour voir ce qu'il contient.</p>
           </div>
 
           <div class="panel">
-            <div class="panel-head"><h2>Nouvel événement</h2></div>
+            <div class="panel-head"><h2 id="formTitre">Nouvel événement</h2></div>
             <div class="form-grid">
               <div class="form-field">
                 <label class="form-label">Type</label>
@@ -105,9 +71,15 @@
                   <button data-type="Autre" style="flex:1;">Autre</button>
                 </div>
               </div>
-              <div class="form-field">
-                <label class="form-label" for="evtDate">Date</label>
-                <input class="form-input" type="date" id="evtDate" value="2026-08-04" />
+              <div class="form-field" style="flex-direction:row; gap:12px;">
+                <div style="flex:1;">
+                  <label class="form-label" for="evtDate">Date</label>
+                  <input class="form-input" type="date" id="evtDate" />
+                </div>
+                <div style="flex:1;">
+                  <label class="form-label" for="evtHeure">Heure</label>
+                  <input class="form-input" type="time" id="evtHeure" />
+                </div>
               </div>
 
               <div class="form-field" id="evtClientesField">
@@ -132,7 +104,10 @@
                 <label class="form-label" for="evtComment">Commentaire</label>
                 <textarea class="form-textarea" id="evtComment" placeholder="Ex. 12 caisses à récupérer, dépôt Rungis"></textarea>
               </div>
-              <button class="btn btn-primary" style="justify-content:center;" onclick="addEvent()">Ajouter à l'agenda</button>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" style="justify-content:center; flex:1;" id="evtSubmit" onclick="enregistrerEvenement()">Ajouter à l'agenda</button>
+                <button class="btn btn-ghost" id="evtCancel" onclick="annulerEdition()" style="display:none;">Annuler</button>
+              </div>
             </div>
           </div>
         </div>
@@ -149,36 +124,144 @@
 
   var MOIS_AG = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
 
-  // Sélection en cours, conservée même quand la recherche masque la ligne
+  var evenements = sagaAgenda();
   var clientesChoisies = [];
+  var enEdition = null;          // id de l'événement en cours de modification
+  var jourSelectionne = null;    // filtre déclenché en cliquant sur le calendrier
+  var moisAffiche = new Date(sagaAujourdhui() + 'T00:00:00');
 
-  function clientesDisponibles() {
-    // Même annuaire que le reste de l'application
-    return sagaToutesClientes();
+  function persist() { sagaSave('agenda', evenements); }
+
+  /* ================== Liste des événements ================== */
+
+  function evenementsVisibles() {
+    var q = document.getElementById('searchAgenda').value.trim().toLowerCase();
+    var aujourdhui = sagaAujourdhui();
+
+    return evenements
+      .filter(function (e) {
+        if (jourSelectionne) return e.date === jourSelectionne;
+        if (q) return (e.titre + ' ' + e.commentaire + ' ' + e.type).toLowerCase().indexOf(q) !== -1;
+        return e.date >= aujourdhui;    // par défaut : ce qui reste à venir
+      })
+      .sort(function (a, b) {
+        return (a.date + (a.heure || '')) < (b.date + (b.heure || '')) ? -1 : 1;
+      });
   }
+
+  function renderListe() {
+    var liste = evenementsVisibles();
+    var aujourdhui = sagaAujourdhui();
+    var recherche = document.getElementById('searchAgenda').value.trim();
+
+    document.getElementById('listeTitre').textContent = jourSelectionne
+      ? sagaDateJourLongue(jourSelectionne).replace(/^./, function (c) { return c.toUpperCase(); })
+      : (recherche ? 'Résultats de recherche' : 'À venir');
+    document.getElementById('btnToutVoir').style.display = (jourSelectionne || recherche) ? '' : 'none';
+    document.getElementById('agendaVide').style.display = liste.length ? 'none' : 'flex';
+
+    document.getElementById('agendaListe').innerHTML = liste.map(function (e) {
+      var d = new Date(e.date + 'T00:00:00');
+      var heure = e.heure ? e.heure.replace(':', 'h') : '';
+      var meta = [heure, e.commentaire].filter(Boolean).join(' — ') || 'Sans commentaire';
+      return '<li data-id="' + e.id + '">' +
+        '<div class="agenda-date' + (e.date === aujourdhui ? ' today' : '') + '">' +
+          '<span class="d">' + d.getDate() + '</span>' +
+          '<span class="m">' + MOIS_AG[d.getMonth()] + '</span></div>' +
+        '<div class="agenda-body">' +
+          '<div class="agenda-title"><span class="agenda-kind">' + e.type + '</span>' + e.titre + '</div>' +
+          '<div class="agenda-meta">' + meta + '</div>' +
+        '</div>' +
+        '<div class="file-actions" style="margin-left:auto; white-space:nowrap;">' +
+          '<button class="btn btn-ghost btn-sm" onclick="modifierEvenement(\'' + e.id + '\')">Modifier</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="supprimerEvenement(\'' + e.id + '\')">Supprimer</button>' +
+        '</div>' +
+      '</li>';
+    }).join('');
+  }
+
+  /* ================== Calendrier du mois ================== */
+
+  function renderCalendrier() {
+    var annee = moisAffiche.getFullYear(), mois = moisAffiche.getMonth();
+    document.getElementById('calTitre').textContent =
+      SAGA_MOIS[mois].charAt(0).toUpperCase() + SAGA_MOIS[mois].slice(1) + ' ' + annee;
+
+    var premier = new Date(annee, mois, 1);
+    var decalage = (premier.getDay() + 6) % 7;
+    var nbJours = new Date(annee, mois + 1, 0).getDate();
+    var aujourdhui = sagaAujourdhui();
+
+    var html = ['L','M','M','J','V','S','D']
+      .map(function (d) { return '<span class="dow">' + d + '</span>'; }).join('');
+
+    for (var i = 0; i < decalage; i++) html += '<span class="day muted"></span>';
+
+    for (var j = 1; j <= nbJours; j++) {
+      var iso = annee + '-' + ('0' + (mois + 1)).slice(-2) + '-' + ('0' + j).slice(-2);
+      var nb = evenements.filter(function (e) { return e.date === iso; }).length;
+      var classes = 'day';
+      if (nb) classes += ' has-event';
+      if (iso === aujourdhui) classes += ' today';
+      if (iso === jourSelectionne) classes += ' selected';
+      html += '<span class="' + classes + '" data-iso="' + iso + '" title="' +
+        (nb ? nb + ' événement(s)' : 'Aucun événement') + '">' + j + '</span>';
+    }
+    document.getElementById('calendrier').innerHTML = html;
+  }
+
+  function changerMois(delta) {
+    moisAffiche.setMonth(moisAffiche.getMonth() + delta);
+    renderCalendrier();
+  }
+
+  function allerAujourdhui() {
+    moisAffiche = new Date(sagaAujourdhui() + 'T00:00:00');
+    jourSelectionne = sagaAujourdhui();
+    document.getElementById('searchAgenda').value = '';
+    renderCalendrier();
+    renderListe();
+  }
+
+  function voirTout() {
+    jourSelectionne = null;
+    document.getElementById('searchAgenda').value = '';
+    renderCalendrier();
+    renderListe();
+  }
+
+  document.getElementById('calendrier').addEventListener('click', function (e) {
+    var jour = e.target.closest('[data-iso]');
+    if (!jour) return;
+    // Recliquer sur le jour déjà sélectionné annule le filtre
+    jourSelectionne = (jourSelectionne === jour.dataset.iso) ? null : jour.dataset.iso;
+    if (jourSelectionne) document.getElementById('evtDate').value = jourSelectionne;
+    document.getElementById('searchAgenda').value = '';
+    renderCalendrier();
+    renderListe();
+  });
+
+  /* ================== Sélection des clientes ================== */
 
   function libelleCliente(c) { return (c.nom || c.prenom) + ' (' + c.lettre + ')'; }
 
   function renderClientesPicker() {
     var q = document.getElementById('evtClientesSearch').value.trim().toLowerCase();
     var box = document.getElementById('evtClientesList');
-    var liste = clientesDisponibles().filter(function (c) {
+    var liste = sagaToutesClientes().filter(function (c) {
       if (!q) return true;
       return (c.prenom + ' ' + (c.nom || '') + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
     });
 
-    if (liste.length === 0) {
-      box.innerHTML = '<div class="picker-empty">' +
-        (q ? 'Aucune cliente ne correspond à « ' + q + ' »' : 'Aucune cliente enregistrée') + '</div>';
-    } else {
-      box.innerHTML = liste.map(function (c) {
-        var nom = libelleCliente(c);
-        var coche = clientesChoisies.indexOf(nom) !== -1 ? ' checked' : '';
-        return '<label class="check-row">' +
-          '<input type="checkbox" value="' + nom + '" data-cliente' + coche + ' onchange="basculerCliente(this)" />' +
-          '<span>' + nom + '</span></label>';
-      }).join('');
-    }
+    box.innerHTML = liste.length === 0
+      ? '<div class="picker-empty">' + (q ? 'Aucune cliente ne correspond à « ' + q + ' »' : 'Aucune cliente enregistrée') + '</div>'
+      : liste.map(function (c) {
+          var nom = libelleCliente(c);
+          var coche = clientesChoisies.indexOf(nom) !== -1 ? ' checked' : '';
+          return '<label class="check-row">' +
+            '<input type="checkbox" value="' + nom + '" data-cliente' + coche + ' onchange="basculerCliente(this)" />' +
+            '<span>' + nom + '</span></label>';
+        }).join('');
     majSelection();
   }
 
@@ -191,9 +274,7 @@
 
   // Les clientes retenues restent visibles sous la liste, même filtrées
   function majSelection() {
-    var box = document.getElementById('evtClientesSelection');
-    if (clientesChoisies.length === 0) { box.innerHTML = ''; return; }
-    box.innerHTML = clientesChoisies.map(function (nom) {
+    document.getElementById('evtClientesSelection').innerHTML = clientesChoisies.map(function (nom) {
       return '<span class="picker-tag">' + nom +
         '<button type="button" onclick="retirerCliente(\'' + nom.replace(/'/g, "\\'") + '\')" title="Retirer">×</button></span>';
     }).join('');
@@ -204,82 +285,147 @@
     renderClientesPicker();
   }
 
-  function clientesCochees() { return clientesChoisies.slice(); }
+  /* ================== Formulaire ================== */
 
   function typeActif() {
     var b = document.querySelector('#evtType button.active');
     return b ? b.dataset.type : 'Récup.';
   }
 
-  // "Autre" n'est pas lié à une cliente : on demande un intitulé libre à la place
+  function choisirType(type) {
+    document.querySelectorAll('#evtType button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.type === type);
+    });
+    majFormulaireSelonType();
+  }
+
+  // « Autre » n'est pas lié à une cliente : on demande un intitulé libre
   function majFormulaireSelonType() {
-    var type = typeActif();
-    var estAutre = type === 'Autre';
+    var estAutre = typeActif() === 'Autre';
     document.getElementById('evtClientesField').style.display = estAutre ? 'none' : 'flex';
     document.getElementById('evtTitreField').style.display = estAutre ? 'flex' : 'none';
-    document.getElementById('evtClientesNote').textContent = type === 'Live'
+    document.getElementById('evtClientesNote').textContent = typeActif() === 'Live'
       ? 'Tapez un nom pour la retrouver, puis cochez-la. Un live peut en regrouper plusieurs.'
       : 'Cochez chaque cliente dont vous récupérez le dressing ce jour-là.';
   }
 
-  function addEvent() {
-    var type = typeActif();
-    var dateVal = document.getElementById('evtDate').value;
-    var comment = document.getElementById('evtComment').value.trim();
-    if (!dateVal) { alert('Choisissez une date.'); return; }
+  function modifierEvenement(id) {
+    var e = evenements.filter(function (x) { return x.id === id; })[0];
+    if (!e) return;
+    enEdition = id;
+    choisirType(e.type);
+    document.getElementById('evtDate').value = e.date;
+    document.getElementById('evtHeure').value = e.heure || '';
+    document.getElementById('evtComment').value = e.commentaire || '';
+    if (e.type === 'Autre') {
+      document.getElementById('evtTitre').value = e.titre;
+      clientesChoisies = [];
+    } else {
+      clientesChoisies = (e.clientes && e.clientes.length)
+        ? e.clientes.slice()
+        : e.titre.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    }
+    document.getElementById('evtClientesSearch').value = '';
+    renderClientesPicker();
+    document.getElementById('formTitre').textContent = "Modifier l'événement";
+    document.getElementById('evtSubmit').textContent = 'Enregistrer les modifications';
+    document.getElementById('evtCancel').style.display = '';
+  }
 
-    var titre;
+  function annulerEdition() {
+    enEdition = null;
+    resetFormulaire();
+  }
+
+  function resetFormulaire() {
+    document.getElementById('evtComment').value = '';
+    document.getElementById('evtTitre').value = '';
+    document.getElementById('evtHeure').value = '';
+    clientesChoisies = [];
+    document.getElementById('evtClientesSearch').value = '';
+    renderClientesPicker();
+    document.getElementById('formTitre').textContent = 'Nouvel événement';
+    document.getElementById('evtSubmit').textContent = "Ajouter à l'agenda";
+    document.getElementById('evtCancel').style.display = 'none';
+  }
+
+  function enregistrerEvenement() {
+    var type = typeActif();
+    var date = document.getElementById('evtDate').value;
+    if (!date) { alert('Choisissez une date.'); return; }
+
+    var titre, clientes = [];
     if (type === 'Autre') {
       titre = document.getElementById('evtTitre').value.trim();
       if (!titre) { alert("Donnez un intitulé à l'événement."); document.getElementById('evtTitre').focus(); return; }
     } else {
-      var choisies = clientesCochees();
-      if (choisies.length === 0) {
-        alert('Sélectionnez au moins une cliente.');
-        return;
-      }
-      titre = choisies.join(', ') + (type === 'Live' ? ' — programmé' : ' — dressing');
+      if (clientesChoisies.length === 0) { alert('Sélectionnez au moins une cliente.'); return; }
+      clientes = clientesChoisies.slice();
+      titre = clientes.join(', ');
     }
 
-    var d = new Date(dateVal + 'T00:00:00');
-    var li = document.createElement('li');
-    li.innerHTML =
-      '<div class="agenda-date"><span class="d">' + d.getDate() + '</span><span class="m">' + MOIS_AG[d.getMonth()] + '</span></div>' +
-      '<div class="agenda-body">' +
-        '<div class="agenda-title"><span class="agenda-kind">' + type + '</span>' + titre + '</div>' +
-        '<div class="agenda-meta">' + (comment || 'Sans commentaire') + '</div>' +
-      '</div>';
-    var list = document.getElementById('agendaThisWeek');
-    list.appendChild(li);
-    li.style.transition = 'background 1.4s ease';
-    li.style.background = 'var(--good-bg)';
-    setTimeout(function () { li.style.background = ''; }, 1400);
+    var champs = {
+      type: type, date: date,
+      heure: document.getElementById('evtHeure').value,
+      titre: titre, clientes: clientes,
+      commentaire: document.getElementById('evtComment').value.trim()
+    };
 
-    // Formulaire vidé pour l'événement suivant
-    document.getElementById('evtComment').value = '';
-    document.getElementById('evtTitre').value = '';
-    clientesChoisies = [];
-    document.getElementById('evtClientesSearch').value = '';
-    renderClientesPicker();
+    if (enEdition) {
+      var e = evenements.filter(function (x) { return x.id === enEdition; })[0];
+      Object.keys(champs).forEach(function (k) { e[k] = champs[k]; });
+      sagaTracer('Modification agenda', titre, sagaDateFR(date));
+    } else {
+      champs.id = 'e' + Date.now();
+      evenements.push(champs);
+      sagaTracer('Ajout agenda', titre, sagaDateFR(date));
+    }
+
+    persist();
+    enEdition = null;
+    resetFormulaire();
+    moisAffiche = new Date(date + 'T00:00:00');
+    renderCalendrier();
+    renderListe();
+  }
+
+  function supprimerEvenement(id) {
+    var e = evenements.filter(function (x) { return x.id === id; })[0];
+    if (!e) return;
+    if (!confirm('Supprimer « ' + e.titre + ' » du ' + sagaDateFR(e.date) + ' ?')) return;
+    evenements = evenements.filter(function (x) { return x.id !== id; });
+    persist();
+    sagaTracer('Suppression agenda', e.titre, sagaDateFR(e.date));
+    if (enEdition === id) annulerEdition();
+    renderCalendrier();
+    renderListe();
   }
 
   document.querySelectorAll('#evtType button').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      btn.parentElement.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      majFormulaireSelonType();
-    });
+    btn.addEventListener('click', function () { choisirType(btn.dataset.type); });
   });
 
-  var rechercheClientesTimer = null;
+  var chercheTimer = null;
   document.getElementById('evtClientesSearch').addEventListener('input', function () {
-    clearTimeout(rechercheClientesTimer);
-    rechercheClientesTimer = setTimeout(renderClientesPicker, 200);
+    clearTimeout(chercheTimer);
+    chercheTimer = setTimeout(renderClientesPicker, 200);
   });
 
+  var chercheAgendaTimer = null;
+  document.getElementById('searchAgenda').addEventListener('input', function () {
+    clearTimeout(chercheAgendaTimer);
+    chercheAgendaTimer = setTimeout(function () {
+      jourSelectionne = null;
+      renderCalendrier();
+      renderListe();
+    }, 250);
+  });
+
+  document.getElementById('evtDate').value = sagaAujourdhui();
   renderClientesPicker();
   majFormulaireSelonType();
-
+  renderCalendrier();
+  renderListe();
 </script>
 </body>
 </html>

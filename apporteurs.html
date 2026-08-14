@@ -35,21 +35,39 @@
 
       <div class="panel" id="newForm" style="display:none;">
         <div class="panel-head"><h2>Nouvel apporteur</h2></div>
-        <div class="form-grid" style="max-width:520px;">
-          <div class="form-field">
-            <label class="form-label" for="aNom">Nom affiché</label>
-            <input class="form-input" id="aNom" placeholder="Ex. Sonia L." />
-          </div>
+        <div class="form-grid" style="max-width:560px;">
+          <p class="card-note" style="margin:0;">
+            Ces informations composent le contrat d'apporteur : renseignez-les complètement
+            pour pouvoir le générer dans la foulée.
+          </p>
+
           <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:1;">
+              <label class="form-label" for="aPrenom">Prénom</label>
+              <input class="form-input" id="aPrenom" placeholder="Ex. Sonia" />
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="aNomFamille">Nom</label>
+              <input class="form-input" id="aNomFamille" placeholder="Ex. Lambert" />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="aAdresse">Adresse complète</label>
+            <input class="form-input" id="aAdresse" placeholder="Ex. 8 rue des Lilas, 75020 Paris" />
+          </div>
+
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:1;">
+              <label class="form-label" for="aTel">Téléphone</label>
+              <input class="form-input" id="aTel" placeholder="06 00 00 00 00" />
+            </div>
             <div style="flex:1;">
               <label class="form-label" for="aEmail">Email</label>
               <input class="form-input" type="email" id="aEmail" placeholder="sonia@example.com" />
             </div>
-            <div style="flex:1;">
-              <label class="form-label" for="aPct">Commission (%)</label>
-              <input class="form-input" type="number" id="aPct" value="8" />
-            </div>
           </div>
+
           <div class="form-field">
             <label class="form-label" for="aStatutJur">Statut juridique</label>
             <select class="form-select" id="aStatutJur">
@@ -59,6 +77,24 @@
             </select>
             <span class="card-note">Détermine les justificatifs à réclamer (Kbis, attestation URSSAF…).</span>
           </div>
+
+          <div class="form-field" style="flex-direction:row; gap:12px;">
+            <div style="flex:2;">
+              <label class="form-label" for="aSiret">Numéro de SIRET</label>
+              <input class="form-input" id="aSiret" placeholder="" autocomplete="off" />
+              <span class="card-note">À saisir tel qu'il figure sur l'avis SIRENE. Laissez vide pour un particulier.</span>
+            </div>
+            <div style="flex:1;">
+              <label class="form-label" for="aPct">Commission (%)</label>
+              <input class="form-input" type="number" id="aPct" value="8" />
+            </div>
+          </div>
+
+          <label class="check-row">
+            <input type="checkbox" id="aGenererContrat" checked />
+            <span>Générer le contrat d'apporteur en PDF et l'ajouter à sa fiche</span>
+          </label>
+
           <div style="display:flex; gap:10px;">
             <button class="btn btn-primary btn-sm" onclick="addApporteur()">Créer la fiche</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleNewForm()">Annuler</button>
@@ -124,7 +160,7 @@
   renderSagaSidebar('apporteurs');
 
   // Chiffres alignés sur les fiches détaillées (apporteur.html)
-  var apporteurs = [
+  var APPORTEURS_DEFAUT = [
     { key:'nadia', nom:'Nadia R.', initiales:'NR', pct:8, clientes:['Fanny (M)','Camille (B)','Élise (R)'],
       verse:292, du:287, docsManquants:2, statut:'actif' },
     { key:'karim', nom:'Karim B.', initiales:'KB', pct:6, clientes:['Marion (F)','Nora (T)'],
@@ -133,12 +169,15 @@
       verse:0, du:0, docsManquants:5, statut:'inactif' }
   ];
 
+  var apporteurs = sagaLoad('apporteurs', APPORTEURS_DEFAUT);
+  function persist() { sagaSave('apporteurs', apporteurs); }
+
   function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
 
   function render() {
     var q = document.getElementById('searchInput').value.trim().toLowerCase();
     var rows = apporteurs.filter(function (a) {
-      return !q || a.nom.toLowerCase().indexOf(q) !== -1;
+      return !q || (a.nom + ' ' + (a.prenom || '')).toLowerCase().indexOf(q) !== -1;
     });
 
     document.getElementById('apporteursBody').innerHTML = rows.map(function (a) {
@@ -200,30 +239,137 @@
     // En fermant (Annuler compris) on repart d'un formulaire vierge
     if (ouvert) resetNewForm();
     f.style.display = ouvert ? 'none' : 'block';
-    if (!ouvert) document.getElementById('aNom').focus();
+    if (!ouvert) document.getElementById('aPrenom').focus();
   }
 
   function resetNewForm() {
-    document.getElementById('aNom').value = '';
-    document.getElementById('aEmail').value = '';
+    ['aPrenom', 'aNomFamille', 'aAdresse', 'aTel', 'aEmail', 'aSiret'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
     document.getElementById('aPct').value = 8;
     document.getElementById('aStatutJur').selectedIndex = 0;
+    document.getElementById('aGenererContrat').checked = true;
   }
 
   function addApporteur() {
-    var nom = document.getElementById('aNom').value.trim();
-    if (!nom) { document.getElementById('aNom').focus(); return; }
-    var initiales = nom.split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+    var prenom = document.getElementById('aPrenom').value.trim();
+    var nomFamille = document.getElementById('aNomFamille').value.trim();
+    if (!prenom) { document.getElementById('aPrenom').focus(); return; }
+    if (!nomFamille) { document.getElementById('aNomFamille').focus(); return; }
 
-    apporteurs.push({
-      key: '', nom: nom, initiales: initiales,
+    var nomComplet = prenom + ' ' + nomFamille;
+    var affiche = prenom + ' ' + nomFamille.charAt(0).toUpperCase() + '.';
+    var cle = (prenom + '-' + nomFamille).toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-');
+
+    var fiche = {
+      key: cle,
+      prenom: affiche,
+      nom: nomComplet,
+      initiales: (prenom[0] + nomFamille[0]).toUpperCase(),
+      adresse: document.getElementById('aAdresse').value.trim(),
+      tel: document.getElementById('aTel').value.trim(),
+      email: document.getElementById('aEmail').value.trim(),
+      statutJur: document.getElementById('aStatutJur').value,
+      siret: document.getElementById('aSiret').value.trim(),
       pct: parseInt(document.getElementById('aPct').value, 10) || 8,
       clientes: [], verse: 0, du: 0,
-      docsManquants: 5, statut: 'actif'
-    });
+      docsManquants: 5, statut: 'actif',
+      depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, '')
+    };
 
+    apporteurs.push(fiche);
+    persist();
+    creerFicheDetaillee(fiche);
+    sagaTracer('Création apporteur', nomComplet);
+
+    var genererContrat = document.getElementById('aGenererContrat').checked;
     toggleNewForm();   // ferme et vide le formulaire
     render();
+
+    // Le contrat est proposé en aperçu puis archivé sur la fiche de l'apporteur
+    if (genererContrat) genererContratApporteur(fiche);
+  }
+
+  /* La page apporteur lit `apporteurs_data` : sans cette entrée, la fiche
+     créée ici n'aurait rien à afficher. */
+  function creerFicheDetaillee(fiche) {
+    var fiches = sagaLoad('apporteurs_data', {});
+    fiches[fiche.key] = {
+      prenom: fiche.prenom, nom: fiche.nom, initiales: fiche.initiales, statut: 'Actif',
+      email: fiche.email, tel: fiche.tel, adresse: fiche.adresse,
+      statutJur: fiche.statutJur, siret: fiche.siret,
+      pct: fiche.pct, depuis: fiche.depuis,
+      clientes: [], commissions: [], docs: []
+    };
+    sagaSave('apporteurs_data', fiches);
+  }
+
+  /* Contrat d'apporteur : même mise en page que les autres documents,
+     enregistré en PDF et rattaché à ses justificatifs. */
+  function genererContratApporteur(f) {
+    var id = sagaIdentite();
+    var pdf = sagaNouveauPdf("Contrat d'apporteur — " + f.nom);
+
+    pdf.titre("CONTRAT D'APPORTEUR D'AFFAIRES");
+    pdf.sousTitre('Établi le ' + sagaDateLongue(sagaAujourdhui()));
+
+    pdf.section('1. Parties');
+    pdf.paragraphe('Entre les soussignés :');
+    pdf.paragraphe(id.nom, { gras: true });
+    if (id.adresse) pdf.paragraphe(id.adresse);
+    if (id.siret) pdf.paragraphe('SIRET ' + id.siret);
+    pdf.paragraphe('Ci-après « la Société »');
+    pdf.paragraphe('Et :');
+    pdf.paragraphe(f.nom, { gras: true });
+    if (f.adresse) pdf.paragraphe('Adresse : ' + f.adresse);
+    if (f.tel) pdf.paragraphe('Téléphone : ' + f.tel);
+    if (f.email) pdf.paragraphe('Email : ' + f.email);
+    pdf.paragraphe('Statut juridique : ' + f.statutJur);
+    pdf.paragraphe('SIRET : ' + (f.siret || 'non applicable'));
+    pdf.paragraphe('Ci-après « l\'Apporteur »');
+
+    pdf.section('2. Objet');
+    pdf.paragraphe("L'Apporteur met en relation la Société avec des clientes susceptibles de lui confier "
+      + "des articles en dépôt-vente. Il n'a ni mandat de représentation, ni pouvoir d'engager la Société.");
+
+    pdf.section('3. Rémunération');
+    pdf.paragraphe("En contrepartie de chaque cliente effectivement apportée, l'Apporteur perçoit une "
+      + 'commission de ' + f.pct + " % calculée sur la base retenue par la Société après déduction des "
+      + 'frais de plateforme, pour chaque vente réalisée par la cliente concernée.');
+    pdf.decompte([['Taux de commission convenu', f.pct + ' %']]);
+
+    pdf.section('4. Facturation et paiement');
+    pdf.paragraphe("Les commissions sont réglées par virement. L'Apporteur relevant d'un statut "
+      + 'professionnel émet une facture ; à défaut, la Société établit un relevé récapitulatif.');
+
+    pdf.section('5. Justificatifs');
+    pdf.paragraphe("L'Apporteur fournit les pièces requises par son statut (extrait Kbis ou avis SIRENE, "
+      + "attestation de vigilance URSSAF, pièce d'identité, RIB) et les tient à jour pendant toute la durée du contrat.");
+
+    pdf.section('6. Durée');
+    pdf.paragraphe("Le présent contrat prend effet à sa signature, pour une durée indéterminée. "
+      + 'Chaque partie peut y mettre fin par écrit avec un préavis de trente (30) jours.');
+
+    pdf.section('7. Signatures');
+    pdf.paragraphe('Fait en deux exemplaires, le ' + sagaDateFR(sagaAujourdhui()) + '.');
+    pdf.paragraphe('Pour la Société : ' + id.nom);
+    pdf.paragraphe("L'Apporteur : " + f.nom);
+
+    var nomFichier = 'Contrat_Apporteur_' + f.nom.replace(/\W+/g, '_');
+
+    // Le PDF est conservé sur la fiche pour être re-téléchargé plus tard
+    var fiches = sagaLoad('apporteurs_data', {});
+    if (fiches[f.key]) {
+      fiches[f.key].docs.push({
+        type: 'contrat', nom: nomFichier + '.pdf',
+        ajoute: sagaAujourdhui(), expire: '', contenu: pdf.dataUrl()
+      });
+      sagaSave('apporteurs_data', fiches);
+    }
+    sagaTracer('Génération contrat apporteur', f.nom);
+
+    sagaApercuPdf(pdf, nomFichier, "Contrat d'apporteur — " + f.nom);
   }
 
   document.getElementById('searchInput').addEventListener('input', render);

@@ -668,10 +668,43 @@
 
   function currentClientKey() {
     var k = new URLSearchParams(window.location.search).get('c');
-    return (k && CLIENTS[k.toLowerCase()]) ? k.toLowerCase() : 'fanny';
+    return k ? k.toLowerCase() : 'fanny';
+  }
+
+  /* Une cliente créée depuis la liste n'a pas encore de fiche détaillée :
+     on la construit à partir de son entrée de liste, puis on l'enregistre.
+     Sans cela, sa fiche renvoyait sur l'exemple Fanny. */
+  function ficheDepuisListe(cle) {
+    var entree = sagaLoad('clientes', []).filter(function (c) { return c.key === cle; })[0];
+    if (!entree) return null;
+    return {
+      prenom: entree.prenom,
+      nom: entree.nom || entree.prenom,
+      lettre: entree.lettre,
+      statut: entree.statut === 'inactive' ? 'Inactive' : 'Active',
+      tel: entree.tel || '',
+      email: entree.email || '',
+      adresse: entree.adresse || '',
+      commission: entree.pct || 30,
+      apporteur: entree.apporteur || null,
+      apporteurPct: entree.apporteur ? 8 : 0,
+      depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
+      pending: null,
+      lives: [],
+      notes: []
+    };
   }
 
   var CLIENT = CLIENTS[currentClientKey()];
+  if (!CLIENT) {
+    CLIENT = ficheDepuisListe(currentClientKey());
+    if (CLIENT) {
+      CLIENTS[currentClientKey()] = CLIENT;
+      persistClients();
+    } else {
+      CLIENT = CLIENTS.fanny;
+    }
+  }
 
   var CLIENTE_COMMISSION_PCT = CLIENT.commission;
   var APPORTEUR_NAME = CLIENT.apporteur;
@@ -874,7 +907,8 @@
       }
     }
 
-    pdf.enregistrer('Recap_' + CLIENT.prenom + '_' + l.date);
+    sagaApercuPdf(pdf, 'Recap_' + CLIENT.prenom + '_' + l.date,
+      'Récapitulatif ' + CLIENT.prenom + ' — ' + l.label);
   }
 
   /* ============ Fiche modifiable ============
@@ -1396,8 +1430,10 @@
       '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyé le ' + today
     );
     // Le PDF est produit et enregistré : il reste consultable dans les pièces jointes
-    archiverDocument(contratFileRow, 'docPreview', nomFichier,
-      'Contrat de dépôt-vente — ' + CLIENT.nom).enregistrer(nomFichier);
+    var pdfContrat = archiverDocument(contratFileRow, 'docPreview', nomFichier,
+      'Contrat de dépôt-vente — ' + CLIENT.nom);
+    sagaTracer('Génération contrat', CLIENT.nom, nomFichier);
+    sagaApercuPdf(pdfContrat, nomFichier, 'Contrat de dépôt-vente — ' + CLIENT.nom);
   }
 
   function simulateSignature() {
@@ -1690,8 +1726,10 @@
       '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Restitution signée</span>Signée sur place le ' + today,
       'restitPreview'
     );
-    archiverDocument(ligne, 'restitPreview', restitFileName(true),
-      'Bon de restitution — ' + CLIENT.nom).enregistrer(restitFileName(true));
+    var pdfRestit = archiverDocument(ligne, 'restitPreview', restitFileName(true),
+      'Bon de restitution — ' + CLIENT.nom);
+    sagaTracer('Bon de restitution', CLIENT.nom, restitFileName(true));
+    sagaApercuPdf(pdfRestit, restitFileName(true), 'Bon de restitution — ' + CLIENT.nom);
   }
 
   // Cas à distance : envoi pour signature électronique
@@ -1712,8 +1750,10 @@
       '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyée le ' + today,
       'restitPreview'
     );
-    archiverDocument(restitFileRow, 'restitPreview', restitFileName(false),
-      'Bon de restitution — ' + CLIENT.nom).enregistrer(restitFileName(false));
+    var pdfEnvoi = archiverDocument(restitFileRow, 'restitPreview', restitFileName(false),
+      'Bon de restitution — ' + CLIENT.nom);
+    sagaTracer('Bon de restitution envoyé', CLIENT.nom, restitFileName(false));
+    sagaApercuPdf(pdfEnvoi, restitFileName(false), 'Bon de restitution — ' + CLIENT.nom);
   }
 
   function simulateRestitutionSignature() {

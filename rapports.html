@@ -41,18 +41,36 @@
         <div class="panel-head">
           <h2>Période</h2>
         </div>
-        <div class="filter-bar">
+        <div class="filter-bar" style="align-items:flex-start;">
+          <div class="form-field" style="min-width:260px;">
+            <label class="form-label">Raccourcis</label>
+            <div class="toggle-group" id="repRaccourcis" style="flex-wrap:wrap;">
+              <button data-raccourci="mois">Ce mois</button>
+              <button data-raccourci="mois-1">Mois dernier</button>
+              <button data-raccourci="trimestre">Trimestre</button>
+              <button data-raccourci="annee" class="active">Cette année</button>
+              <button data-raccourci="annee-1">Année dernière</button>
+              <button data-raccourci="tout">Tout</button>
+            </div>
+          </div>
           <div class="form-field" style="min-width:150px;">
             <label class="form-label" for="repFrom">Du</label>
-            <input class="form-input" type="date" id="repFrom" value="2026-07-01" />
+            <input class="form-input" type="date" id="repFrom" />
           </div>
           <div class="form-field" style="min-width:150px;">
             <label class="form-label" for="repTo">Au</label>
-            <input class="form-input" type="date" id="repTo" value="2026-07-31" />
+            <input class="form-input" type="date" id="repTo" />
           </div>
-          <div class="form-field" style="min-width:180px;">
-            <label class="form-label" for="repCliente">Cliente</label>
-            <select class="form-select" id="repCliente"></select>
+          <div class="form-field" style="min-width:230px;">
+            <label class="form-label" for="repClienteSearch">Cliente</label>
+            <div class="picker">
+              <div class="picker-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="repClienteSearch" placeholder="Toutes les clientes" autocomplete="off" />
+              </div>
+              <div class="picker-list" id="repClienteListe" style="display:none; max-height:200px;"></div>
+            </div>
+            <input type="hidden" id="repCliente" value="" />
           </div>
           <div class="form-field" style="align-self:flex-end;">
             <button class="btn btn-ghost btn-sm" id="repReset">Réinitialiser</button>
@@ -160,16 +178,106 @@
 
   var VENTES = toutesLesVentes();
 
-  function remplirFiltreClientes() {
-    var sel = document.getElementById('repCliente');
-    var noms = [];
-    VENTES.forEach(function (v) { if (noms.indexOf(v.lettre) === -1) noms.push(v.lettre); });
-    sel.innerHTML = '<option value="">Toutes les clientes</option>' +
-      noms.map(function (l) {
-        var i = sagaInfosCliente(l);
-        return '<option value="' + l + '">' + i.nom + ' (' + l + ')</option>';
-      }).join('');
+  /* ---------- Choix de la cliente : recherche sur tout l'annuaire ---------- */
+  function clientesDuFiltre() {
+    // Toutes les clientes du CRM, celles avec des ventes en premier
+    var avecVentes = {};
+    VENTES.forEach(function (v) { avecVentes[v.lettre] = true; });
+    return sagaToutesClientes().map(function (c) {
+      return { lettre: c.lettre, nom: c.nom || c.prenom, aDesVentes: !!avecVentes[c.lettre] };
+    }).sort(function (a, b) {
+      if (a.aDesVentes !== b.aDesVentes) return a.aDesVentes ? -1 : 1;
+      return a.nom.localeCompare(b.nom, 'fr');
+    });
   }
+
+  function renderListeClientes() {
+    var q = document.getElementById('repClienteSearch').value.trim().toLowerCase();
+    var box = document.getElementById('repClienteListe');
+    var liste = clientesDuFiltre().filter(function (c) {
+      return !q || (c.nom + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
+    });
+
+    box.innerHTML =
+      '<label class="check-row"><input type="radio" name="repCli" value=""' +
+        (document.getElementById('repCliente').value ? '' : ' checked') +
+        ' onchange="choisirCliente(\'\')" /><span>Toutes les clientes</span></label>' +
+      (liste.length
+        ? liste.map(function (c) {
+            var choisi = document.getElementById('repCliente').value === c.lettre ? ' checked' : '';
+            return '<label class="check-row">' +
+              '<input type="radio" name="repCli" value="' + c.lettre + '"' + choisi +
+              ' onchange="choisirCliente(\'' + c.lettre + '\')" />' +
+              '<span>' + c.nom + ' (' + c.lettre + ')' +
+              (c.aDesVentes ? '' : ' <span class="muted">— aucune vente</span>') + '</span></label>';
+          }).join('')
+        : '<div class="picker-empty">Aucune cliente ne correspond</div>');
+  }
+
+  function choisirCliente(lettre) {
+    document.getElementById('repCliente').value = lettre;
+    document.getElementById('repClienteSearch').value = lettre
+      ? sagaInfosCliente(lettre).nom + ' (' + lettre + ')'
+      : '';
+    document.getElementById('repClienteListe').style.display = 'none';
+    renderReport();
+  }
+
+  /* ---------- Raccourcis de période ---------- */
+  function appliquerRaccourci(cle) {
+    var maintenant = new Date(sagaAujourdhui() + 'T00:00:00');
+    var annee = maintenant.getFullYear(), mois = maintenant.getMonth();
+    var du, au;
+
+    if (cle === 'mois') {
+      du = new Date(annee, mois, 1); au = new Date(annee, mois + 1, 0);
+    } else if (cle === 'mois-1') {
+      du = new Date(annee, mois - 1, 1); au = new Date(annee, mois, 0);
+    } else if (cle === 'trimestre') {
+      var t = Math.floor(mois / 3);
+      du = new Date(annee, t * 3, 1); au = new Date(annee, t * 3 + 3, 0);
+    } else if (cle === 'annee') {
+      du = new Date(annee, 0, 1); au = new Date(annee, 11, 31);
+    } else if (cle === 'annee-1') {
+      du = new Date(annee - 1, 0, 1); au = new Date(annee - 1, 11, 31);
+    } else {   // tout
+      du = new Date(2000, 0, 1); au = new Date(annee + 1, 11, 31);
+    }
+
+    document.getElementById('repFrom').value = isoDe(du);
+    document.getElementById('repTo').value = isoDe(au);
+    document.querySelectorAll('#repRaccourcis button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.raccourci === cle);
+    });
+    renderReport();
+  }
+
+  function isoDe(d) {
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  document.getElementById('repRaccourcis').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (b) appliquerRaccourci(b.dataset.raccourci);
+  });
+
+  document.getElementById('repClienteSearch').addEventListener('focus', function () {
+    document.getElementById('repClienteListe').style.display = 'flex';
+    renderListeClientes();
+  });
+
+  var rechercheCliTimer = null;
+  document.getElementById('repClienteSearch').addEventListener('input', function () {
+    document.getElementById('repClienteListe').style.display = 'flex';
+    clearTimeout(rechercheCliTimer);
+    rechercheCliTimer = setTimeout(renderListeClientes, 200);
+  });
+
+  document.addEventListener('mousedown', function (e) {
+    if (!e.target.closest('.picker') && !e.target.closest('#repClienteSearch')) {
+      document.getElementById('repClienteListe').style.display = 'none';
+    }
+  });
 
   /* ---------- Exports ---------- */
   function doExport(format) {
@@ -272,7 +380,8 @@
     }
 
     var suffixe = lettreFiltre ? '_' + sagaInfosCliente(lettreFiltre).nom.replace(/\W+/g, '_') : '';
-    pdf.enregistrer('Rapport_' + from + '_' + to + suffixe);
+    sagaApercuPdf(pdf, 'Rapport_' + from + '_' + to + suffixe,
+      'Rapport du ' + sagaDateFR(from) + ' au ' + sagaDateFR(to));
   }
 
   function doBackup() {
@@ -481,21 +590,22 @@
     renderReport();
   });
 
-  ['repFrom', 'repTo', 'repCliente'].forEach(function (id) {
-    document.getElementById(id).addEventListener('change', renderReport);
+  ['repFrom', 'repTo'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () {
+      document.querySelectorAll('#repRaccourcis button').forEach(function (b) { b.classList.remove('active'); });
+      renderReport();
+    });
   });
 
   document.getElementById('repReset').addEventListener('click', function () {
-    document.getElementById('repFrom').value = '2026-07-01';
-    document.getElementById('repTo').value = '2026-07-31';
-    document.getElementById('repCliente').value = '';
+    choisirCliente('');
     document.querySelectorAll('#sourceToggle button').forEach(function (b) { b.classList.remove('active'); });
     document.querySelector('#sourceToggle button[data-source="all"]').classList.add('active');
-    renderReport();
+    appliquerRaccourci('annee');
   });
 
-  remplirFiltreClientes();
-  renderReport();
+  renderListeClientes();
+  appliquerRaccourci('annee');
 </script>
 </body>
 </html>
