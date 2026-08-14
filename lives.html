@@ -19,7 +19,7 @@
         <div class="topbar-actions">
           <div class="search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchLives" placeholder="Rechercher un live…" />
+            <input type="text" id="searchLives" placeholder="Nom du live ou date (07/2026, 29/07…)" />
           </div>
           <button class="btn btn-secondary" onclick="imprimerTousLesLives()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 18H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/></svg>
@@ -83,9 +83,9 @@
           <h2>Sessions récentes</h2>
           <div class="filter-bar">
             <div class="toggle-group" id="statusToggle">
-              <button data-status="all" class="active">Toutes</button>
-              <button data-status="open">En cours</button>
+              <button data-status="open" class="active">En cours</button>
               <button data-status="done">Soldées</button>
+              <button data-status="all">Toutes</button>
             </div>
           </div>
         </div>
@@ -106,7 +106,7 @@
         </div>
         <div id="livesEmpty" class="empty-state" style="display:none; margin-top:14px;">
           <div class="t">Aucun live ne correspond</div>
-          <div class="s">Essayez un autre nom ou changez de filtre</div>
+          <div class="s">Essayez un autre nom, une autre date, ou changez de filtre</div>
         </div>
       </div>
 
@@ -126,6 +126,22 @@
     return { cle: 'open', chip: '<span class="chip warn">En cours</span>' };
   }
 
+  /* La recherche accepte un nom de live, une catégorie, ou une date sous
+     toutes ses formes : 29/07, 07/2026, 2026-07-29, « juillet »… */
+  function correspond(live, q) {
+    if (!q) return true;
+    var d = new Date(live.date + 'T00:00:00');
+    var jj = ('0' + d.getDate()).slice(-2);
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+    var aaaa = String(d.getFullYear());
+    var cible = [
+      live.titre, live.categorie, live.date,
+      jj + '/' + mm, jj + '/' + mm + '/' + aaaa, mm + '/' + aaaa,
+      SAGA_MOIS[d.getMonth()], SAGA_MOIS[d.getMonth()] + ' ' + aaaa, aaaa
+    ].join(' ').toLowerCase();
+    return cible.indexOf(q) !== -1;
+  }
+
   function renderLives() {
     var q = document.getElementById('searchLives').value.trim().toLowerCase();
     var filtre = document.querySelector('#statusToggle button.active').dataset.status;
@@ -136,8 +152,7 @@
       .filter(function (x) {
         var st = statutLive(x.totaux).cle;
         if (filtre !== 'all' && st !== filtre) return false;
-        if (q && (x.live.titre + ' ' + x.live.categorie).toLowerCase().indexOf(q) === -1) return false;
-        return true;
+        return correspond(x.live, q);
       });
 
     document.getElementById('livesBody').innerHTML = lignes.map(function (x) {

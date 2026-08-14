@@ -749,3 +749,17 @@ tbody td { padding: 11px 8px; }
 .note-cliente { color: var(--brand-strong); }
 .note-cliente:hover { text-decoration: underline; }
 #notesList { margin-top: 0; }
+
+/* ============================================================
+   Calendrier mensuel — les cases étaient carrées : dans un panneau
+   large, elles s'étiraient jusqu'à 80 px et le mois paraissait vide.
+   Hauteur fixe et largeur plafonnée pour rester compact et lisible.
+   ============================================================ */
+.calendar-mini { max-width: 340px; margin: 0 auto; gap: 2px; }
+.calendar-mini .day { aspect-ratio: auto; height: 40px; }
+.calendar-mini .day.has-event::after { bottom: 5px; }
+
+/* Les deux colonnes gardent une largeur comparable : à 1,7fr contre 1fr,
+   le panneau latéral devenait trop étroit et le principal trop vide. */
+.content-grid { grid-template-columns: 1.25fr 1fr; }
+@media (max-width: 1150px) { .content-grid { grid-template-columns: 1fr; } }

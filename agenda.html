@@ -92,7 +92,7 @@
                   <div class="picker-list" id="evtClientesList"></div>
                 </div>
                 <div class="picker-selection" id="evtClientesSelection"></div>
-                <span class="card-note" id="evtClientesNote">Tapez un nom pour la retrouver, puis cochez-la. Un live peut en regrouper plusieurs.</span>
+                <span class="card-note" id="evtClientesNote">Tapez un nom pour trouver une cliente, puis cochez-la. Seules les clientes retenues restent affichées.</span>
               </div>
 
               <div class="form-field" id="evtTitreField" style="display:none;">
@@ -245,23 +245,33 @@
 
   function libelleCliente(c) { return (c.nom || c.prenom) + ' (' + c.lettre + ')'; }
 
+  /* Avec cent clientes, tout afficher est inexploitable : la liste ne montre
+     que les clientes déjà retenues. Les autres se trouvent par la recherche. */
   function renderClientesPicker() {
     var q = document.getElementById('evtClientesSearch').value.trim().toLowerCase();
     var box = document.getElementById('evtClientesList');
-    var liste = sagaToutesClientes().filter(function (c) {
-      if (!q) return true;
-      return (c.prenom + ' ' + (c.nom || '') + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
-    });
 
-    box.innerHTML = liste.length === 0
-      ? '<div class="picker-empty">' + (q ? 'Aucune cliente ne correspond à « ' + q + ' »' : 'Aucune cliente enregistrée') + '</div>'
-      : liste.map(function (c) {
-          var nom = libelleCliente(c);
-          var coche = clientesChoisies.indexOf(nom) !== -1 ? ' checked' : '';
-          return '<label class="check-row">' +
-            '<input type="checkbox" value="' + nom + '" data-cliente' + coche + ' onchange="basculerCliente(this)" />' +
-            '<span>' + nom + '</span></label>';
-        }).join('');
+    var liste = q
+      ? sagaToutesClientes().filter(function (c) {
+          return (c.prenom + ' ' + (c.nom || '') + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
+        })
+      : sagaToutesClientes().filter(function (c) {
+          return clientesChoisies.indexOf(libelleCliente(c)) !== -1;
+        });
+
+    if (liste.length === 0) {
+      box.innerHTML = '<div class="picker-empty">' +
+        (q ? 'Aucune cliente ne correspond à « ' + q + ' »'
+           : 'Tapez un nom pour trouver une cliente') + '</div>';
+    } else {
+      box.innerHTML = liste.map(function (c) {
+        var nom = libelleCliente(c);
+        var coche = clientesChoisies.indexOf(nom) !== -1 ? ' checked' : '';
+        return '<label class="check-row">' +
+          '<input type="checkbox" value="' + nom + '" data-cliente' + coche + ' onchange="basculerCliente(this)" />' +
+          '<span>' + nom + '</span></label>';
+      }).join('');
+    }
     majSelection();
   }
 
@@ -305,8 +315,8 @@
     document.getElementById('evtClientesField').style.display = estAutre ? 'none' : 'flex';
     document.getElementById('evtTitreField').style.display = estAutre ? 'flex' : 'none';
     document.getElementById('evtClientesNote').textContent = typeActif() === 'Live'
-      ? 'Tapez un nom pour la retrouver, puis cochez-la. Un live peut en regrouper plusieurs.'
-      : 'Cochez chaque cliente dont vous récupérez le dressing ce jour-là.';
+      ? 'Cherchez une cliente puis cochez-la. Un live peut en regrouper plusieurs.'
+      : 'Cherchez chaque cliente dont vous récupérez le dressing ce jour-là.';
   }
 
   function modifierEvenement(id) {

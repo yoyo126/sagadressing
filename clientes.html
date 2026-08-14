@@ -134,9 +134,9 @@
           <h2>Toutes les clientes</h2>
           <div class="filter-bar">
             <div class="toggle-group" id="statusToggle">
-              <button data-status="all" class="active">Toutes</button>
-              <button data-status="active">Actives</button>
+              <button data-status="active" class="active">Actives</button>
               <button data-status="inactive">Inactives</button>
+              <button data-status="all">Toutes</button>
             </div>
           </div>
         </div>
@@ -224,9 +224,10 @@
     document.getElementById('vignettePreview').innerHTML = '<span>Choisir<br/>une image</span>';
   }
 
+  // Les clientes actives sont le quotidien : c'est la vue par défaut
   function currentStatus() {
     var b = document.querySelector('#statusToggle button.active');
-    return b ? b.dataset.status : 'all';
+    return b ? b.dataset.status : 'active';
   }
 
   function visibleClientes() {

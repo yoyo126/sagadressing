@@ -748,9 +748,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.5.1';
+var SAGA_VERSION = '1.5.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.5.2', date: '2026-08-14', titre: 'Mise en page et vues par défaut', points: [
+    'Tableau de bord et agenda : colonnes équilibrées, calendrier compact',
+    'Agenda : seules les clientes retenues sont listées, les autres se cherchent',
+    'Clientes : les actives sont affichées par défaut',
+    'Lives : les sessions en cours par défaut, recherche par nom ou par date'
+  ]},
   { version: '1.5.1', date: '2026-08-14', titre: 'Logo, tableau de bord et mots de passe', points: [
     'Logo du menu affiché en pleine largeur',
     'Panneau « Reste à reverser par cliente » retiré du tableau de bord',
