@@ -163,19 +163,20 @@
   </div>
 
 <script src="nav.js"></script>
+<script src="saga-pdf.js"></script>
 <script>
   renderSagaSidebar('clientes');
 
   // key = fiche détaillée existante (cliente.html?c=…) quand elle est disponible
   var CLIENTES_DEFAUT = [
-    { key:'fanny',   prenom:'Fanny',   lettre:'M', apporteur:'Nadia R.', pct:30, ca:6420, commission:1926, reste:735, statut:'active' },
-    { key:'julie',   prenom:'Julie',   lettre:'C', apporteur:'',         pct:30, ca:5180, commission:1554, reste:620, statut:'active' },
-    { key:'camille', prenom:'Camille', lettre:'B', apporteur:'Nadia R.', pct:25, ca:4960, commission:1241, reste:480, statut:'active' },
-    { key:'marion',  prenom:'Marion',  lettre:'F', apporteur:'Karim B.', pct:30, ca:3210, commission:963,  reste:310, statut:'active' },
-    { key:'',        prenom:'Alix',    lettre:'P', apporteur:'',         pct:30, ca:1840, commission:552,  reste:0,   statut:'active' },
-    { key:'',        prenom:'Nora',    lettre:'T', apporteur:'Karim B.', pct:30, ca:960,  commission:288,  reste:0,   statut:'active' },
-    { key:'',        prenom:'Sophie',  lettre:'D', apporteur:'',         pct:30, ca:2380, commission:714,  reste:0,   statut:'inactive' },
-    { key:'',        prenom:'Élise',   lettre:'R', apporteur:'Nadia R.', pct:25, ca:1120, commission:280,  reste:0,   statut:'inactive' }
+    { key:'fanny',   prenom:'Fanny',   nom:'Fanny Moreau',    tel:'06 12 34 56 78', email:'fanny.moreau@example.com',   lettre:'M', apporteur:'Nadia R.', pct:30, ca:6420, commission:1926, reste:735, statut:'active' },
+    { key:'julie',   prenom:'Julie',   nom:'Julie Renard',    tel:'06 22 45 78 90', email:'julie.renard@example.com',   lettre:'C', apporteur:'',         pct:30, ca:5180, commission:1554, reste:620, statut:'active' },
+    { key:'camille', prenom:'Camille', nom:'Camille Bertin',  tel:'07 33 12 45 67', email:'camille.bertin@example.com', lettre:'B', apporteur:'Nadia R.', pct:25, ca:4960, commission:1241, reste:480, statut:'active' },
+    { key:'marion',  prenom:'Marion',  nom:'Marion Fabre',    tel:'06 55 78 21 34', email:'marion.fabre@example.com',   lettre:'F', apporteur:'Karim B.', pct:30, ca:3210, commission:963,  reste:310, statut:'active' },
+    { key:'',        prenom:'Alix',    nom:'Alix Perrin',     tel:'06 78 90 12 34', email:'alix.perrin@example.com',    lettre:'P', apporteur:'',         pct:30, ca:1840, commission:552,  reste:0,   statut:'active' },
+    { key:'',        prenom:'Nora',    nom:'Nora Tissot',     tel:'07 11 22 33 44', email:'nora.tissot@example.com',    lettre:'T', apporteur:'Karim B.', pct:30, ca:960,  commission:288,  reste:0,   statut:'active' },
+    { key:'',        prenom:'Sophie',  nom:'Sophie Delaunay', tel:'06 44 55 66 77', email:'sophie.delaunay@example.com',lettre:'D', apporteur:'',         pct:30, ca:2380, commission:714,  reste:0,   statut:'inactive' },
+    { key:'',        prenom:'Élise',   nom:'Élise Rousseau',  tel:'06 99 88 77 66', email:'elise.rousseau@example.com', lettre:'R', apporteur:'Nadia R.', pct:25, ca:1120, commission:280,  reste:0,   statut:'inactive' }
   ];
 
   var clientes = sagaLoad('clientes', CLIENTES_DEFAUT);
@@ -209,7 +210,8 @@
     var q = document.getElementById('searchInput').value.trim().toLowerCase();
     return clientes.filter(function (c) {
       if (st !== 'all' && c.statut !== st) return false;
-      if (q && c.prenom.toLowerCase().indexOf(q) === -1 && c.lettre.toLowerCase() !== q) return false;
+      var cible = (c.prenom + ' ' + (c.nom || '')).toLowerCase();
+      if (q && cible.indexOf(q) === -1 && c.lettre.toLowerCase() !== q) return false;
       return true;
     });
   }
@@ -224,7 +226,10 @@
     body.innerHTML = rows.map(function (c) {
       var href = c.key ? 'cliente.html?c=' + c.key : '';
       // Les fiches non encore détaillées ouvrent la fiche type, signalée par une astérisque
-      var nameCell = '<div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span> ' + c.prenom + '</div>';
+      var nomComplet = c.nom || c.prenom;
+      var nameCell = '<div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span>' +
+        '<span><span class="name-main">' + nomComplet + '</span>' +
+        (c.tel ? '<span class="name-sub">' + c.tel + '</span>' : '') + '</span></div>';
       var statut = c.statut === 'active'
         ? '<span class="chip good">Active</span>'
         : '<span class="chip neutral">Inactive</span>';
@@ -318,6 +323,9 @@
     clientes.push({
       key: '',
       prenom: prenom,
+      nom: document.getElementById('nNom').value.trim() || prenom,
+      email: document.getElementById('nEmail').value.trim(),
+      tel: document.getElementById('nTel').value.trim(),
       lettre: lettre,
       apporteur: document.getElementById('nApporteur').value,
       pct: parseInt(document.getElementById('nCommission').value, 10) || 30,

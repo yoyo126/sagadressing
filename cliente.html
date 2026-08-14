@@ -25,6 +25,7 @@
             <span class="chip good" id="headerContratChip" style="display:none;">Contrat signé</span>
           </div>
           <div class="detail-meta" id="cMeta">—</div>
+          <div class="detail-contact" id="cContact"></div>
         </div>
         <div class="detail-actions">
           <button class="btn btn-secondary" onclick="ouvrirEdition()">
@@ -589,6 +590,7 @@
   </div>
 
 <script src="nav.js"></script>
+<script src="saga-pdf.js"></script>
 <script>
   renderSagaSidebar('clientes');
   initRowLinks();
@@ -678,13 +680,27 @@
   function renderClient() {
     document.title = CLIENT.prenom + ' (' + CLIENT.lettre + ') — Saga Dressing (maquette)';
     document.getElementById('cAvatar').textContent = CLIENT.lettre;
-    document.getElementById('cName').textContent = CLIENT.prenom;
+    // Le titre porte le nom complet ; le prénom seul ne suffit pas pour un document
+    document.getElementById('cName').textContent = CLIENT.nom || CLIENT.prenom;
     document.getElementById('cStatusChip').textContent = CLIENT.statut;
 
     var meta = 'Dressing ' + CLIENT.lettre + ' · commission ' + CLIENT.commission + ' %';
     meta += CLIENT.apporteur ? ' · apporteur ' + CLIENT.apporteur : ' · sans apporteur';
     meta += ' · cliente depuis ' + CLIENT.depuis;
     document.getElementById('cMeta').textContent = meta;
+
+    // Coordonnées visibles directement sur la fiche
+    var contacts = [
+      { icone: 'M4 4h16v16H4z M4 6l8 6 8-6', texte: CLIENT.email },
+      { icone: 'M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1', texte: CLIENT.tel },
+      { icone: 'M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z M12 12a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8', texte: CLIENT.adresse }
+    ].filter(function (c) { return c.texte; });
+
+    document.getElementById('cContact').innerHTML = contacts.map(function (c) {
+      return '<span class="contact-item">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">' +
+        '<path d="' + c.icone + '"/></svg>' + c.texte + '</span>';
+    }).join('') || '<span class="contact-item muted">Coordonnées à compléter dans l\'onglet Infos</span>';
 
     // Bandeau de signature en attente
     var alertBar = document.getElementById('pendingSignAlert');
@@ -811,41 +827,54 @@
     return live ? 'live.html?l=' + live.id + '&c=' + CLIENT.lettre : '';
   }
 
-  /* Récapitulatif imprimable d'une ligne de la fiche.
+  /* Récapitulatif d'une ligne de la fiche, enregistré en PDF.
      Si le live détaillé existe, on reprend le détail article par article. */
   function imprimerLigne(i) {
     var l = CLIENT.lives[i];
     if (!l) return;
     var live = l.horsLive ? null : liveDeLaDate(l.date);
+    var pdf = sagaNouveauPdf('Récapitulatif ' + CLIENT.prenom + ' — ' + l.label);
 
-    var corps = '<h1>' + CLIENT.prenom + ' — ' + l.label + '</h1>' +
-      '<p class="sous">Dressing ' + CLIENT.lettre + ' · ' + sagaDateLongue(l.date) +
-      (l.horsLive ? ' · vente hors Whatnot' : '') + '</p>' +
-      '<div class="recap">' +
-        '<div><span>Ventes</span><span>' + fmtEUR(l.ventes) + '</span></div>' +
-        '<div><span>− Commission Saga (' + CLIENT.commission + ' %)</span><span>' + fmtEUR(l.commission) + '</span></div>' +
-        (l.apporteurMontant > 0 ? '<div><span>− Commission apporteur (' + CLIENT.apporteur + ')</span><span>' + fmtEUR(l.apporteurMontant) + '</span></div>' : '') +
-        (l.frais > 0 ? '<div><span>− Frais d\'envoi</span><span>' + fmtEUR(l.frais) + '</span></div>' : '') +
-        '<div class="total"><span>Net à reverser</span><span>' + fmtEUR(l.net) + '</span></div>' +
-      '</div>' +
-      (l.paye
-        ? '<p class="sous">Réglé' + (l.datePaiement ? ' le ' + fmtDateFR(l.datePaiement) : '') +
-          (l.modePaiement ? ' par ' + l.modePaiement : '') + '.</p>'
-        : '<p class="sous">En attente de règlement.</p>');
+    pdf.titre(l.horsLive ? 'Récapitulatif de vente' : 'Récapitulatif de live');
+    pdf.sousTitre(l.label + ' · ' + sagaDateLongue(l.date) +
+      (l.horsLive ? ' · vente hors Whatnot' : ''));
+
+    pdf.section('Cliente');
+    pdf.paragraphe(CLIENT.nom + '  —  dressing ' + CLIENT.lettre, { gras: true, taille: 10.5 });
+    if (CLIENT.adresse) pdf.paragraphe(CLIENT.adresse);
+    var contact = [CLIENT.tel, CLIENT.email].filter(Boolean).join('  ·  ');
+    if (contact) pdf.paragraphe(contact);
+
+    var lignes = [['Ventes', fmtEUR(l.ventes)],
+                  ['− Commission Saga (' + CLIENT.commission + ' %)', fmtEUR(l.commission)]];
+    if (l.apporteurMontant > 0) lignes.push(['− Commission apporteur (' + CLIENT.apporteur + ')', fmtEUR(l.apporteurMontant)]);
+    if (l.frais > 0) lignes.push(["− Frais d'envoi", fmtEUR(l.frais)]);
+    lignes.push(['Net à reverser', fmtEUR(l.net)]);
+
+    pdf.section('Décompte');
+    pdf.decompte(lignes);
+    pdf.paragraphe(l.paye
+      ? 'Réglé par virement' + (l.datePaiement ? ' le ' + fmtDateFR(l.datePaiement) : '') + '.'
+      : 'En attente de règlement.', { couleur: [0.45, 0.41, 0.32] });
 
     if (live) {
       var arts = live.articles.filter(function (a) { return a.lettre === CLIENT.lettre; });
       if (arts.length) {
-        corps += '<h2>Détail des ' + arts.length + ' article(s)</h2>' +
-          '<table><thead><tr><th>Article</th><th class="num">Montant</th><th>Type</th></tr></thead><tbody>' +
-          arts.map(function (a) {
-            var t = a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente';
-            return '<tr><td>' + a.libelle + '</td><td class="num">' + fmtEUR(a.montant) + '</td><td>' + t + '</td></tr>';
-          }).join('') + '</tbody></table>';
+        pdf.section('Détail des ' + arts.length + ' article(s)');
+        pdf.tableau([
+          { titre: 'Article', cle: 'libelle', largeur: 58 },
+          { titre: 'Montant', cle: 'montant', largeur: 21, aligne: 'droite' },
+          { titre: 'Type',    cle: 'type',    largeur: 21, discret: true }
+        ], arts.map(function (a) {
+          return {
+            libelle: a.libelle, montant: fmtEUR(a.montant),
+            type: a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente'
+          };
+        }));
       }
     }
 
-    sagaImprimer('Recap_' + CLIENT.prenom + '_' + l.date, corps);
+    pdf.enregistrer('Recap_' + CLIENT.prenom + '_' + l.date);
   }
 
   /* ============ Fiche modifiable ============
@@ -1203,8 +1232,9 @@
 
   // ---------- Paiements : date et mode enregistrés, annulation possible ----------
 
+  // Les reversements se font toujours par virement : seule la date est demandée
   function askPaymentDetails(montant, quoi) {
-    var date = prompt('Date du paiement (JJ/MM/AAAA) — ' + quoi + '\n\nMontant : ' + fmtEUR(montant),
+    var date = prompt('Date du virement (JJ/MM/AAAA) — ' + quoi + '\n\nMontant : ' + fmtEUR(montant),
                       fmtDateFR(TODAY_ISO));
     if (date === null) return null;
 
@@ -1213,13 +1243,7 @@
       alert('Date invalide. Format attendu : JJ/MM/AAAA');
       return null;
     }
-    var iso = parts[2] + '-' + parts[1] + '-' + parts[0];
-
-    var mode = prompt('Mode de paiement :\n\n1 — Virement\n2 — Espèces\n3 — PayPal', '1');
-    if (mode === null) return null;
-    var modes = { '1': 'Virement', '2': 'Espèces', '3': 'PayPal' };
-
-    return { date: iso, mode: modes[mode.trim()] || 'Virement' };
+    return { date: parts[2] + '-' + parts[1] + '-' + parts[0], mode: 'Virement' };
   }
 
   function payOne(index) {
@@ -1366,10 +1390,14 @@
     document.getElementById('sentEmailLabel').textContent = document.getElementById('fEmail').value;
     document.getElementById('sentDateLabel').textContent = today;
 
+    const nomFichier = 'Contrat_' + CLIENT.prenom + '_v' + contratVersion + '.pdf';
     contratFileRow = addContractFile(
-      'Contrat_' + CLIENT.prenom + '_v' + contratVersion + '.pdf',
+      nomFichier,
       '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyé le ' + today
     );
+    // Le PDF est produit et enregistré : il reste consultable dans les pièces jointes
+    archiverDocument(contratFileRow, 'docPreview', nomFichier,
+      'Contrat de dépôt-vente — ' + CLIENT.nom).enregistrer(nomFichier);
   }
 
   function simulateSignature() {
@@ -1419,35 +1447,55 @@
     return row;
   }
 
-  // Le document est reconstruit à partir de l'aperçu affiché dans l'onglet Contrat
-  function documentHtml(titre, apercuId) {
-    const apercu = document.getElementById(apercuId || 'docPreview');
-    return '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" />' +
-      '<title>' + titre + '</title>' +
-      '<style>body{font-family:Georgia,serif;max-width:760px;margin:40px auto;padding:0 24px;' +
-      'line-height:1.6;color:#241F1A;} h1,h2,h3{font-family:inherit;} .empty{color:#9C9276;}</style>' +
-      '</head><body>' + apercu.innerHTML + '</body></html>';
+  /* Le document est composé à partir de l'aperçu affiché à l'écran :
+     ce que la cliente reçoit correspond exactement à ce qui est relu ici. */
+  function pdfDepuisApercu(apercuId, titreDoc) {
+    const apercu = document.getElementById(apercuId);
+    const pdf = sagaNouveauPdf(titreDoc);
+
+    Array.prototype.forEach.call(apercu.children, (el) => {
+      const texte = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!texte) return;
+      if (el.classList.contains('doc-title')) { pdf.titre(texte); return; }
+      if (el.tagName === 'H3') { pdf.section(texte); return; }
+      // Les retours à la ligne de l'aperçu sont conservés dans le PDF
+      el.innerHTML.split(/<br\s*\/?>/i).forEach((morceau) => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = morceau;
+        const t = (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+        if (t) pdf.paragraphe(t);
+      });
+    });
+
+    return pdf;
+  }
+
+  /* Un document généré est archivé avec son PDF : il reste téléchargeable
+     et consultable plus tard, sans avoir à le régénérer. */
+  function archiverDocument(row, apercuId, nomFichier, titreDoc) {
+    const pdf = pdfDepuisApercu(apercuId, titreDoc);
+    row.dataset.pdf = pdf.dataUrl();
+    row.dataset.fichier = nomFichier.replace(/\.pdf$/i, '') + '.pdf';
+    return pdf;
   }
 
   function voirDocument(row) {
-    const titre = row.querySelector('[data-name]').textContent;
+    if (!row.dataset.pdf) { alert("Ce document n'a pas encore été généré."); return; }
     const w = window.open('', '_blank');
     if (!w) { alert("Autorisez les fenêtres pop-up pour afficher le document."); return; }
-    w.document.write(documentHtml(titre, row.dataset.apercu));
+    w.document.write('<iframe src="' + row.dataset.pdf +
+      '" style="border:0;position:fixed;inset:0;width:100%;height:100%"></iframe>');
     w.document.close();
   }
 
   function telechargerDocument(row) {
-    const titre = row.querySelector('[data-name]').textContent;
-    const blob = new Blob([documentHtml(titre, row.dataset.apercu)], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    if (!row.dataset.pdf) { alert("Ce document n'a pas encore été généré."); return; }
     const a = document.createElement('a');
-    a.href = url;
-    a.download = titre.replace(/\.pdf$/i, '') + '.html';
+    a.href = row.dataset.pdf;
+    a.download = row.dataset.fichier || 'document.pdf';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   function updateContractFileToSigned(row, dateLabel) {
@@ -1455,6 +1503,9 @@
     const nameEl = row.querySelector('[data-name]');
     const subEl = row.querySelector('[data-sub]');
     nameEl.textContent = nameEl.textContent.replace('.pdf', '_signe.pdf');
+    // Le PDF archivé est remplacé par la version portant la signature
+    archiverDocument(row, row.dataset.apercu || 'docPreview', nameEl.textContent,
+      nameEl.textContent.replace(/_/g, ' ').replace(/\.pdf$/i, ''));
     subEl.innerHTML = '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Signé</span>Mis à jour automatiquement le ' + dateLabel;
     row.style.transition = 'background 1.4s ease';
     row.style.background = 'var(--good-bg)';
@@ -1634,11 +1685,13 @@
     document.getElementById('restitActionsSigned').style.display = 'block';
     document.getElementById('rSignedDate').textContent = today;
 
-    addContractFile(
+    const ligne = addContractFile(
       restitFileName(true),
       '<span class="agenda-kind" style="background:var(--good-bg); color:var(--good);">Restitution signée</span>Signée sur place le ' + today,
       'restitPreview'
     );
+    archiverDocument(ligne, 'restitPreview', restitFileName(true),
+      'Bon de restitution — ' + CLIENT.nom).enregistrer(restitFileName(true));
   }
 
   // Cas à distance : envoi pour signature électronique
@@ -1659,6 +1712,8 @@
       '<span class="agenda-kind" style="background:var(--warn-bg); color:var(--brand-strong);">En attente de signature</span>Envoyée le ' + today,
       'restitPreview'
     );
+    archiverDocument(restitFileRow, 'restitPreview', restitFileName(false),
+      'Bon de restitution — ' + CLIENT.nom).enregistrer(restitFileName(false));
   }
 
   function simulateRestitutionSignature() {

@@ -111,15 +111,16 @@
               </div>
 
               <div class="form-field" id="evtClientesField">
-                <label class="form-label" id="evtClientesLabel">Clientes</label>
+                <label class="form-label" for="evtClientesSearch">Clientes</label>
                 <div class="picker">
-                  <div class="picker-head">
-                    <span id="evtClientesCount">Aucune sélectionnée</span>
-                    <button type="button" id="evtClientesToggleAll" onclick="basculerToutesClientes()">Tout sélectionner</button>
+                  <div class="picker-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="evtClientesSearch" placeholder="Rechercher une cliente…" autocomplete="off" />
                   </div>
                   <div class="picker-list" id="evtClientesList"></div>
                 </div>
-                <span class="card-note" id="evtClientesNote">Un live peut regrouper plusieurs dressings : cochez toutes les clientes concernées.</span>
+                <div class="picker-selection" id="evtClientesSelection"></div>
+                <span class="card-note" id="evtClientesNote">Tapez un nom pour la retrouver, puis cochez-la. Un live peut en regrouper plusieurs.</span>
               </div>
 
               <div class="form-field" id="evtTitreField" style="display:none;">
@@ -142,70 +143,68 @@
   </div>
 
 <script src="nav.js"></script>
+<script src="saga-pdf.js"></script>
 <script>
   renderSagaSidebar('agenda');
 
   var MOIS_AG = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
 
-  // Repli si la liste des clientes n'a jamais été ouverte dans ce navigateur
-  var CLIENTES_AGENDA_DEFAUT = [
-    { prenom: 'Fanny',   lettre: 'M', statut: 'active' },
-    { prenom: 'Julie',   lettre: 'C', statut: 'active' },
-    { prenom: 'Camille', lettre: 'B', statut: 'active' },
-    { prenom: 'Marion',  lettre: 'F', statut: 'active' }
-  ];
+  // Sélection en cours, conservée même quand la recherche masque la ligne
+  var clientesChoisies = [];
 
   function clientesDisponibles() {
-    // Même source que la page Clientes : les fiches créées apparaissent ici aussi
-    return sagaLoad('clientes', CLIENTES_AGENDA_DEFAUT)
-      .filter(function (c) { return c.statut !== 'inactive'; });
+    // Même annuaire que le reste de l'application
+    return sagaToutesClientes();
   }
 
-  function libelleCliente(c) { return c.prenom + ' (' + c.lettre + ')'; }
+  function libelleCliente(c) { return (c.nom || c.prenom) + ' (' + c.lettre + ')'; }
 
   function renderClientesPicker() {
-    var liste = clientesDisponibles();
+    var q = document.getElementById('evtClientesSearch').value.trim().toLowerCase();
     var box = document.getElementById('evtClientesList');
+    var liste = clientesDisponibles().filter(function (c) {
+      if (!q) return true;
+      return (c.prenom + ' ' + (c.nom || '') + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
+    });
 
     if (liste.length === 0) {
-      box.innerHTML = '<div class="picker-empty">Aucune cliente active — créez une fiche depuis la page Clientes.</div>';
-      majCompteurClientes();
-      return;
+      box.innerHTML = '<div class="picker-empty">' +
+        (q ? 'Aucune cliente ne correspond à « ' + q + ' »' : 'Aucune cliente enregistrée') + '</div>';
+    } else {
+      box.innerHTML = liste.map(function (c) {
+        var nom = libelleCliente(c);
+        var coche = clientesChoisies.indexOf(nom) !== -1 ? ' checked' : '';
+        return '<label class="check-row">' +
+          '<input type="checkbox" value="' + nom + '" data-cliente' + coche + ' onchange="basculerCliente(this)" />' +
+          '<span>' + nom + '</span></label>';
+      }).join('');
     }
+    majSelection();
+  }
 
-    box.innerHTML = liste.map(function (c, i) {
-      var nom = libelleCliente(c);
-      return '<label class="check-row">' +
-        '<input type="checkbox" value="' + nom + '" data-cliente onchange="majCompteurClientes()" />' +
-        '<span>' + nom + '</span>' +
-      '</label>';
+  function basculerCliente(input) {
+    var i = clientesChoisies.indexOf(input.value);
+    if (input.checked && i === -1) clientesChoisies.push(input.value);
+    if (!input.checked && i !== -1) clientesChoisies.splice(i, 1);
+    majSelection();
+  }
+
+  // Les clientes retenues restent visibles sous la liste, même filtrées
+  function majSelection() {
+    var box = document.getElementById('evtClientesSelection');
+    if (clientesChoisies.length === 0) { box.innerHTML = ''; return; }
+    box.innerHTML = clientesChoisies.map(function (nom) {
+      return '<span class="picker-tag">' + nom +
+        '<button type="button" onclick="retirerCliente(\'' + nom.replace(/'/g, "\\'") + '\')" title="Retirer">×</button></span>';
     }).join('');
-    majCompteurClientes();
   }
 
-  function clientesCochees() {
-    return Array.prototype.slice
-      .call(document.querySelectorAll('#evtClientesList input[data-cliente]:checked'))
-      .map(function (i) { return i.value; });
+  function retirerCliente(nom) {
+    clientesChoisies = clientesChoisies.filter(function (n) { return n !== nom; });
+    renderClientesPicker();
   }
 
-  function majCompteurClientes() {
-    var toutes = document.querySelectorAll('#evtClientesList input[data-cliente]');
-    var n = clientesCochees().length;
-    var libelle = n === 0 ? 'Aucune sélectionnée'
-      : n === 1 ? '1 dressing sélectionné'
-      : n + ' dressings sélectionnés';
-    document.getElementById('evtClientesCount').textContent = libelle;
-    document.getElementById('evtClientesToggleAll').textContent =
-      (toutes.length && n === toutes.length) ? 'Tout désélectionner' : 'Tout sélectionner';
-  }
-
-  function basculerToutesClientes() {
-    var toutes = document.querySelectorAll('#evtClientesList input[data-cliente]');
-    var toutCoche = toutes.length > 0 && clientesCochees().length === toutes.length;
-    toutes.forEach(function (i) { i.checked = !toutCoche; });
-    majCompteurClientes();
-  }
+  function clientesCochees() { return clientesChoisies.slice(); }
 
   function typeActif() {
     var b = document.querySelector('#evtType button.active');
@@ -219,7 +218,7 @@
     document.getElementById('evtClientesField').style.display = estAutre ? 'none' : 'flex';
     document.getElementById('evtTitreField').style.display = estAutre ? 'flex' : 'none';
     document.getElementById('evtClientesNote').textContent = type === 'Live'
-      ? 'Un live peut regrouper plusieurs dressings : cochez toutes les clientes concernées.'
+      ? 'Tapez un nom pour la retrouver, puis cochez-la. Un live peut en regrouper plusieurs.'
       : 'Cochez chaque cliente dont vous récupérez le dressing ce jour-là.';
   }
 
@@ -259,8 +258,9 @@
     // Formulaire vidé pour l'événement suivant
     document.getElementById('evtComment').value = '';
     document.getElementById('evtTitre').value = '';
-    document.querySelectorAll('#evtClientesList input[data-cliente]').forEach(function (i) { i.checked = false; });
-    majCompteurClientes();
+    clientesChoisies = [];
+    document.getElementById('evtClientesSearch').value = '';
+    renderClientesPicker();
   }
 
   document.querySelectorAll('#evtType button').forEach(function (btn) {
@@ -269,6 +269,12 @@
       btn.classList.add('active');
       majFormulaireSelonType();
     });
+  });
+
+  var rechercheClientesTimer = null;
+  document.getElementById('evtClientesSearch').addEventListener('input', function () {
+    clearTimeout(rechercheClientesTimer);
+    rechercheClientesTimer = setTimeout(renderClientesPicker, 200);
   });
 
   renderClientesPicker();

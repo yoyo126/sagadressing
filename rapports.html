@@ -52,13 +52,7 @@
           </div>
           <div class="form-field" style="min-width:180px;">
             <label class="form-label" for="repCliente">Cliente</label>
-            <select class="form-select" id="repCliente">
-              <option value="">Toutes les clientes</option>
-              <option value="Fanny">Fanny (M)</option>
-              <option value="Julie">Julie (C)</option>
-              <option value="Camille">Camille (B)</option>
-              <option value="Marion">Marion (F)</option>
-            </select>
+            <select class="form-select" id="repCliente"></select>
           </div>
           <div class="form-field" style="align-self:flex-end;">
             <button class="btn btn-ghost btn-sm" id="repReset">Réinitialiser</button>
@@ -106,6 +100,7 @@
             <tfoot id="repTableFoot"></tfoot>
           </table>
           </div>
+          <div id="repDetail" style="margin-top:18px;"></div>
           <p class="card-note" style="margin-top:12px;">Les ventes hors live (main propre, virement, autre plateforme) sont incluses dans les totaux. Elles ne supportent ni frais Whatnot ni giveaways ; la commission d'apporteur y est appliquée au cas par cas, selon le choix fait à la saisie.</p>
         </div>
 
@@ -121,10 +116,62 @@
   </div>
 
 <script src="nav.js"></script>
+<script src="saga-pdf.js"></script>
 <script>
   renderSagaSidebar('rapports');
 
-  // Export réel : CSV téléchargé, PDF via la boîte d'impression du navigateur
+  /* ---------- Les ventes proviennent des lives et des ventes hors live ----------
+     Une ligne = une session pour une cliente. Chaque live compte séparément :
+     une cliente qui a fait cinq lives apparaît sur cinq lignes de détail. */
+  function toutesLesVentes() {
+    var res = [];
+
+    sagaLives().forEach(function (live) {
+      sagaLettresDuLive(live).forEach(function (lettre) {
+        var d = sagaDecompte(live, lettre);
+        res.push({
+          date: live.date, liveId: live.id, session: live.titre,
+          cliente: d.prenom, nom: sagaInfosCliente(lettre).nom, lettre: lettre,
+          source: 'live', ventes: d.ventes, giveaways: d.giveaways,
+          saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
+          paye: d.paye, datePaiement: d.paye ? d.paiement.date : ''
+        });
+      });
+    });
+
+    // Ventes hors live : elles ne vivent que sur la fiche de la cliente
+    var fiches = sagaLoad('clients_data', {});
+    Object.keys(fiches).forEach(function (cle) {
+      var f = fiches[cle];
+      (f.lives || []).forEach(function (l) {
+        if (!l.horsLive) return;
+        res.push({
+          date: l.date, liveId: '', session: l.label,
+          cliente: f.prenom, nom: f.nom || f.prenom, lettre: f.lettre,
+          source: 'direct', ventes: l.ventes, giveaways: 0,
+          saga: l.commission, apporteur: l.apporteurMontant || 0, net: l.net,
+          paye: !!l.paye, datePaiement: l.datePaiement || ''
+        });
+      });
+    });
+
+    return res.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  }
+
+  var VENTES = toutesLesVentes();
+
+  function remplirFiltreClientes() {
+    var sel = document.getElementById('repCliente');
+    var noms = [];
+    VENTES.forEach(function (v) { if (noms.indexOf(v.lettre) === -1) noms.push(v.lettre); });
+    sel.innerHTML = '<option value="">Toutes les clientes</option>' +
+      noms.map(function (l) {
+        var i = sagaInfosCliente(l);
+        return '<option value="' + l + '">' + i.nom + ' (' + l + ')</option>';
+      }).join('');
+  }
+
+  /* ---------- Exports ---------- */
   function doExport(format) {
     var rows = filteredVentes();
     if (rows.length === 0) { alert('Aucune vente sur la période sélectionnée.'); return; }
@@ -133,48 +180,137 @@
     var to = document.getElementById('repTo').value || 'fin';
 
     if (format === 'CSV') {
-      var entetes = ['Date','Cliente','Lettre','Origine','Ventes','Giveaways','Commission Saga','Commission apporteur','Net reverse'];
+      var entetes = ['Date','Session','Cliente','Lettre','Origine','Ventes','Giveaways',
+                     'Commission Saga','Commission apporteur','Net reverse','Paye le'];
       var lignes = [entetes.join(';')];
       rows.forEach(function (v) {
-        lignes.push([v.date, v.cliente, v.lettre, v.source === 'live' ? 'Live' : 'Hors live',
-                     v.ventes, v.giveaways, v.saga, v.apporteur, v.net].join(';'));
+        lignes.push([v.date, v.session, v.nom, v.lettre, v.source === 'live' ? 'Live' : 'Hors live',
+                     Math.round(v.ventes), Math.round(v.giveaways), Math.round(v.saga),
+                     Math.round(v.apporteur), Math.round(v.net), v.datePaiement].join(';'));
       });
-      var t = rows.reduce(function (a, v) {
-        a.ventes += v.ventes; a.giveaways += v.giveaways; a.saga += v.saga;
-        a.apporteur += v.apporteur; a.net += v.net; return a;
-      }, {ventes:0, giveaways:0, saga:0, apporteur:0, net:0});
-      lignes.push(['TOTAL','','','', t.ventes, t.giveaways, t.saga, t.apporteur, t.net].join(';'));
+      var t = totaux(rows);
+      lignes.push(['TOTAL','','','','', Math.round(t.ventes), Math.round(t.giveaways),
+                   Math.round(t.saga), Math.round(t.apporteur), Math.round(t.net), ''].join(';'));
 
       // BOM + point-virgule : Excel français ouvre le fichier correctement
       sagaDownload('rapport_' + from + '_' + to + '.csv', '\ufeff' + lignes.join('\r\n'), 'text/csv');
       return;
     }
 
-    // PDF : on imprime la page, le navigateur propose « Enregistrer au format PDF »
-    window.print();
+    exporterPdf(rows, from, to);
+  }
+
+  /* Le PDF est enregistré comme fichier : il s'ouvre et se transmet ensuite. */
+  function exporterPdf(rows, from, to) {
+    var t = totaux(rows);
+    var lettreFiltre = document.getElementById('repCliente').value;
+    var pdf = sagaNouveauPdf('Rapport ' + from + ' au ' + to);
+
+    pdf.titre('Rapport financier');
+    pdf.sousTitre('Période du ' + sagaDateLongue(from) + ' au ' + sagaDateLongue(to) +
+      ' · ' + libelleSource() + ' · ' + rows.length + ' session(s)');
+
+    if (lettreFiltre) {
+      var i = sagaInfosCliente(lettreFiltre);
+      pdf.section('Cliente');
+      pdf.paragraphe(i.nom + '  —  dressing ' + lettreFiltre, { gras: true, taille: 10.5 });
+      if (i.adresse) pdf.paragraphe(i.adresse);
+      var contact = [i.tel, i.email].filter(Boolean).join('  ·  ');
+      if (contact) pdf.paragraphe(contact);
+    }
+
+    pdf.section('Synthèse de la période');
+    pdf.decompte([
+      ["Chiffre d'affaires", fmtEUR(t.ventes)],
+      ['dont hors live', fmtEUR(t.direct)],
+      ['− Giveaways', fmtEUR(t.giveaways)],
+      ['− Commission Saga', fmtEUR(t.saga)],
+      ['− Commission apporteurs', fmtEUR(t.apporteur)],
+      ['Net reversé aux clientes', fmtEUR(t.net)]
+    ]);
+
+    // Détail session par session : chaque live de chaque cliente est listé
+    pdf.section('Détail session par session');
+    pdf.tableau([
+      { titre: 'Date',     cle: 'date',    largeur: 12, discret: true },
+      { titre: 'Session',  cle: 'session', largeur: 25 },
+      { titre: 'Cliente',  cle: 'cliente', largeur: 21 },
+      { titre: 'Ventes',   cle: 'ventes',  largeur: 13, aligne: 'droite' },
+      { titre: 'Comm.',    cle: 'saga',    largeur: 13, aligne: 'droite' },
+      { titre: 'Net',      cle: 'net',     largeur: 16, aligne: 'droite' }
+    ], rows.map(function (v) {
+      return {
+        date: sagaDateFR(v.date), session: v.session + (v.source === 'direct' ? ' (hors live)' : ''),
+        cliente: v.nom + ' (' + v.lettre + ')',
+        ventes: fmtEUR(v.ventes), saga: fmtEUR(v.saga), net: fmtEUR(v.net)
+      };
+    }), { date: 'Total', ventes: fmtEUR(t.ventes), saga: fmtEUR(t.saga), net: fmtEUR(t.net) });
+
+    // Cumul par cliente
+    var byCliente = grouperParCliente(rows);
+    var noms = Object.keys(byCliente);
+    if (noms.length > 1) {
+      pdf.section('Cumul par cliente');
+      pdf.tableau([
+        { titre: 'Cliente',     cle: 'cliente', largeur: 30 },
+        { titre: 'Sessions',    cle: 'nb',      largeur: 12, aligne: 'droite' },
+        { titre: 'Ventes live', cle: 'live',    largeur: 15, aligne: 'droite' },
+        { titre: 'Hors live',   cle: 'direct',  largeur: 14, aligne: 'droite' },
+        { titre: 'Comm. Saga',  cle: 'saga',    largeur: 14, aligne: 'droite' },
+        { titre: 'Net reversé', cle: 'net',     largeur: 15, aligne: 'droite' }
+      ], noms.map(function (n) {
+        var c = byCliente[n];
+        return {
+          cliente: c.nom + ' (' + c.lettre + ')', nb: String(c.nb),
+          live: fmtEUR(c.live), direct: fmtEUR(c.direct),
+          saga: fmtEUR(c.saga), net: fmtEUR(c.net)
+        };
+      }), {
+        cliente: 'Total', live: fmtEUR(t.live), direct: fmtEUR(t.direct),
+        saga: fmtEUR(t.saga), net: fmtEUR(t.net)
+      });
+    }
+
+    var suffixe = lettreFiltre ? '_' + sagaInfosCliente(lettreFiltre).nom.replace(/\W+/g, '_') : '';
+    pdf.enregistrer('Rapport_' + from + '_' + to + suffixe);
   }
 
   function doBackup() {
-    alert('Sauvegarde complète de la base\n\nUn fichier .sql est téléchargé, contenant clientes, lives, ventes, paiements et documents. À conserver avant toute manipulation importante.');
+    // Sauvegarde réelle de tout ce que contient le navigateur
+    var donnees = {};
+    Object.keys(localStorage)
+      .filter(function (k) { return k.indexOf('saga_') === 0; })
+      .forEach(function (k) { donnees[k] = localStorage.getItem(k); });
+    donnees._exporte = new Date().toISOString();
+    sagaDownload('sauvegarde_saga_' + new Date().toISOString().slice(0, 10) + '.json',
+      JSON.stringify(donnees, null, 2), 'application/json');
   }
 
-  // ---------- Données de démonstration : une ligne = une vente ----------
-  // source: 'live' ou 'direct' · net = ce qui revient à la cliente
-  var VENTES = [
-    { date: '2026-07-29', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 1480, giveaways: 60, saga: 444, apporteur: 118, net: 890 },
-    { date: '2026-07-28', cliente: 'Marion',  lettre: 'F', source: 'direct', ventes: 260,  giveaways: 0,  saga: 78,  apporteur: 0,   net: 182 },
-    { date: '2026-07-27', cliente: 'Julie',   lettre: 'C', source: 'live',   ventes: 960,  giveaways: 0,  saga: 288, apporteur: 0,   net: 620 },
-    { date: '2026-07-24', cliente: 'Camille', lettre: 'B', source: 'live',   ventes: 2110, giveaways: 40, saga: 633, apporteur: 169, net: 1245 },
-    { date: '2026-07-22', cliente: 'Fanny',   lettre: 'M', source: 'direct', ventes: 245,  giveaways: 0,  saga: 74,  apporteur: 0,   net: 171 },
-    { date: '2026-07-20', cliente: 'Marion',  lettre: 'F', source: 'live',   ventes: 1500, giveaways: 0,  saga: 450, apporteur: 90,  net: 1050 },
-    { date: '2026-07-18', cliente: 'Camille', lettre: 'B', source: 'direct', ventes: 180,  giveaways: 0,  saga: 54,  apporteur: 0,   net: 126 },
-    { date: '2026-07-17', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 870,  giveaways: 0,  saga: 261, apporteur: 70,  net: 522 },
-    { date: '2026-07-13', cliente: 'Julie',   lettre: 'C', source: 'live',   ventes: 1320, giveaways: 0,  saga: 396, apporteur: 0,   net: 790 },
-    { date: '2026-06-25', cliente: 'Julie',   lettre: 'C', source: 'live',   ventes: 1450, giveaways: 0,  saga: 435, apporteur: 0,   net: 1015 },
-    { date: '2026-06-19', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 1105, giveaways: 0,  saga: 332, apporteur: 88,  net: 660 },
-    { date: '2026-06-12', cliente: 'Camille', lettre: 'B', source: 'live',   ventes: 1680, giveaways: 0,  saga: 504, apporteur: 134, net: 1176 },
-    { date: '2026-05-22', cliente: 'Fanny',   lettre: 'M', source: 'live',   ventes: 780,  giveaways: 0,  saga: 234, apporteur: 62,  net: 468 }
-  ];
+  function totaux(rows) {
+    return rows.reduce(function (a, v) {
+      a.ventes += v.ventes; a.giveaways += v.giveaways; a.saga += v.saga;
+      a.apporteur += v.apporteur; a.net += v.net;
+      a[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
+      return a;
+    }, { ventes: 0, giveaways: 0, saga: 0, apporteur: 0, net: 0, live: 0, direct: 0 });
+  }
+
+  function grouperParCliente(rows) {
+    var out = {};
+    rows.forEach(function (v) {
+      var e = out[v.lettre] ||
+        (out[v.lettre] = { nom: v.nom, lettre: v.lettre, nb: 0, live: 0, direct: 0, giveaways: 0, saga: 0, net: 0 });
+      e.nb++;
+      e[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
+      e.giveaways += v.giveaways; e.saga += v.saga; e.net += v.net;
+    });
+    return out;
+  }
+
+  function libelleSource() {
+    var s = currentSource();
+    return s === 'live' ? 'lives uniquement' : s === 'direct' ? 'ventes hors live uniquement' : 'toutes origines';
+  }
 
   function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
 
@@ -186,12 +322,12 @@
   function filteredVentes() {
     var from = document.getElementById('repFrom').value || '0000-01-01';
     var to = document.getElementById('repTo').value || '9999-12-31';
-    var cliente = document.getElementById('repCliente').value;
+    var lettre = document.getElementById('repCliente').value;
     var source = currentSource();
 
     return VENTES.filter(function (v) {
       if (v.date < from || v.date > to) return false;
-      if (cliente && v.cliente !== cliente) return false;
+      if (lettre && v.lettre !== lettre) return false;
       if (source === 'live' && v.source !== 'live') return false;
       if (source === 'direct' && v.source !== 'direct') return false;
       return true;
@@ -209,54 +345,37 @@
 
   function renderReport() {
     var rows = filteredVentes();
+    var t = totaux(rows);
+    var byCliente = grouperParCliente(rows);
 
-    var totals = { live: 0, direct: 0, giveaways: 0, saga: 0, apporteur: 0, net: 0 };
-    var sagaDirect = 0, netDirect = 0;
-    var byCliente = {};
+    document.getElementById('kpiCA').textContent = fmtEUR(t.ventes);
+    document.getElementById('kpiCASub').innerHTML = t.ventes === 0 ? 'aucune vente sur la période'
+      : fmtEUR(t.live) + ' en live · <strong style="color:var(--brand-strong)">' + fmtEUR(t.direct) + ' hors live</strong>';
+    document.getElementById('kpiCommission').textContent = fmtEUR(t.saga);
+    document.getElementById('kpiCommissionSub').textContent = rows.length + ' session(s) sur la période';
+    document.getElementById('kpiApporteur').textContent = fmtEUR(t.apporteur);
+    document.getElementById('kpiApporteurSub').textContent =
+      t.apporteur > 0 ? 'à régler aux apporteurs' : 'aucune commission sur la période';
+    document.getElementById('kpiNet').textContent = fmtEUR(t.net);
+    document.getElementById('kpiNetSub').textContent = 'dont ' + fmtEUR(
+      rows.filter(function (v) { return v.source === 'direct'; }).reduce(function (a, v) { return a + v.net; }, 0)
+    ) + ' hors live';
 
-    rows.forEach(function (v) {
-      totals[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
-      totals.giveaways += v.giveaways;
-      totals.saga += v.saga;
-      totals.apporteur += v.apporteur;
-      totals.net += v.net;
-      if (v.source === 'direct') { sagaDirect += v.saga; netDirect += v.net; }
-
-      if (!byCliente[v.cliente]) {
-        byCliente[v.cliente] = { lettre: v.lettre, live: 0, direct: 0, giveaways: 0, saga: 0, net: 0 };
-      }
-      var c = byCliente[v.cliente];
-      c[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
-      c.giveaways += v.giveaways;
-      c.saga += v.saga;
-      c.net += v.net;
-    });
-
-    var ca = totals.live + totals.direct;
-
-    document.getElementById('kpiCA').textContent = fmtEUR(ca);
-    document.getElementById('kpiCASub').innerHTML = ca === 0 ? 'aucune vente sur la période'
-      : fmtEUR(totals.live) + ' en live · <strong style="color:var(--brand-strong)">' + fmtEUR(totals.direct) + ' hors live</strong>';
-    document.getElementById('kpiCommission').textContent = fmtEUR(totals.saga);
-    document.getElementById('kpiCommissionSub').textContent = 'dont ' + fmtEUR(sagaDirect) + ' sur ventes hors live';
-    document.getElementById('kpiApporteur').textContent = fmtEUR(totals.apporteur);
-    document.getElementById('kpiApporteurSub').textContent = totals.apporteur > 0 ? 'à régler aux apporteurs' : 'aucune commission sur la période';
-    document.getElementById('kpiNet').textContent = fmtEUR(totals.net);
-    document.getElementById('kpiNetSub').textContent = 'dont ' + fmtEUR(netDirect) + ' hors live';
-
-    // Tableau par cliente
-    var names = Object.keys(byCliente).sort(function (a, b) {
+    // Tableau de synthèse : une ligne par cliente
+    var lettres = Object.keys(byCliente).sort(function (a, b) {
       return (byCliente[b].live + byCliente[b].direct) - (byCliente[a].live + byCliente[a].direct);
     });
     var body = document.getElementById('repTableBody');
-    if (names.length === 0) {
+    if (lettres.length === 0) {
       body.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:22px 8px;">Aucune vente sur cette période.</td></tr>';
       document.getElementById('repTableFoot').innerHTML = '';
     } else {
-      body.innerHTML = names.map(function (name) {
-        var c = byCliente[name];
+      body.innerHTML = lettres.map(function (lettre) {
+        var c = byCliente[lettre];
         return '<tr>' +
-          '<td><div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span> ' + name + '</div></td>' +
+          '<td><div class="name-cell"><span class="tag-avatar">' + lettre + '</span>' +
+            '<span><span class="name-main">' + c.nom + '</span>' +
+            '<span class="name-sub">' + c.nb + ' session' + (c.nb > 1 ? 's' : '') + '</span></span></div></td>' +
           '<td class="num tabular">' + (c.live ? fmtEUR(c.live) : '<span class="muted">—</span>') + '</td>' +
           '<td class="num tabular">' + (c.direct ? fmtEUR(c.direct) : '<span class="muted">—</span>') + '</td>' +
           '<td class="num tabular">' + fmtEUR(c.giveaways) + '</td>' +
@@ -266,15 +385,50 @@
       }).join('');
       document.getElementById('repTableFoot').innerHTML =
         '<tr><td><strong>Total</strong></td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(totals.live) + '</strong></td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(totals.direct) + '</strong></td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(totals.giveaways) + '</strong></td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(totals.saga) + '</strong></td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(totals.net) + '</strong></td></tr>';
+        '<td class="num tabular"><strong>' + fmtEUR(t.live) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(t.direct) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(t.giveaways) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(t.saga) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + fmtEUR(t.net) + '</strong></td></tr>';
     }
 
+    renderDetail(rows);
     applyColumnVisibility();
     renderChart(rows);
+  }
+
+  /* Détail session par session : c'est ici qu'une cliente ayant fait plusieurs
+     lives apparaît bien sur autant de lignes, chacune ouvrable. */
+  function renderDetail(rows) {
+    var box = document.getElementById('repDetail');
+    if (rows.length === 0) { box.innerHTML = ''; return; }
+
+    box.innerHTML =
+      '<div class="panel-head" style="margin-bottom:10px;"><h2>Détail session par session</h2>' +
+        '<span class="panel-link" style="color:var(--ink-faint);">' + rows.length + ' ligne(s)</span></div>' +
+      '<div class="table-scroll"><table><thead><tr>' +
+        '<th>Date</th><th>Session</th><th>Cliente</th>' +
+        '<th class="num">Ventes</th><th class="num">Comm. Saga</th><th class="num">Net</th><th>Règlement</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (v) {
+        var lien = v.liveId ? 'live.html?l=' + v.liveId + '&c=' + v.lettre : '';
+        return '<tr' + (lien ? ' data-href="' + lien + '"' : '') + '>' +
+          '<td>' + sagaDateFR(v.date) + '</td>' +
+          '<td>' + v.session +
+            (v.source === 'direct' ? ' <span class="chip neutral" style="margin-left:6px;">Hors live</span>' : '') + '</td>' +
+          '<td><div class="name-cell"><span class="tag-avatar">' + v.lettre + '</span> ' + v.nom + '</div></td>' +
+          '<td class="num tabular">' + fmtEUR(v.ventes) + '</td>' +
+          '<td class="num tabular">' + fmtEUR(v.saga) + '</td>' +
+          '<td class="num tabular"><strong>' + fmtEUR(v.net) + '</strong></td>' +
+          '<td>' + (v.paye
+            ? '<span class="chip good">Payé</span>' +
+              (v.datePaiement ? '<div class="muted" style="font-size:.7rem; margin-top:3px;">le ' + sagaDateFR(v.datePaiement) + '</div>' : '')
+            : '<span class="chip warn">En attente</span>') + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+    initRowLinks(box);
   }
 
   // Masque la colonne devenue inutile selon la source choisie
@@ -340,6 +494,7 @@
     renderReport();
   });
 
+  remplirFiltreClientes();
   renderReport();
 </script>
 </body>

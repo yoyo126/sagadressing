@@ -115,6 +115,7 @@
   </div>
 
 <script src="nav.js"></script>
+<script src="saga-pdf.js"></script>
 <script>
   renderSagaSidebar('lives');
 
@@ -158,61 +159,73 @@
     initRowLinks(document.getElementById('livesBody'));
   }
 
-  /* Récapitulatif de tous les lives : synthèse par live, puis détail par cliente */
+  /* Récapitulatif de tous les lives, enregistré en PDF :
+     synthèse par live, puis cumul par cliente. */
   function imprimerTousLesLives() {
     var lives = LIVES.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    var g = { ventes: 0, commSaga: 0, commApporteur: 0, net: 0, reste: 0 };
+    if (lives.length === 0) { alert('Aucun live enregistré.'); return; }
 
-    var corps = '<h1>Récapitulatif de tous les lives</h1>' +
-      '<p class="sous">' + lives.length + ' session(s) — de ' +
-      sagaDateLongue(lives[lives.length - 1].date) + ' à ' + sagaDateLongue(lives[0].date) + '</p>' +
-      '<h2>Synthèse par live</h2>' +
-      '<table><thead><tr><th>Live</th><th>Date</th><th class="num">Clientes</th><th class="num">Ventes</th>' +
-      '<th class="num">Comm. Saga</th><th class="num">Net reversé</th><th class="num">Reste dû</th></tr></thead><tbody>' +
-      lives.map(function (l) {
-        var t = sagaTotauxLive(l);
-        g.ventes += t.ventes; g.commSaga += t.commSaga;
-        g.commApporteur += t.commApporteur; g.net += t.net; g.reste += t.reste;
-        return '<tr><td>' + l.titre + '</td><td>' + sagaDateFR(l.date) + '</td>' +
-          '<td class="num">' + t.clientes + '</td>' +
-          '<td class="num">' + sagaEUR(t.ventes) + '</td>' +
-          '<td class="num">' + sagaEUR(t.commSaga) + '</td>' +
-          '<td class="num">' + sagaEUR(t.net) + '</td>' +
-          '<td class="num">' + (t.reste > 0 ? sagaEUR(t.reste) : '—') + '</td></tr>';
-      }).join('') +
-      '</tbody><tfoot><tr><td>Total</td><td></td><td></td>' +
-      '<td class="num">' + sagaEUR(g.ventes) + '</td>' +
-      '<td class="num">' + sagaEUR(g.commSaga) + '</td>' +
-      '<td class="num">' + sagaEUR(g.net) + '</td>' +
-      '<td class="num">' + sagaEUR(g.reste) + '</td></tr></tfoot></table>';
+    var g = { ventes: 0, commSaga: 0, commApporteur: 0, net: 0, reste: 0 };
+    var lignes = lives.map(function (l) {
+      var t = sagaTotauxLive(l);
+      g.ventes += t.ventes; g.commSaga += t.commSaga;
+      g.commApporteur += t.commApporteur; g.net += t.net; g.reste += t.reste;
+      return {
+        live: l.titre, date: sagaDateFR(l.date), clientes: String(t.clientes),
+        ventes: sagaEUR(t.ventes), saga: sagaEUR(t.commSaga),
+        net: sagaEUR(t.net), reste: t.reste > 0 ? sagaEUR(t.reste) : '—'
+      };
+    });
+
+    var pdf = sagaNouveauPdf('Récapitulatif de tous les lives');
+    pdf.titre('Récapitulatif de tous les lives');
+    pdf.sousTitre(lives.length + ' session(s) — du ' + sagaDateLongue(lives[lives.length - 1].date) +
+      ' au ' + sagaDateLongue(lives[0].date));
+
+    pdf.section('Synthèse par live');
+    pdf.tableau([
+      { titre: 'Live',       cle: 'live',     largeur: 26 },
+      { titre: 'Date',       cle: 'date',     largeur: 13, discret: true },
+      { titre: 'Clientes',   cle: 'clientes', largeur: 11, aligne: 'droite' },
+      { titre: 'Ventes',     cle: 'ventes',   largeur: 14, aligne: 'droite' },
+      { titre: 'Comm. Saga', cle: 'saga',     largeur: 13, aligne: 'droite' },
+      { titre: 'Net reversé',cle: 'net',      largeur: 13, aligne: 'droite' },
+      { titre: 'Reste dû',   cle: 'reste',    largeur: 12, aligne: 'droite' }
+    ], lignes, {
+      live: 'Total', ventes: sagaEUR(g.ventes), saga: sagaEUR(g.commSaga),
+      net: sagaEUR(g.net), reste: sagaEUR(g.reste)
+    });
 
     // Cumul par cliente, tous lives confondus
     var parCliente = {};
     lives.forEach(function (l) {
       sagaLettresDuLive(l).forEach(function (lettre) {
         var d = sagaDecompte(l, lettre);
-        var e = parCliente[lettre] || (parCliente[lettre] = { prenom: d.prenom, lives: 0, ventes: 0, commSaga: 0, net: 0, reste: 0 });
-        e.lives++; e.ventes += d.ventes; e.commSaga += d.commSaga; e.net += d.net;
+        var e = parCliente[lettre] ||
+          (parCliente[lettre] = { nom: sagaInfosCliente(lettre).nom, lives: 0, ventes: 0, saga: 0, net: 0, reste: 0 });
+        e.lives++; e.ventes += d.ventes; e.saga += d.commSaga; e.net += d.net;
         if (!d.paye) e.reste += d.net;
       });
     });
 
-    corps += '<h2>Cumul par cliente</h2>' +
-      '<table><thead><tr><th>Cliente</th><th class="num">Lives</th><th class="num">Ventes</th>' +
-      '<th class="num">Comm. Saga</th><th class="num">Net reversé</th><th class="num">Reste dû</th></tr></thead><tbody>' +
-      Object.keys(parCliente).sort(function (a, b) { return parCliente[b].ventes - parCliente[a].ventes; })
-        .map(function (lettre) {
-          var e = parCliente[lettre];
-          return '<tr><td>' + e.prenom + ' (' + lettre + ')</td>' +
-            '<td class="num">' + e.lives + '</td>' +
-            '<td class="num">' + sagaEUR(e.ventes) + '</td>' +
-            '<td class="num">' + sagaEUR(e.commSaga) + '</td>' +
-            '<td class="num">' + sagaEUR(e.net) + '</td>' +
-            '<td class="num">' + (e.reste > 0 ? sagaEUR(e.reste) : '—') + '</td></tr>';
-        }).join('') +
-      '</tbody></table>';
+    pdf.section('Cumul par cliente');
+    pdf.tableau([
+      { titre: 'Cliente',     cle: 'cliente', largeur: 32 },
+      { titre: 'Lives',       cle: 'lives',   largeur: 11, aligne: 'droite' },
+      { titre: 'Ventes',      cle: 'ventes',  largeur: 15, aligne: 'droite' },
+      { titre: 'Comm. Saga',  cle: 'saga',    largeur: 15, aligne: 'droite' },
+      { titre: 'Net reversé', cle: 'net',     largeur: 14, aligne: 'droite' },
+      { titre: 'Reste dû',    cle: 'reste',   largeur: 13, aligne: 'droite' }
+    ], Object.keys(parCliente).sort(function (a, b) { return parCliente[b].ventes - parCliente[a].ventes; })
+      .map(function (lettre) {
+        var e = parCliente[lettre];
+        return {
+          cliente: e.nom + ' (' + lettre + ')', lives: String(e.lives), ventes: sagaEUR(e.ventes),
+          saga: sagaEUR(e.saga), net: sagaEUR(e.net), reste: e.reste > 0 ? sagaEUR(e.reste) : '—'
+        };
+      }));
 
-    sagaImprimer('Recap_tous_les_lives', corps);
+    pdf.enregistrer('Recap_tous_les_lives');
   }
 
   function toggleImport() {

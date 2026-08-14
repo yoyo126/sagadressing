@@ -96,8 +96,13 @@ function sagaReadImage(file, maxSize, callback) {
       var canvas = document.createElement('canvas');
       canvas.width = Math.round(img.width * ratio);
       canvas.height = Math.round(img.height * ratio);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.75));
+      var ctx = canvas.getContext('2d');
+      // Le JPEG ne gère pas la transparence : sans fond blanc, un PNG
+      // transparent ressortirait sur un aplat noir.
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.85));
     };
     img.src = e.target.result;
   };
@@ -214,14 +219,14 @@ function sagaLive(id) {
 /* Correspondance lettre de dressing → cliente, connue de toutes les pages
    même avant que la liste des clientes ait été ouverte une première fois. */
 var SAGA_DRESSINGS_DEFAUT = {
-  M: { prenom: 'Fanny',   fiche: 'fanny',   commission: 30, apporteur: 'Nadia R.', apporteurPct: 8 },
-  C: { prenom: 'Julie',   fiche: 'julie',   commission: 30, apporteur: '',         apporteurPct: 0 },
-  B: { prenom: 'Camille', fiche: 'camille', commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 },
-  F: { prenom: 'Marion',  fiche: 'marion',  commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
-  P: { prenom: 'Alix',    fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
-  T: { prenom: 'Nora',    fiche: '',        commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
-  D: { prenom: 'Sophie',  fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
-  R: { prenom: 'Élise',   fiche: '',        commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 }
+  M: { prenom: 'Fanny',   nom: 'Fanny Moreau',    fiche: 'fanny',   commission: 30, apporteur: 'Nadia R.', apporteurPct: 8 },
+  C: { prenom: 'Julie',   nom: 'Julie Renard',    fiche: 'julie',   commission: 30, apporteur: '',         apporteurPct: 0 },
+  B: { prenom: 'Camille', nom: 'Camille Bertin',  fiche: 'camille', commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 },
+  F: { prenom: 'Marion',  nom: 'Marion Fabre',    fiche: 'marion',  commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
+  P: { prenom: 'Alix',    nom: 'Alix Perrin',     fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
+  T: { prenom: 'Nora',    nom: 'Nora Tissot',     fiche: '',        commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
+  D: { prenom: 'Sophie',  nom: 'Sophie Delaunay', fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
+  R: { prenom: 'Élise',   nom: 'Élise Rousseau',  fiche: '',        commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 }
 };
 
 /* Taux appliqués à une lettre de dressing.
@@ -248,6 +253,30 @@ function sagaTauxDressing(lettre) {
   };
 }
 
+/* Toutes les clientes connues, quelle que soit la page déjà ouverte :
+   fiches détaillées, liste des clientes, puis correspondance par défaut. */
+function sagaToutesClientes() {
+  var vues = {};
+  var res = [];
+
+  function ajouter(lettre, prenom, nom, fiche) {
+    if (!lettre || vues[lettre]) return;
+    vues[lettre] = true;
+    res.push({ lettre: lettre, prenom: prenom || ('Dressing ' + lettre), nom: nom || '', fiche: fiche || '' });
+  }
+
+  var fiches = sagaLoad('clients_data', {});
+  Object.keys(fiches).forEach(function (k) {
+    ajouter(fiches[k].lettre, fiches[k].prenom, fiches[k].nom, k);
+  });
+  sagaLoad('clientes', []).forEach(function (c) { ajouter(c.lettre, c.prenom, c.nom, c.key); });
+  Object.keys(SAGA_DRESSINGS_DEFAUT).forEach(function (l) {
+    ajouter(l, SAGA_DRESSINGS_DEFAUT[l].prenom, SAGA_DRESSINGS_DEFAUT[l].nom, SAGA_DRESSINGS_DEFAUT[l].fiche);
+  });
+
+  return res.sort(function (a, b) { return a.prenom.localeCompare(b.prenom, 'fr'); });
+}
+
 /* Clé de fiche (?c=…) correspondant à une lettre de dressing */
 function sagaFicheDressing(lettre) {
   var fiches = sagaLoad('clients_data', {});
@@ -256,6 +285,26 @@ function sagaFicheDressing(lettre) {
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
   if (c && c.key) return c.key;
   return (SAGA_DRESSINGS_DEFAUT[lettre] || {}).fiche || '';
+}
+
+/* Coordonnées complètes d'une cliente, pour les fiches et les documents */
+function sagaInfosCliente(lettre) {
+  var d = SAGA_DRESSINGS_DEFAUT[lettre] || {};
+  var fiches = sagaLoad('clients_data', {});
+  var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
+    .filter(function (f) { return f.lettre === lettre; })[0];
+  var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
+  var t = sagaTauxDressing(lettre);
+  return {
+    lettre: lettre,
+    prenom: t.prenom,
+    nom: (fiche && fiche.nom) || (c && c.nom) || d.nom || t.prenom,
+    adresse: (fiche && fiche.adresse) || (c && c.adresse) || '',
+    tel: (fiche && fiche.tel) || (c && c.tel) || '',
+    email: (fiche && fiche.email) || (c && c.email) || '',
+    commission: t.commission,
+    apporteur: t.apporteur
+  };
 }
 
 /* Décompte d'un dressing sur un live, recalculé depuis ses articles.

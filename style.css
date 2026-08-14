@@ -444,17 +444,35 @@ tfoot td { padding: 12px 8px; font-size: 0.85rem; border-top: 2px solid var(--li
 .check-row { display: flex; align-items: flex-start; gap: 9px; font-size: 0.85rem; cursor: pointer; line-height: 1.45; }
 .check-row input[type="checkbox"] { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); flex-shrink: 0; cursor: pointer; }
 
+/* Nom complet sur deux niveaux dans les listes */
+.name-main { display: block; }
+.name-sub { display: block; font-size: 0.73rem; color: var(--ink-muted); margin-top: 1px; }
+
+/* ---------- Coordonnées sous le titre d'une fiche ---------- */
+.detail-contact { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 7px; }
+.contact-item { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--ink-muted); }
+.contact-item svg { color: var(--ink-faint); flex-shrink: 0; }
+
 /* ---------- Liste à cocher (sélection multiple : clientes d'un live…) ---------- */
 .picker { border: 1px solid var(--line); border-radius: 8px; background: var(--surface-alt); overflow: hidden; }
-.picker-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 7px 10px; border-bottom: 1px solid var(--line);
-  font-size: 0.75rem; color: var(--ink-muted); background: var(--surface);
+.picker-search {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink-faint);
 }
-.picker-head button {
-  border: 0; background: none; padding: 0; cursor: pointer;
-  font: inherit; color: var(--brand-strong); text-decoration: underline;
+.picker-search input {
+  flex: 1; border: 0; background: none; outline: none;
+  font: inherit; font-size: 0.83rem; color: var(--ink); min-width: 0;
 }
+.picker-selection { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.picker-tag {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px 3px 9px;
+  border-radius: 999px; background: var(--brand-soft); color: var(--brand-strong); font-size: 0.76rem;
+}
+.picker-tag button {
+  border: 0; background: none; padding: 0 2px; cursor: pointer;
+  color: inherit; font-size: 0.95rem; line-height: 1; opacity: .7;
+}
+.picker-tag button:hover { opacity: 1; }
 .picker-list { max-height: 168px; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 7px; }
 .picker-list .check-row { align-items: center; }
 .picker-empty { padding: 14px 10px; font-size: 0.8rem; color: var(--ink-muted); text-align: center; }

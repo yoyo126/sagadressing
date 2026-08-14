@@ -25,14 +25,84 @@
 
       <div class="panel">
         <div class="tabs" data-panel-group="param">
-          <div class="tab-item active" data-tab="tab-yousign">Signature électronique</div>
+          <div class="tab-item active" data-tab="tab-identite">Logo &amp; identité</div>
+          <div class="tab-item" data-tab="tab-yousign">Signature électronique</div>
           <div class="tab-item" data-tab="tab-icloud">Agenda iCloud</div>
           <div class="tab-item" data-tab="tab-users">Utilisateurs</div>
           <div class="tab-item" data-tab="tab-email">Envoi des emails</div>
         </div>
 
+        <!-- ============ LOGO & IDENTITÉ ============ -->
+        <div class="tab-panel active" id="tab-identite" data-panel-group="param" style="margin-top:20px;">
+          <div class="panel-head" style="margin-bottom:10px;">
+            <h2>En-tête des documents</h2>
+          </div>
+          <p class="card-note" style="margin-bottom:16px;">
+            Ces éléments composent l'en-tête de tous les PDF générés : récapitulatifs de live,
+            rapports, contrats et bons de restitution.
+          </p>
+
+          <div class="contrat-columns">
+            <div class="form-grid" style="max-width:460px;">
+              <div class="form-field">
+                <label class="form-label">Logo</label>
+                <div style="display:flex; gap:14px; align-items:flex-start;">
+                  <div class="vignette-drop" id="logoPreview" onclick="document.getElementById('logoFile').click()">
+                    <span>Choisir<br/>une image</span>
+                  </div>
+                  <div style="flex:1;">
+                    <input type="file" id="logoFile" accept="image/*" style="display:none;" onchange="choisirLogo(this)" />
+                    <span class="card-note">
+                      Format paysage conseillé. L'image est réduite et convertie automatiquement
+                      pour rester légère dans les PDF.
+                    </span>
+                    <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="retirerLogo()">Retirer le logo</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for="idNom">Nom affiché</label>
+                <input class="form-input" id="idNom" placeholder="Saga Dressing" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="idAdresse">Adresse</label>
+                <input class="form-input" id="idAdresse" placeholder="2 rue des Colverts, 77150 Lésigny" />
+              </div>
+              <div class="form-field" style="flex-direction:row; gap:12px;">
+                <div style="flex:1;">
+                  <label class="form-label" for="idTel">Téléphone</label>
+                  <input class="form-input" id="idTel" placeholder="06 00 00 00 00" />
+                </div>
+                <div style="flex:1;">
+                  <label class="form-label" for="idEmail">Email</label>
+                  <input class="form-input" type="email" id="idEmail" placeholder="contact@sagadressing.fr" />
+                </div>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="idSiret">SIRET</label>
+                <input class="form-input" id="idSiret" placeholder="102 429 833 00017" />
+              </div>
+
+              <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn btn-primary btn-sm" onclick="enregistrerIdentite()">Enregistrer</button>
+                <button class="btn btn-ghost btn-sm" onclick="chargerIdentite()">Annuler</button>
+                <span class="card-note" id="idSaved" style="display:none; color:var(--good);">✓ Enregistré</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="panel-head" style="margin-bottom:10px;"><h2>Aperçu</h2></div>
+              <div class="doc-preview" id="apercuEntete" style="min-height:180px;"></div>
+              <button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="apercuPdf()">
+                Générer un PDF d'exemple
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- ============ YOUSIGN ============ -->
-        <div class="tab-panel active" id="tab-yousign" data-panel-group="param" style="margin-top:20px;">
+        <div class="tab-panel" id="tab-yousign" data-panel-group="param" style="margin-top:20px;">
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Yousign</h2>
             <span class="chip neutral" id="ysChip">Non connecté</span>
@@ -425,6 +495,7 @@
   </div>
 
 <script src="nav.js"></script>
+<script src="saga-pdf.js"></script>
 <script>
   renderSagaSidebar('parametres');
   initTabs();
@@ -565,6 +636,117 @@
     document.getElementById('userCount').textContent =
       actives + ' actif' + (actives > 1 ? 's' : '') + (invited ? ' · ' + invited + ' en attente' : '');
   }
+
+  /* ============ Logo & identité ============
+     Le logo est converti en JPEG : c'est le seul format que le générateur
+     de PDF peut insérer tel quel, sans compression à réimplémenter. */
+
+  function chargerIdentite() {
+    var id = sagaIdentite();
+    document.getElementById('idNom').value = id.nom || '';
+    document.getElementById('idAdresse').value = id.adresse || '';
+    document.getElementById('idTel').value = id.tel || '';
+    document.getElementById('idEmail').value = id.email || '';
+    document.getElementById('idSiret').value = id.siret || '';
+    afficherLogo(sagaLogo());
+    majApercuEntete();
+  }
+
+  function afficherLogo(dataUrl) {
+    document.getElementById('logoPreview').innerHTML = dataUrl
+      ? '<img src="' + dataUrl + '" alt="" />'
+      : '<span>Choisir<br/>une image</span>';
+  }
+
+  function choisirLogo(input) {
+    if (!input.files || !input.files[0]) return;
+    sagaReadImage(input.files[0], 600, function (dataUrl) {
+      sagaSave('logo', dataUrl);
+      afficherLogo(dataUrl);
+      majApercuEntete();
+      input.value = '';
+    });
+  }
+
+  function retirerLogo() {
+    sagaSave('logo', '');
+    document.getElementById('logoFile').value = '';
+    afficherLogo('');
+    majApercuEntete();
+  }
+
+  function enregistrerIdentite() {
+    sagaSave('identite', {
+      nom: document.getElementById('idNom').value.trim() || 'Saga Dressing',
+      adresse: document.getElementById('idAdresse').value.trim(),
+      tel: document.getElementById('idTel').value.trim(),
+      email: document.getElementById('idEmail').value.trim(),
+      siret: document.getElementById('idSiret').value.trim()
+    });
+    majApercuEntete();
+    var ok = document.getElementById('idSaved');
+    ok.style.display = 'inline';
+    clearTimeout(enregistrerIdentite._t);
+    enregistrerIdentite._t = setTimeout(function () { ok.style.display = 'none'; }, 2500);
+  }
+
+  // Reproduit à l'écran l'en-tête que porteront les PDF
+  function majApercuEntete() {
+    var logo = sagaLogo();
+    var nom = document.getElementById('idNom').value.trim() || 'Saga Dressing';
+    var lignes = [
+      document.getElementById('idAdresse').value.trim(),
+      [document.getElementById('idTel').value.trim(),
+       document.getElementById('idEmail').value.trim()].filter(Boolean).join(' · '),
+      document.getElementById('idSiret').value.trim()
+        ? 'SIRET ' + document.getElementById('idSiret').value.trim() : ''
+    ].filter(Boolean);
+
+    document.getElementById('apercuEntete').innerHTML =
+      '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">' +
+        (logo
+          ? '<img src="' + logo + '" alt="" style="max-height:46px; max-width:150px; object-fit:contain;" />'
+          : '<strong style="color:var(--brand-strong); letter-spacing:.06em; font-size:1rem;">' +
+            nom.toUpperCase() + '</strong>') +
+        '<div style="text-align:right; font-size:.76rem; color:var(--ink-muted); line-height:1.5;">' +
+          (logo ? '<strong style="color:var(--ink);">' + nom + '</strong><br/>' : '') +
+          lignes.join('<br/>') +
+        '</div>' +
+      '</div>' +
+      '<div style="height:1.4px; background:var(--brand); opacity:.5; margin:14px 0 18px;"></div>' +
+      '<div class="doc-title" style="text-align:left;">Récapitulatif de live</div>' +
+      '<p style="color:var(--ink-muted); font-size:.8rem;">Live du 29 juillet · 3 dressings</p>';
+  }
+
+  function apercuPdf() {
+    var pdf = sagaNouveauPdf('Exemple de document');
+    pdf.titre('Exemple de document');
+    pdf.sousTitre('Aperçu de la mise en page utilisée pour tous les PDF générés');
+    pdf.section('Cliente');
+    pdf.paragraphe('Fanny Moreau — dressing M', { gras: true, taille: 10.5 });
+    pdf.paragraphe('15 rue du Faubourg Saint-Antoine, 75011 Paris');
+    pdf.section('Décompte');
+    pdf.decompte([
+      ['Ventes', '1 480 €'],
+      ['− Commission Saga', '444 €'],
+      ['Net à reverser', '1 036 €']
+    ]);
+    pdf.section('Détail');
+    pdf.tableau([
+      { titre: 'Article', cle: 'a', largeur: 60 },
+      { titre: 'Montant', cle: 'b', largeur: 40, aligne: 'droite' }
+    ], [
+      { a: 'Sac cabas cuir camel', b: '240 €' },
+      { a: 'Trench beige T38', b: '180 €' }
+    ], { a: 'Total', b: '420 €' });
+    pdf.enregistrer('Exemple_mise_en_page');
+  }
+
+  ['idNom', 'idAdresse', 'idTel', 'idEmail', 'idSiret'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', majApercuEntete);
+  });
+
+  chargerIdentite();
 
   function toggleInviteForm() {
     var f = document.getElementById('inviteForm');
