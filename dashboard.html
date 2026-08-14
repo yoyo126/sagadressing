@@ -170,10 +170,6 @@
             </ul>
           </div>
 
-          <div class="panel">
-            <div class="panel-head"><h2>Reste à reverser</h2><span class="panel-link" style="color:var(--ink-faint);">par cliente</span></div>
-            <ul class="bar-list" id="resteListe"></ul>
-          </div>
         </div>
       </section>
 
@@ -289,27 +285,6 @@
     renderSpark(document.querySelector('[data-field="commissionSpark"]'), courbe(b.debut, b.fin, 'saga'));
     renderSpark(document.querySelector('[data-field="resteSpark"]'), courbe(b.debut, b.fin, 'net'));
 
-    renderResteParCliente(t);
-  }
-
-  function renderResteParCliente(t) {
-    var parCliente = {};
-    VENTES.filter(function (v) { return !v.paye; }).forEach(function (v) {
-      parCliente[v.lettre] = parCliente[v.lettre] || { nom: v.nom, lettre: v.lettre, montant: 0 };
-      parCliente[v.lettre].montant += v.net;
-    });
-    var lignes = Object.keys(parCliente).map(function (k) { return parCliente[k]; })
-      .sort(function (a, b) { return b.montant - a.montant; }).slice(0, 6);
-    var max = lignes.length ? lignes[0].montant : 1;
-
-    document.getElementById('resteListe').innerHTML = lignes.length
-      ? lignes.map(function (c) {
-          return '<li><div class="bar-row-top"><span>' + c.nom + ' (' + c.lettre + ')</span>' +
-            '<span class="tabular">' + sagaEUR(c.montant) + '</span></div>' +
-            '<div class="bar-track"><div class="bar-fill" style="width:' +
-            Math.round(c.montant / max * 100) + '%"></div></div></li>';
-        }).join('')
-      : '<li class="card-note">Tous les reversements sont à jour.</li>';
   }
 
   /* ============ Agenda du tableau de bord ============ */

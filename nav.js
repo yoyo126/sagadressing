@@ -748,9 +748,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.5.0';
+var SAGA_VERSION = '1.5.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.5.1', date: '2026-08-14', titre: 'Logo, tableau de bord et mots de passe', points: [
+    'Logo du menu affiché en pleine largeur',
+    'Panneau « Reste à reverser par cliente » retiré du tableau de bord',
+    'Seuil de sécurité imposé sur les mots de passe : 12 caractères, 3 types de caractères, ni mot courant ni suite'
+  ]},
   { version: '1.5.0', date: '2026-08-14', titre: 'Source unique des ventes', points: [
     'Les ventes ne sont plus recopiées sur la fiche cliente : lives et ventes hors live sont la seule source',
     'Un live supprimé disparaît partout ; une cliente ajoutée à un live apparaît aussitôt sur sa fiche',

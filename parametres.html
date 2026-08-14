@@ -336,6 +336,11 @@
                     <input class="form-input" type="password" id="invMdp2" autocomplete="new-password" />
                   </div>
                 </div>
+                <p class="card-note" style="margin:0;">
+                  Exigences : <strong>12 caractères minimum</strong>, au moins 3 types parmi
+                  minuscules, majuscules, chiffres et symboles. Sans mot courant, sans suite
+                  (1234, abcd) et sans reprendre le nom ou l'email du compte.
+                </p>
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                   <button class="btn btn-ghost btn-sm" onclick="genererMotDePasse()">Générer un mot de passe</button>
                   <label class="check-row" style="margin:0;">
@@ -997,17 +1002,86 @@
     return 'h' + h.toString(16);
   }
 
-  function forceMdp(mdp) {
-    var score = 0;
-    if (mdp.length >= 10) score++;
-    if (mdp.length >= 14) score++;
-    if (/[a-z]/.test(mdp) && /[A-Z]/.test(mdp)) score++;
-    if (/[0-9]/.test(mdp)) score++;
-    if (/[^A-Za-z0-9]/.test(mdp)) score++;
-    if (mdp.length < 8) return { ok: false, libelle: 'Trop court — 8 caractères minimum', couleur: 'var(--critical)' };
-    if (score <= 2) return { ok: true, libelle: 'Force : faible', couleur: 'var(--critical)' };
-    if (score === 3) return { ok: true, libelle: 'Force : correcte', couleur: 'var(--warn)' };
-    return { ok: true, libelle: 'Force : bonne', couleur: 'var(--good)' };
+  /* Politique de mot de passe — un seuil minimum est imposé, il ne s'agit
+     pas d'un simple indicateur : en dessous, la création est refusée.
+       · 12 caractères au moins
+       · au moins 3 familles parmi minuscules, majuscules, chiffres, symboles
+       · ni mot de passe courant, ni suite évidente, ni répétition
+       · ne doit pas reprendre le nom ou l'email du compte */
+
+  var MDP_LONGUEUR_MIN = 12;
+  var MDP_FAMILLES_MIN = 3;
+
+  var MDP_COURANTS = [
+    'motdepasse', 'password', 'azerty', 'qwerty', 'bonjour', 'soleil',
+    'sagadressing', 'dressing', 'admin', 'iloveyou', '123456', 'abcdef'
+  ];
+
+  function famillesMdp(mdp) {
+    return [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/]
+      .filter(function (r) { return r.test(mdp); }).length;
+  }
+
+  // Refuse « aaaaaa », « 123456 », « abcdef » et leurs variantes
+  function suiteOuRepetition(mdp) {
+    var bas = mdp.toLowerCase();
+    if (/(.)\1{3,}/.test(bas)) return true;
+    for (var i = 0; i + 3 < bas.length; i++) {
+      var croissant = true, decroissant = true;
+      for (var j = 0; j < 3; j++) {
+        if (bas.charCodeAt(i + j + 1) !== bas.charCodeAt(i + j) + 1) croissant = false;
+        if (bas.charCodeAt(i + j + 1) !== bas.charCodeAt(i + j) - 1) decroissant = false;
+      }
+      if (croissant || decroissant) return true;
+    }
+    return false;
+  }
+
+  /* Renvoie { ok, libelle, couleur, niveau }.
+     `ok` à false bloque l'enregistrement. */
+  function forceMdp(mdp, contexte) {
+    mdp = mdp || '';
+    var bas = mdp.toLowerCase();
+
+    if (mdp.length < MDP_LONGUEUR_MIN) {
+      return { ok: false, niveau: 0, couleur: 'var(--critical)',
+               libelle: 'Trop court — ' + MDP_LONGUEUR_MIN + ' caractères minimum (' + mdp.length + ')' };
+    }
+    var familles = famillesMdp(mdp);
+    if (familles < MDP_FAMILLES_MIN) {
+      return { ok: false, niveau: 0, couleur: 'var(--critical)',
+               libelle: 'Mélangez au moins ' + MDP_FAMILLES_MIN + ' types : minuscules, majuscules, chiffres, symboles' };
+    }
+    if (MDP_COURANTS.some(function (c) { return bas.indexOf(c) !== -1; })) {
+      return { ok: false, niveau: 0, couleur: 'var(--critical)',
+               libelle: 'Contient un mot trop courant — choisissez autre chose' };
+    }
+    if (suiteOuRepetition(mdp)) {
+      return { ok: false, niveau: 0, couleur: 'var(--critical)',
+               libelle: 'Évitez les suites (1234, abcd) et les répétitions' };
+    }
+    // Le mot de passe ne doit pas reprendre l'identité du compte
+    var interdits = (contexte || []).filter(Boolean).map(function (v) { return String(v).toLowerCase(); });
+    if (interdits.some(function (v) { return v.length >= 3 && bas.indexOf(v) !== -1; })) {
+      return { ok: false, niveau: 0, couleur: 'var(--critical)',
+               libelle: 'Ne reprenez pas le nom ou l\'email du compte' };
+    }
+
+    // Au-delà du seuil, on qualifie la robustesse
+    var score = familles + (mdp.length >= 16 ? 1 : 0) + (mdp.length >= 20 ? 1 : 0);
+    if (score >= 6) return { ok: true, niveau: 3, couleur: 'var(--good)',  libelle: 'Force : excellente' };
+    if (score >= 5) return { ok: true, niveau: 2, couleur: 'var(--good)',  libelle: 'Force : bonne' };
+    return { ok: true, niveau: 1, couleur: 'var(--warn)', libelle: 'Force : acceptable — un peu plus long serait mieux' };
+  }
+
+  // Éléments d'identité que le mot de passe ne doit pas contenir
+  function contexteMdp() {
+    var email = document.getElementById('invEmail').value.trim();
+    return [
+      document.getElementById('invPrenom').value.trim(),
+      document.getElementById('invNom').value.trim(),
+      email, email.split('@')[0]
+    ];
   }
 
   function modeMdp() {
@@ -1016,10 +1090,14 @@
   }
 
   function genererMotDePasse() {
-    var alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!?@#%';
-    var octets = new Uint32Array(16);
-    (window.crypto || window.msCrypto).getRandomValues(octets);
-    var mdp = Array.prototype.map.call(octets, function (n) { return alphabet[n % alphabet.length]; }).join('');
+    var alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!?@#%*+=';
+    var mdp = '';
+    // On retire les caractères ambigus et on régénère tant que le seuil n'est pas atteint
+    do {
+      var octets = new Uint32Array(18);
+      (window.crypto || window.msCrypto).getRandomValues(octets);
+      mdp = Array.prototype.map.call(octets, function (n) { return alphabet[n % alphabet.length]; }).join('');
+    } while (!forceMdp(mdp, contexteMdp()).ok);
     document.getElementById('invMdp').value = mdp;
     document.getElementById('invMdp2').value = mdp;
     document.getElementById('invMdpVoir').checked = true;
@@ -1037,8 +1115,8 @@
     var mdp = document.getElementById('invMdp').value;
     var el = document.getElementById('invMdpForce');
     if (!mdp) { el.textContent = ''; return; }
-    var f = forceMdp(mdp);
-    el.textContent = f.libelle;
+    var f = forceMdp(mdp, contexteMdp());
+    el.textContent = (f.ok ? '' : '⚠ ') + f.libelle;
     el.style.color = f.couleur;
   }
 
@@ -1061,10 +1139,11 @@
     var u = users.find(function (x) { return x.id === id; });
     if (!u) return;
     var mdp = prompt('Nouveau mot de passe provisoire pour ' + nomComplet(u) + ' :\n\n'
-      + '8 caractères minimum. Il devra le changer à sa première connexion.');
+      + MDP_LONGUEUR_MIN + ' caractères minimum, mêlant au moins ' + MDP_FAMILLES_MIN
+      + ' types de caractères.\nIl devra le changer à sa première connexion.');
     if (mdp === null) return;
-    var f = forceMdp(mdp.trim());
-    if (!f.ok) { alert(f.libelle); return; }
+    var f = forceMdp(mdp.trim(), [u.prenom, u.nom, u.email, String(u.email).split('@')[0]]);
+    if (!f.ok) { alert('Mot de passe refusé.\n\n' + f.libelle); return; }
     u.motdepasse = empreinteMdp(mdp.trim());
     u.doitChanger = true;
     u.status = 'active';
@@ -1099,8 +1178,12 @@
     if (modeMdp() === 'defini') {
       var mdp = document.getElementById('invMdp').value;
       var mdp2 = document.getElementById('invMdp2').value;
-      var f = forceMdp(mdp);
-      if (!f.ok) { alert(f.libelle); document.getElementById('invMdp').focus(); return; }
+      var f = forceMdp(mdp, contexteMdp());
+      if (!f.ok) {
+        alert('Mot de passe refusé.\n\n' + f.libelle);
+        document.getElementById('invMdp').focus();
+        return;
+      }
       if (mdp !== mdp2) { alert('Les deux mots de passe ne correspondent pas.'); document.getElementById('invMdp2').focus(); return; }
       empreinte = empreinteMdp(mdp);
       doitChanger = document.getElementById('invMdpChanger').checked;

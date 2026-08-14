@@ -708,9 +708,16 @@ tbody td { padding: 11px 8px; }
 .version-titre { font-size: 1rem; }
 .version-points { margin: 0; padding-left: 34px; color: var(--ink-muted); font-size: 0.9rem; line-height: 1.7; }
 
-/* Le logo du menu respire, sans cadre imposé */
-.brand-logo { justify-content: flex-start; padding: 2px 4px 16px; }
-.brand-logo img { max-height: 54px; }
+/* Le logo du menu occupe toute la largeur disponible : c'est l'identité
+   de la marque, elle doit être lisible d'un coup d'œil. */
+.brand-logo { display: block; padding: 4px 2px 18px; }
+.brand-logo img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+}
 
 /* ============================================================
    Cartes d'indicateurs : elles s'adaptent à la place disponible
