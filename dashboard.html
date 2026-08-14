@@ -50,7 +50,7 @@
 
         <div class="kpi-card">
           <div class="kpi-top">
-            <span class="kpi-label">Reste à reverser</span>
+            <span class="kpi-label">Reste à reverser <span class="kpi-hors-periode">toutes périodes</span></span>
             <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg></div>
           </div>
           <div class="kpi-value tabular" data-field="reste">2 145 €</div>
@@ -194,14 +194,12 @@
                    ventes: d.ventes, saga: d.commSaga, net: d.net, paye: d.paye });
       });
     });
-    var fiches = sagaLoad('clients_data', {});
-    Object.keys(fiches).forEach(function (cle) {
-      (fiches[cle].lives || []).forEach(function (l) {
-        if (!l.horsLive) return;
-        res.push({ date: l.date, source: 'direct', lettre: fiches[cle].lettre,
-                   nom: fiches[cle].nom || fiches[cle].prenom,
-                   ventes: l.ventes, saga: l.commission, net: l.net, paye: !!l.paye });
-      });
+    // Ventes hors live — même source que partout ailleurs
+    sagaVentesDirectes().forEach(function (v) {
+      var d = sagaDecompteDirect(v);
+      res.push({ date: v.date, source: 'direct', lettre: v.lettre,
+                 nom: sagaInfosCliente(v.lettre).nom,
+                 ventes: d.ventes, saga: d.commSaga, net: d.net, paye: !!v.paye });
     });
     return res;
   }
@@ -227,9 +225,22 @@
       .reduce(function (a, v) {
         a.ca += v.ventes; a.saga += v.saga; a.net += v.net;
         a[v.source] += v.ventes;
-        if (!v.paye) { a.reste += v.net; a.clientesDues[v.lettre] = true; }
         return a;
-      }, { ca: 0, saga: 0, net: 0, live: 0, direct: 0, reste: 0, clientesDues: {} });
+      }, { ca: 0, saga: 0, net: 0, live: 0, direct: 0 });
+  }
+
+  /* Le reste à reverser est une dette, pas une mesure d'activité : il porte
+     sur toutes les ventes non réglées, quelle que soit leur ancienneté.
+     Le limiter à la période affichée masquait les impayés les plus anciens
+     — précisément ceux qu'il faut avoir sous les yeux. */
+  function detteTotale() {
+    return VENTES.filter(function (v) { return !v.paye; })
+      .reduce(function (a, v) {
+        a.montant += v.net;
+        a.clientes[v.lettre] = true;
+        if (v.date < a.plusAncienne) a.plusAncienne = v.date;
+        return a;
+      }, { montant: 0, clientes: {}, plusAncienne: '9999-12-31' });
   }
 
   function evolution(actuel, precedent) {
@@ -256,7 +267,6 @@
     var b = bornes(periode);
     var t = cumul(b.debut, b.fin);
     var precedent = cumul(b.precedent, b.debut);
-    var nbDues = Object.keys(t.clientesDues).length;
 
     document.querySelector('[data-field="ca"]').textContent = sagaEUR(t.ca);
     document.querySelector('[data-field="caDelta"]').lastChild.textContent = evolution(t.ca, precedent.ca);
@@ -266,9 +276,13 @@
     document.querySelector('[data-field="commission"]').textContent = sagaEUR(t.saga);
     document.querySelector('[data-field="commissionDelta"]').lastChild.textContent = evolution(t.saga, precedent.saga);
     document.querySelector('[data-field="commissionDelta"]').style.display = precedent.saga ? '' : 'none';
-    document.querySelector('[data-field="reste"]').textContent = sagaEUR(t.reste);
-    document.querySelector('[data-field="resteMeta"]').textContent =
-      nbDues ? 'auprès de ' + nbDues + ' cliente' + (nbDues > 1 ? 's' : '') : 'tout est à jour';
+    var dette = detteTotale();
+    var nbDues = Object.keys(dette.clientes).length;
+    document.querySelector('[data-field="reste"]').textContent = sagaEUR(dette.montant);
+    document.querySelector('[data-field="resteMeta"]').textContent = nbDues
+      ? 'auprès de ' + nbDues + ' cliente' + (nbDues > 1 ? 's' : '') +
+        ' · la plus ancienne du ' + sagaDateFR(dette.plusAncienne)
+      : 'tout est à jour';
 
     var prochains = sagaAgenda().filter(function (e) {
       return e.type === 'Live' && e.date >= sagaAujourdhui();
@@ -281,6 +295,7 @@
     renderSpark(document.querySelector('[data-field="caSpark"]'), courbe(b.debut, b.fin, 'ventes'));
     renderSpark(document.querySelector('[data-field="commissionSpark"]'), courbe(b.debut, b.fin, 'saga'));
     renderSpark(document.querySelector('[data-field="resteSpark"]'), courbe(b.debut, b.fin, 'net'));
+
 
   }
 

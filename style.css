@@ -763,3 +763,145 @@ tbody td { padding: 11px 8px; }
    le panneau latéral devenait trop étroit et le principal trop vide. */
 .content-grid { grid-template-columns: 1.25fr 1fr; }
 @media (max-width: 1150px) { .content-grid { grid-template-columns: 1fr; } }
+
+/* Signale une valeur qui ne suit pas le filtre de période */
+.kpi-hors-periode {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px;
+  background: var(--surface-alt); border: 1px solid var(--line);
+  color: var(--ink-faint); font-size: 0.66rem; letter-spacing: 0.02em; text-transform: none;
+}
+
+/* ============================================================
+   Téléphones et tablettes
+   Le menu latéral devient un tiroir, les grilles passent sur une
+   colonne, les tableaux défilent horizontalement dans leur cadre.
+   ============================================================ */
+
+.barre-mobile { display: none; }
+.voile { display: none; }
+
+@media (max-width: 900px) {
+
+  /* --- Barre fixe et tiroir --- */
+  .barre-mobile {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    display: flex; align-items: center; gap: 12px;
+    height: 56px; padding: 0 12px;
+    background: var(--sidebar-bg); color: var(--sidebar-ink);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  }
+  .burger {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; flex-shrink: 0;
+    border: 0; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--sidebar-ink);
+  }
+  .burger:active { background: var(--sidebar-bg-alt); }
+  .barre-mobile-logo { max-height: 34px; max-width: 150px; object-fit: contain; }
+  .barre-mobile-nom { font-size: 1.05rem; color: var(--sidebar-active-ink); }
+
+  .voile.actif {
+    display: block; position: fixed; inset: 0; z-index: 1001;
+    background: rgba(20,16,12,0.5);
+  }
+  body.menu-ouvert { overflow: hidden; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; z-index: 1002;
+    width: 272px; max-width: 84vw; height: 100vh;
+    transform: translateX(-102%);
+    transition: transform 0.22s ease;
+    overflow-y: auto;
+  }
+  .sidebar.ouvert { transform: none; box-shadow: 0 0 40px rgba(0,0,0,0.4); }
+
+  /* --- Contenu --- */
+  .app { display: block; }
+  .main { padding: 70px 14px 44px; gap: 16px; }
+  .topbar { align-items: stretch; gap: 12px; }
+  .topbar h1 { font-size: 1.5rem; }
+  .topbar-actions { width: 100%; gap: 8px; }
+  .search { flex: 1; min-width: 0; padding: 10px 12px; }
+  .search input { width: 100%; font-size: 16px; }   /* évite le zoom iOS */
+
+  /* Les grilles passent sur une colonne */
+  .content-grid, .contrat-columns { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi-card { padding: 12px 13px; }
+  .kpi-value { font-size: 1.45rem; }
+
+  .panel { padding: 15px 14px; }
+  .panel-head { flex-wrap: wrap; gap: 10px; }
+
+  /* Les tableaux défilent au doigt plutôt que de déborder */
+  .table-scroll {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    margin: 0 -14px; padding: 0 14px;
+  }
+  .table-scroll table { min-width: 620px; }
+
+  /* Boutons et champs à taille de doigt */
+  .btn { padding: 10px 14px; }
+  .btn-sm { padding: 8px 12px; }
+  .form-input, .form-select, .form-textarea { font-size: 16px; }   /* évite le zoom iOS */
+  .toggle-group { flex-wrap: wrap; }
+  .toggle-group button { flex: 1 1 auto; }
+
+  /* Formulaires en ligne : on empile */
+  .form-field[style*="flex-direction:row"] { flex-direction: column !important; }
+
+  /* Onglets défilants */
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+  .tab-item { white-space: nowrap; }
+
+  /* En-tête d'une fiche */
+  .detail-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .detail-actions { width: 100%; flex-wrap: wrap; }
+  .detail-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .avatar-lg { width: 54px; height: 54px; }
+
+  /* Calendriers */
+  .calendar-mini { max-width: 100%; }
+  .cal-pop { width: min(320px, calc(100vw - 24px)); }
+
+  /* Aperçu PDF en plein écran */
+  .pdf-modal { padding: 0; }
+  .pdf-modal-box { border-radius: 0; }
+  .pdf-modal-head { padding: 10px 12px; }
+  .pdf-modal-actions { width: 100%; }
+  .pdf-modal-actions .btn { flex: 1; justify-content: center; }
+
+  /* Divers */
+  .stat-inline { flex: 1 1 140px; }
+  .file-row, .doc-row { flex-wrap: wrap; }
+  .file-actions { width: 100%; }
+  .agenda-list li .file-actions { opacity: 1; }
+  .picker-list { max-height: 200px; }
+  .search-results { position: static; margin-top: 8px; max-height: 260px; }
+}
+
+/* Très petits écrans : une seule carte par ligne */
+@media (max-width: 430px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .main { padding: 68px 11px 40px; }
+  .table-scroll { margin: 0 -11px; padding: 0 11px; }
+  .topbar h1 { font-size: 1.35rem; }
+}
+
+/* Un enfant de grille ou de flex refuse par défaut de passer sous la largeur
+   de son contenu : un tableau large repoussait donc toute la page au lieu de
+   défiler dans son cadre. min-width:0 rétablit le comportement attendu. */
+.content-grid > *, .side-col, .panel, .contrat-columns > *, .main { min-width: 0; }
+.table-scroll { max-width: 100%; }
+
+/* Actions d'un événement d'agenda : à droite sur grand écran,
+   sur leur propre ligne quand la place manque. */
+.agenda-actions { margin-left: auto; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .agenda-list li { flex-wrap: wrap; }
+  .agenda-actions { margin-left: 0; width: 100%; opacity: 1; }
+  .agenda-list li .file-actions { opacity: 1; }
+  .picker-search { padding: 10px; }
+  .picker-search input { font-size: 16px; }
+}

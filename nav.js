@@ -59,8 +59,53 @@ function renderSagaSidebar(activeKey) {
 
   root.innerHTML = html;
 
+  monterBarreMobile(logo, nomMarque);
+
   // Une fois la page en place, les champs date deviennent de vrais calendriers
   setTimeout(function () { sagaInitCalendriers(); }, 0);
+}
+
+/* ============ Navigation sur petit écran ============
+   Le menu latéral occupe 252 px : sur un téléphone, il mangeait les deux
+   tiers de l'écran. Il devient un tiroir, ouvert depuis une barre fixe. */
+function monterBarreMobile(logo, nomMarque) {
+  if (document.querySelector('.barre-mobile')) return;
+
+  var barre = document.createElement('header');
+  barre.className = 'barre-mobile';
+  barre.innerHTML =
+    '<button class="burger" type="button" aria-label="Ouvrir le menu" aria-expanded="false">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">' +
+      '<line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></svg>' +
+    '</button>' +
+    (logo
+      ? '<img class="barre-mobile-logo" src="' + logo + '" alt="' + nomMarque + '" />'
+      : '<span class="barre-mobile-nom serif">' + nomMarque + '</span>');
+  document.body.insertBefore(barre, document.body.firstChild);
+
+  var voile = document.createElement('div');
+  voile.className = 'voile';
+  document.body.appendChild(voile);
+
+  var sidebar = document.getElementById('sidebarRoot');
+
+  function basculer(ouvrir) {
+    sidebar.classList.toggle('ouvert', ouvrir);
+    voile.classList.toggle('actif', ouvrir);
+    document.body.classList.toggle('menu-ouvert', ouvrir);
+    barre.querySelector('.burger').setAttribute('aria-expanded', ouvrir ? 'true' : 'false');
+  }
+
+  barre.querySelector('.burger').addEventListener('click', function () {
+    basculer(!sidebar.classList.contains('ouvert'));
+  });
+  voile.addEventListener('click', function () { basculer(false); });
+  sidebar.addEventListener('click', function (e) {
+    if (e.target.closest('.nav-item')) basculer(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') basculer(false);
+  });
 }
 
 /* ============ Persistance locale (maquette) ============
@@ -428,6 +473,13 @@ function sagaInfosCliente(lettre) {
   };
 }
 
+/* Les montants sont arrêtés au centime dès le calcul.
+   Sans cela, les additions en virgule flottante dérivent et un total peut
+   tomber sur un demi-centime : le même montant s'arrondissait alors
+   différemment selon l'ordre d'addition, et le total affiché ne
+   correspondait plus à la somme des lignes affichées. */
+function sagaCentimes(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+
 /* Décompte d'un dressing sur un live, recalculé depuis ses articles.
    base = ventes − frais Whatnot ; net = base − giveaways − commissions */
 function sagaDecompte(live, lettre) {
@@ -442,15 +494,15 @@ function sagaDecompte(live, lettre) {
                         .reduce(function (s, a) { return s + a.montant; }, 0);
   var horsLive = arts.filter(function (a) { return a.type === 'horslive'; })
                      .reduce(function (s, a) { return s + a.montant; }, 0);
-  var base = soumisFrais * (1 - (live.fraisPct || 0) / 100) + horsLive;
-  var commSaga = base * t.commission / 100;
-  var commApporteur = t.apporteur ? base * t.apporteurPct / 100 : 0;
+  var base = sagaCentimes(soumisFrais * (1 - (live.fraisPct || 0) / 100) + horsLive);
+  var commSaga = sagaCentimes(base * t.commission / 100);
+  var commApporteur = t.apporteur ? sagaCentimes(base * t.apporteurPct / 100) : 0;
   var paiement = (live.paiements || {})[lettre] || null;
   return {
     lettre: lettre, prenom: t.prenom, articles: arts,
-    ventes: ventes, giveaways: giveaways, base: base,
+    ventes: sagaCentimes(ventes), giveaways: sagaCentimes(giveaways), base: base,
     commSaga: commSaga, commApporteur: commApporteur, apporteur: t.apporteur,
-    net: base - giveaways - commSaga - commApporteur,
+    net: sagaCentimes(base - giveaways - commSaga - commApporteur),
     paye: !!paiement, paiement: paiement
   };
 }
@@ -471,6 +523,8 @@ function sagaTotauxLive(live) {
     t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
     if (!d.paye) t.reste += d.net;
   });
+  ['ventes','giveaways','base','commSaga','commApporteur','net','reste']
+    .forEach(function (k) { t[k] = sagaCentimes(t[k]); });
   return t;
 }
 
@@ -519,12 +573,13 @@ var SAGA_VENTES_DIRECTES_DEFAUT = [
 /* Décompte d'une vente hors Whatnot : ni frais de plateforme, ni giveaway */
 function sagaDecompteDirect(v) {
   var t = sagaTauxDressing(v.lettre);
-  var commSaga = v.montant * t.commission / 100;
-  var commApporteur = v.apporteur ? v.montant * t.apporteurPct / 100 : 0;
+  var commSaga = sagaCentimes(v.montant * t.commission / 100);
+  var commApporteur = v.apporteur ? sagaCentimes(v.montant * t.apporteurPct / 100) : 0;
+  var frais = v.frais || 0;
   return {
-    ventes: v.montant, giveaways: 0, base: v.montant,
-    commSaga: commSaga, commApporteur: commApporteur, frais: v.frais || 0,
-    net: v.montant - commSaga - commApporteur - (v.frais || 0),
+    ventes: sagaCentimes(v.montant), giveaways: 0, base: sagaCentimes(v.montant),
+    commSaga: commSaga, commApporteur: commApporteur, frais: frais,
+    net: sagaCentimes(v.montant - commSaga - commApporteur - frais),
     apporteur: v.apporteur ? t.apporteur : ''
   };
 }
@@ -748,9 +803,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.5.2';
+var SAGA_VERSION = '1.6.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.6.0', date: '2026-08-14', titre: 'Calculs vérifiés et usage sur téléphone', points: [
+    'Les ventes hors live manquaient au tableau de bord et aux rapports : 685 € non comptés',
+    'Le reste à reverser portait sur la période affichée, il porte désormais sur la dette entière',
+    'Montants arrêtés au centime dès le calcul, pour que les totaux correspondent aux lignes',
+    'Menu escamotable et mise en page repensée pour les téléphones, sur toutes les pages'
+  ]},
   { version: '1.5.2', date: '2026-08-14', titre: 'Mise en page et vues par défaut', points: [
     'Tableau de bord et agenda : colonnes équilibrées, calendrier compact',
     'Agenda : seules les clientes retenues sont listées, les autres se cherchent',

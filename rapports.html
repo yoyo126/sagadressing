@@ -157,19 +157,16 @@
       });
     });
 
-    // Ventes hors live : elles ne vivent que sur la fiche de la cliente
-    var fiches = sagaLoad('clients_data', {});
-    Object.keys(fiches).forEach(function (cle) {
-      var f = fiches[cle];
-      (f.lives || []).forEach(function (l) {
-        if (!l.horsLive) return;
-        res.push({
-          date: l.date, liveId: '', session: l.label,
-          cliente: f.prenom, nom: f.nom || f.prenom, lettre: f.lettre,
-          source: 'direct', ventes: l.ventes, giveaways: 0,
-          saga: l.commission, apporteur: l.apporteurMontant || 0, net: l.net,
-          paye: !!l.paye, datePaiement: l.datePaiement || ''
-        });
+    // Ventes hors live — même source que partout ailleurs
+    sagaVentesDirectes().forEach(function (v) {
+      var d = sagaDecompteDirect(v);
+      var i = sagaInfosCliente(v.lettre);
+      res.push({
+        date: v.date, liveId: '', session: v.libelle,
+        cliente: i.prenom, nom: i.nom, lettre: v.lettre,
+        source: 'direct', ventes: d.ventes, giveaways: 0,
+        saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
+        paye: !!v.paye, datePaiement: v.datePaiement || ''
       });
     });
 
