@@ -1,0 +1,42 @@
+# Publication du CRM sur GitHub Pages.
+# L'application est faite de fichiers statiques : aucune compilation,
+# le dépôt est envoyé tel quel à chaque modification de `main`.
+
+name: Publier sur GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # permet aussi de relancer à la main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une seule publication à la fois ; on laisse finir celle en cours
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Préparer Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empaqueter le site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Mettre en ligne
+        id: deploiement
+        uses: actions/deploy-pages@v4
