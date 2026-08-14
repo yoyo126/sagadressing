@@ -598,68 +598,37 @@
 
   // ================== FICHES CLIENTES ==================
   // La fiche affichée dépend du paramètre ?c= dans l'adresse (défaut : fanny)
+  /* Identité seulement : les ventes et les notes sont partagées avec le reste
+     de l'application, cette fiche n'en garde plus de copie. Les noms suivent
+     l'annuaire commun (SAGA_DRESSINGS_DEFAUT). */
   var CLIENTS_DEFAUT = {
     fanny: {
       prenom: 'Fanny', nom: 'Fanny Moreau', lettre: 'M', statut: 'Active',
-      tel: '06 12 34 56 78', email: 'fanny.moreau@example.com', adresse: '',
+      tel: '06 12 34 56 78', email: 'fanny.moreau@example.com',
+      adresse: '15 rue du Faubourg Saint-Antoine, 75011 Paris',
       commission: 30, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'mars 2026',
-      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' },
-      lives: [
-        { date: '2026-07-29', label: 'Live du 29/07', ventes: 1480, commission: 444, net: 890, paye: 1 },
-        { date: '2026-07-17', label: 'Live du 17/07', ventes: 870,  commission: 261, net: 522, paye: 1 },
-        { date: '2026-07-03', label: 'Live du 03/07', ventes: 1640, commission: 492, net: 735, paye: 0 },
-        { date: '2026-06-19', label: 'Live du 19/06', ventes: 1105, commission: 332, net: 660, paye: 1 },
-        { date: '2026-05-22', label: 'Live du 22/05', ventes: 780,  commission: 234, net: 468, paye: 1 },
-        { date: '2026-04-24', label: 'Live du 24/04', ventes: 545,  commission: 163, net: 382, paye: 1 }
-      ],
-      notes: [
-        { id: 1, type: 'todo', text: "Lui rendre les 3 pièces d'hiver mises de côté au prochain passage.", date: '2026-07-30', done: false },
-        { id: 2, type: 'note', text: "Préfère les lives le mardi soir. Ne veut pas vendre les pièces Sézane en dessous de 25 €.", date: '2026-07-18', done: false },
-        { id: 3, type: 'todo', text: 'Relancer pour le virement du live du 03/07.', date: '2026-07-10', done: true }
-      ]
+      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
     },
     julie: {
       prenom: 'Julie', nom: 'Julie Renard', lettre: 'C', statut: 'Active',
-      tel: '06 22 41 08 93', email: 'julie.renard@example.com', adresse: '',
+      tel: '06 22 45 78 90', email: 'julie.renard@example.com',
+      adresse: '4 avenue Jean Jaurès, 93100 Montreuil',
       commission: 30, apporteur: null, apporteurPct: 0, depuis: 'janvier 2026',
-      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' },
-      lives: [
-        { date: '2026-07-27', label: 'Live du 27/07', ventes: 960,  commission: 288, net: 620,  paye: 0 },
-        { date: '2026-07-13', label: 'Live du 13/07', ventes: 1320, commission: 396, net: 790,  paye: 1 },
-        { date: '2026-06-25', label: 'Live du 25/06', ventes: 1450, commission: 435, net: 1015, paye: 1 },
-        { date: '2026-05-30', label: 'Live du 30/05', ventes: 1450, commission: 435, net: 870,  paye: 1 }
-      ],
-      notes: [
-        { id: 1, type: 'note', text: 'Dépose surtout des pièces de créateurs. Très réactive par SMS.', date: '2026-07-14', done: false }
-      ]
+      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
     },
     camille: {
-      prenom: 'Camille', nom: 'Camille Fabre', lettre: 'B', statut: 'Active',
-      tel: '07 61 55 12 04', email: 'camille.fabre@example.com', adresse: '',
+      prenom: 'Camille', nom: 'Camille Bertin', lettre: 'B', statut: 'Active',
+      tel: '07 33 12 45 67', email: 'camille.bertin@example.com',
+      adresse: '27 rue de la République, 69002 Lyon',
       commission: 25, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'février 2026',
-      pending: { type: 'restitution', texte: '<strong>Bon de restitution en attente de signature</strong> — envoyé le 30 juillet, pas encore ouvert.' },
-      lives: [
-        { date: '2026-07-24', label: 'Live du 24/07', ventes: 2110, commission: 528, net: 480,  paye: 0 },
-        { date: '2026-07-18', label: 'Sac à main cuir', ventes: 180, commission: 45,  net: 135,  paye: 1, horsLive: true },
-        { date: '2026-06-12', label: 'Live du 12/06', ventes: 1680, commission: 420, net: 1260, paye: 1 },
-        { date: '2026-05-15', label: 'Live du 15/05', ventes: 990,  commission: 248, net: 742,  paye: 1 }
-      ],
-      notes: [
-        { id: 1, type: 'todo', text: 'Récupérer les 12 caisses au dépôt de Rungis le 4 août.', date: '2026-07-31', done: false },
-        { id: 2, type: 'note', text: 'Commission négociée à 25 % (gros volume).', date: '2026-06-02', done: false }
-      ]
+      pending: { type: 'restitution', texte: '<strong>Bon de restitution en attente de signature</strong> — envoyé le 30 juillet, pas encore ouvert.' }
     },
     marion: {
-      prenom: 'Marion', nom: 'Marion Lefèvre', lettre: 'F', statut: 'Active',
-      tel: '06 84 27 66 31', email: 'marion.lefevre@example.com', adresse: '',
+      prenom: 'Marion', nom: 'Marion Fabre', lettre: 'F', statut: 'Active',
+      tel: '06 55 78 21 34', email: 'marion.fabre@example.com',
+      adresse: '9 place du Marché, 33000 Bordeaux',
       commission: 30, apporteur: 'Karim B.', apporteurPct: 6, depuis: 'avril 2026',
-      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 21 juillet, sans réponse depuis 11 jours (1 relance).' },
-      lives: [
-        { date: '2026-07-28', label: 'Bottines Isabel Marant', ventes: 260, commission: 78, net: 182, paye: 1, horsLive: true },
-        { date: '2026-07-20', label: 'Live du 20/07', ventes: 1500, commission: 450, net: 310, paye: 0 },
-        { date: '2026-06-08', label: 'Live du 08/06', ventes: 1450, commission: 435, net: 1015, paye: 1 }
-      ],
-      notes: []
+      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 21 juillet, sans réponse depuis 11 jours (1 relance).' }
     }
   };
 
@@ -689,9 +658,7 @@
       apporteur: entree.apporteur || null,
       apporteurPct: entree.apporteur ? 8 : 0,
       depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
-      pending: null,
-      lives: [],
-      notes: []
+      pending: null
     };
   }
 
@@ -705,6 +672,8 @@
       CLIENT = CLIENTS.fanny;
     }
   }
+
+  var VENTES = [];   // ventes de la cliente, recalculées à chaque rendu
 
   var CLIENTE_COMMISSION_PCT = CLIENT.commission;
   var APPORTEUR_NAME = CLIENT.apporteur;
@@ -748,25 +717,33 @@
       alertBar.style.display = 'none';
     }
 
-    // Tableau des ventes
-    synchroniserLives();
-    document.getElementById('livesTableBody').innerHTML = CLIENT.lives.map(function (l, i) {
-      var label = l.horsLive
+    // Tableau des ventes — dérivé des lives et des ventes hors live partagés
+    VENTES = sagaVentesDuDressing(CLIENT.lettre);
+
+    document.getElementById('livesTableBody').innerHTML = VENTES.map(function (l, i) {
+      var label = l.origine === 'direct'
         ? l.label + ' <span class="chip neutral" style="margin-left:6px;">Hors live</span>'
         : l.label;
       var det = [];
+      if (l.origine === 'live') det.push(l.nbArticles + ' article' + (l.nbArticles > 1 ? 's' : ''));
+      if (l.giveaways > 0) det.push('Giveaways : ' + fmtEUR(l.giveaways));
       if (l.apporteurMontant > 0) det.push('Apporteur ' + CLIENT.apporteur + ' : ' + fmtEURcents(l.apporteurMontant));
       if (l.frais > 0) det.push("Frais d'envoi : " + fmtEURcents(l.frais));
-      if (det.length) label += '<div class="muted" style="font-size:.72rem; margin-top:3px;">' + det.join(' · ') + '</div>';
+      if (det.length) label += '<div class="muted" style="font-size:.8rem; margin-top:3px;">' + det.join(' · ') + '</div>';
+
       var statut = l.paye
         ? '<span class="chip good">Payé</span>' +
-          (l.datePaiement ? '<div class="muted" style="font-size:.7rem; margin-top:3px;">le ' + fmtDateFR(l.datePaiement) + (l.modePaiement ? ' · ' + l.modePaiement : '') + '</div>' : '')
+          (l.datePaiement ? '<div class="muted" style="font-size:.78rem; margin-top:3px;">le ' + fmtDateFR(l.datePaiement) + '</div>' : '')
         : '<span class="chip warn">En attente</span>';
       var action = l.paye
         ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); cancelPayment(' + i + ')">Annuler</button>'
         : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payOne(' + i + ')">Payer</button>';
       action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerLigne(' + i + ')">PDF</button>';
-      var lienLive = l.horsLive ? '' : lienVersLive(l.date);
+      if (l.origine === 'direct') {
+        action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); supprimerVenteDirecte(\'' + l.venteId + '\')">Supprimer</button>';
+      }
+
+      var lienLive = l.origine === 'live' ? 'live.html?l=' + l.liveId + '&c=' + CLIENT.lettre : '';
       return '<tr' + (lienLive ? ' data-href="' + lienLive + '"' : '') +
         ' data-date="' + l.date + '" data-ventes="' + l.ventes + '" data-commission="' + l.commission +
         '" data-net="' + l.net + '" data-paye="' + l.paye + '">' +
@@ -777,7 +754,8 @@
         '<td class="num tabular">' + fmtEUR(l.net) + '</td>' +
         '<td>' + statut + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' + action + '</td></tr>';
-    }).join('');
+    }).join('') || '<tr><td colspan="7" class="muted" style="text-align:center; padding:24px 8px;">Aucune vente enregistrée pour cette cliente.</td></tr>';
+
     initRowLinks(document.getElementById('livesTableBody'));
 
     // Champs identité repris dans les documents
@@ -806,71 +784,17 @@
     return sagaLives().filter(function (l) { return l.date === date; })[0] || null;
   }
 
-  /* Toute session listée sur la fiche doit avoir un live détaillé ouvrable.
-     Les sessions plus anciennes que le détail article par article sont créées
-     avec une ligne de synthèse, que l'on peut ensuite détailler dans le live. */
-  function synchroniserLives() {
-    var lives = sagaLives();
-    var modifie = false;
-
-    CLIENT.lives.forEach(function (l) {
-      if (l.horsLive) return;
-      var live = lives.filter(function (x) { return x.date === l.date; })[0];
-
-      if (!live) {
-        live = {
-          id: 'l-' + l.date.replace(/-/g, ''),
-          date: l.date,
-          titre: 'Live du ' + fmtDateShortFR(l.date),
-          categorie: 'Mix saison',
-          fraisPct: 0,
-          encaisse: { statut: 'Reçu', date: l.date },
-          articles: [],
-          paiements: {}
-        };
-        lives.push(live);
-        modifie = true;
-      }
-
-      // La cliente n'apparaît pas encore dans ce live : on y porte son total
-      if (!live.articles.some(function (a) { return a.lettre === CLIENT.lettre; })) {
-        live.articles.push({
-          id: 'sy-' + CLIENT.lettre + '-' + l.date,
-          libelle: 'Ventes du live — à détailler',
-          lettre: CLIENT.lettre,
-          montant: l.ventes,
-          type: 'vente'
-        });
-        if (l.paye) {
-          live.paiements = live.paiements || {};
-          live.paiements[CLIENT.lettre] = {
-            date: l.datePaiement || l.date,
-            mode: l.modePaiement || 'Virement'
-          };
-        }
-        modifie = true;
-      }
-    });
-
-    if (modifie) sagaSaveLives(lives);
-  }
-
-  function lienVersLive(date) {
-    var live = liveDeLaDate(date);
-    return live ? 'live.html?l=' + live.id + '&c=' + CLIENT.lettre : '';
-  }
-
   /* Récapitulatif d'une ligne de la fiche, enregistré en PDF.
      Si le live détaillé existe, on reprend le détail article par article. */
   function imprimerLigne(i) {
-    var l = CLIENT.lives[i];
+    var l = VENTES[i];
     if (!l) return;
-    var live = l.horsLive ? null : liveDeLaDate(l.date);
+    var live = l.origine === 'live' ? sagaLive(l.liveId) : null;
     var pdf = sagaNouveauPdf('Récapitulatif ' + CLIENT.prenom + ' — ' + l.label);
 
-    pdf.titre(l.horsLive ? 'Récapitulatif de vente' : 'Récapitulatif de live');
+    pdf.titre(l.origine === 'direct' ? 'Récapitulatif de vente' : 'Récapitulatif de live');
     pdf.sousTitre(l.label + ' · ' + sagaDateLongue(l.date) +
-      (l.horsLive ? ' · vente hors Whatnot' : ''));
+      (l.origine === 'direct' ? ' · vente hors Whatnot' : ''));
 
     pdf.section('Cliente');
     pdf.paragraphe(CLIENT.nom + '  —  dressing ' + CLIENT.lettre, { gras: true, taille: 10.5 });
@@ -1096,7 +1020,7 @@
     flashInfos('✓ Enregistré');
   }
   var MONTHS_FR_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-  var TODAY_ISO = '2026-08-01'; // date de référence de la maquette
+  var TODAY_ISO = sagaAujourdhui();   // le CRM travaille sur la date réelle du poste
 
   function fmtEUR(n) {
     return Math.round(n).toLocaleString('fr-FR') + ' €';
@@ -1237,25 +1161,36 @@
       document.getElementById('dsMontant').focus();
       return;
     }
-    const dateIso = document.getElementById('dsDate').value || TODAY_ISO;
-    const desc = document.getElementById('dsDescription').value.trim() || 'Article vendu directement';
 
-    CLIENT.lives.unshift({
-      date: dateIso, label: desc, ventes: c.montant, commission: c.saga,
-      net: c.net, paye: 0, horsLive: true,
-      frais: c.frais, apporteurMontant: c.apporteur
+    var ventes = sagaVentesDirectes();
+    ventes.unshift({
+      id: 'vd' + Date.now(),
+      date: document.getElementById('dsDate').value || sagaAujourdhui(),
+      lettre: CLIENT.lettre,
+      libelle: document.getElementById('dsDescription').value.trim() || 'Article vendu directement',
+      montant: c.montant,
+      frais: c.frais,
+      apporteur: c.withApporteur,
+      mode: document.getElementById('dsMode').value,
+      paye: 0
     });
-    persistClients();
+    sagaSaveVentesDirectes(ventes);
+    sagaTracer('Vente hors live', CLIENT.nom, fmtEUR(c.montant));
+
     renderClient();
     refreshRecap();
-
-    document.getElementById('dsDate').value = '';
-    document.getElementById('dsDescription').value = '';
-    document.getElementById('dsMontant').value = '';
-    document.getElementById('dsFrais').value = '0';
-    document.getElementById('dsApporteur').checked = false;
-    refreshDirectSaleRecap();
     toggleDirectSaleForm();
+  }
+
+  function supprimerVenteDirecte(id) {
+    var ventes = sagaVentesDirectes();
+    var v = ventes.filter(function (x) { return x.id === id; })[0];
+    if (!v) return;
+    if (!confirm('Supprimer la vente « ' + v.libelle + ' » (' + fmtEUR(v.montant) + ') ?')) return;
+    sagaSaveVentesDirectes(ventes.filter(function (x) { return x.id !== id; }));
+    sagaTracer('Suppression vente hors live', CLIENT.nom, v.libelle);
+    renderClient();
+    refreshRecap();
   }
 
   ['dsMontant', 'dsApporteur', 'dsFrais'].forEach(function (id) {
@@ -1281,32 +1216,32 @@
   }
 
   function payOne(index) {
-    var l = CLIENT.lives[index];
+    var l = VENTES[index];
     if (!l || l.paye) return;
     var d = askPaymentDetails(l.net, l.label);
     if (!d) return;
-    l.paye = 1; l.datePaiement = d.date; l.modePaiement = d.mode;
-    persistClients();
+    sagaMarquerPayee(l, d.date);
+    sagaTracer('Reversement', CLIENT.nom, l.label + ' — ' + fmtEUR(l.net));
     renderClient();
     refreshRecap();
   }
 
   function cancelPayment(index) {
-    var l = CLIENT.lives[index];
+    var l = VENTES[index];
     if (!l || !l.paye) return;
     if (!confirm('Annuler le paiement de « ' + l.label + ' » ?\n\n'
       + 'Montant : ' + fmtEUR(l.net)
       + (l.datePaiement ? '\nEnregistré le ' + fmtDateFR(l.datePaiement) : '')
       + '\n\nLa vente repassera en attente de règlement.')) return;
-    l.paye = 0; delete l.datePaiement; delete l.modePaiement;
-    persistClients();
+    sagaAnnulerPaiement(l);
+    sagaTracer('Annulation reversement', CLIENT.nom, l.label);
     renderClient();
     refreshRecap();
   }
 
   // Marque comme réglées toutes les ventes en attente
   function payAll() {
-    var enAttente = CLIENT.lives.filter(function (l) { return !l.paye; });
+    var enAttente = VENTES.filter(function (l) { return !l.paye; });
     if (enAttente.length === 0) {
       alert('Rien à régler : tout est déjà à jour pour ' + CLIENT.prenom + '.');
       return;
@@ -1314,9 +1249,8 @@
     var total = enAttente.reduce(function (s, l) { return s + l.net; }, 0);
     var d = askPaymentDetails(total, enAttente.length + ' vente(s) de ' + CLIENT.prenom);
     if (!d) return;
-
-    enAttente.forEach(function (l) { l.paye = 1; l.datePaiement = d.date; l.modePaiement = d.mode; });
-    persistClients();
+    enAttente.forEach(function (l) { sagaMarquerPayee(l, d.date); });
+    sagaTracer('Reversement groupé', CLIENT.nom, enAttente.length + ' vente(s) — ' + fmtEUR(total));
     renderClient();
     refreshRecap();
   }
@@ -1554,31 +1488,28 @@
     el.addEventListener('change', refreshPreview);
   });
 
-  // ================== NOTES PAR CLIENTE ==================
-
-  var notes = CLIENT.notes.slice(); var _unusedNotes = [
-    { id: 1, type: 'todo', text: "Lui rendre les 3 pièces d'hiver mises de côté au prochain passage.", date: '2026-07-30', done: false },
-    { id: 2, type: 'note', text: "Préfère les lives le mardi soir. Ne veut pas vendre les pièces Sézane en dessous de 25 €.", date: '2026-07-18', done: false },
-    { id: 3, type: 'todo', text: 'Relancer pour le virement du live du 03/07.', date: '2026-07-10', done: true }
-  ];
+  /* ================== NOTES ET CHOSES À FAIRE ==================
+     Les notes sont partagées : celles de cette cliente sont un extrait
+     de la liste générale, visible aussi sur le tableau de bord. */
 
   function noteTypeSelected() {
     var b = document.querySelector('#noteTypeToggle button.active');
     return b ? b.dataset.type : 'note';
   }
 
+  function notesDeLaCliente() {
+    return sagaNotes().filter(function (n) { return n.lettre === CLIENT.lettre; });
+  }
+
   function renderNotes() {
+    var notes = notesDeLaCliente();
     var list = document.getElementById('notesList');
     var empty = document.getElementById('notesEmpty');
     var badge = document.getElementById('notesBadge');
 
     var pending = notes.filter(function (n) { return n.type === 'todo' && !n.done; }).length;
-    if (pending > 0) {
-      badge.textContent = pending;
-      badge.style.display = 'inline-block';
-    } else {
-      badge.style.display = 'none';
-    }
+    badge.textContent = pending;
+    badge.style.display = pending > 0 ? 'inline-block' : 'none';
 
     if (notes.length === 0) {
       list.style.display = 'none';
@@ -1591,44 +1522,39 @@
     var sorted = notes.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
     list.innerHTML = sorted.map(function (n) {
       var check = n.type === 'todo'
-        ? '<input type="checkbox" class="note-check"' + (n.done ? ' checked' : '') + ' onchange="toggleNote(' + n.id + ')" title="Marquer comme fait" />'
+        ? '<input type="checkbox" class="note-check"' + (n.done ? ' checked' : '') +
+          ' onchange="toggleNote(\'' + n.id + '\')" title="Marquer comme fait" />'
         : '<span class="note-bullet"></span>';
       var tag = n.type === 'todo'
-        ? '<span class="agenda-kind"' + (n.done ? ' style="background:var(--good-bg); color:var(--good);"' : '') + '>' + (n.done ? 'Fait' : 'À faire') + '</span>'
+        ? '<span class="agenda-kind"' + (n.done ? ' style="background:var(--good-bg); color:var(--good);"' : '') + '>' +
+          (n.done ? 'Fait' : 'À faire') + '</span>'
         : '';
       return '<li class="note-item' + (n.done ? ' done' : '') + '">' +
           check +
           '<div class="note-body">' +
-            '<div class="note-text">' + tag + n.text + '</div>' +
-            '<div class="note-meta">' + fmtDateShortFR(n.date) + ' · Sarah</div>' +
+            '<div class="note-text">' + tag + n.texte + '</div>' +
+            '<div class="note-meta">' + fmtDateShortFR(n.date) + '</div>' +
           '</div>' +
-          '<button class="btn btn-ghost btn-sm" onclick="deleteNote(' + n.id + ')">Supprimer</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="deleteNote(\'' + n.id + '\')">Supprimer</button>' +
         '</li>';
     }).join('');
   }
 
   function addNote() {
     var field = document.getElementById('noteText');
-    var text = field.value.trim();
-    if (!text) { field.focus(); return; }
-    notes.push({
-      id: Date.now(),
-      type: noteTypeSelected(),
-      text: text,
-      date: TODAY_ISO,
-      done: false
-    });
+    var texte = field.value.trim();
+    if (!texte) { field.focus(); return; }
+    sagaAjouterNote(noteTypeSelected(), texte, CLIENT.lettre);
     field.value = '';
     renderNotes();
   }
 
-  function toggleNote(id) {
-    var n = notes.find(function (x) { return x.id === id; });
-    if (n) { n.done = !n.done; renderNotes(); }
-  }
+  function toggleNote(id) { sagaBasculerNote(id); renderNotes(); }
 
   function deleteNote(id) {
-    notes = notes.filter(function (x) { return x.id !== id; });
+    var n = sagaNotes().filter(function (x) { return x.id === id; })[0];
+    if (n && !confirm('Supprimer cette note ?\n\n« ' + n.texte + ' »')) return;
+    sagaSupprimerNote(id);
     renderNotes();
   }
 

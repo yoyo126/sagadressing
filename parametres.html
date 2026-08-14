@@ -312,6 +312,43 @@
                 </select>
                 <span class="card-note">Les droits détaillés restent ajustables ensuite, section par section.</span>
               </div>
+
+              <div class="form-field">
+                <label class="form-label">Mot de passe</label>
+                <div class="toggle-group" id="invMdpMode" style="width:100%;">
+                  <button class="active" data-mode="invitation" style="flex:1;">Il le choisit lui-même</button>
+                  <button data-mode="defini" style="flex:1;">Je le définis</button>
+                </div>
+                <span class="card-note" id="invMdpNote">
+                  Un lien d'activation lui est envoyé : vous ne connaîtrez jamais son mot de passe.
+                  C'est la méthode recommandée.
+                </span>
+              </div>
+
+              <div id="invMdpChamps" style="display:none; flex-direction:column; gap:14px;">
+                <div class="form-field" style="flex-direction:row; gap:12px;">
+                  <div style="flex:1;">
+                    <label class="form-label" for="invMdp">Mot de passe provisoire</label>
+                    <input class="form-input" type="password" id="invMdp" autocomplete="new-password" />
+                  </div>
+                  <div style="flex:1;">
+                    <label class="form-label" for="invMdp2">Confirmation</label>
+                    <input class="form-input" type="password" id="invMdp2" autocomplete="new-password" />
+                  </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <button class="btn btn-ghost btn-sm" onclick="genererMotDePasse()">Générer un mot de passe</button>
+                  <label class="check-row" style="margin:0;">
+                    <input type="checkbox" id="invMdpVoir" onchange="basculerVisibiliteMdp()" />
+                    <span>Afficher</span>
+                  </label>
+                  <span class="card-note" id="invMdpForce"></span>
+                </div>
+                <label class="check-row">
+                  <input type="checkbox" id="invMdpChanger" checked />
+                  <span>Lui demander de le changer à la première connexion</span>
+                </label>
+              </div>
               <div style="display:flex; gap:10px;">
                 <button class="btn btn-primary btn-sm" onclick="sendInvite()">Créer le compte</button>
                 <button class="btn btn-ghost btn-sm" onclick="toggleInviteForm()">Annuler</button>
@@ -703,6 +740,7 @@
         '<td>' + statusChip + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' +
           '<button class="btn btn-ghost btn-sm" onclick="openPerms(' + u.id + ')">Droits</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="definirMotDePasse(' + u.id + ')">Mot de passe</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="resetPassword(' + u.id + ')">Réinitialiser</button>' +
           deleteBtn +
         '</td>' +
@@ -933,11 +971,108 @@
   }
 
   function resetInviteForm() {
-    ['invPrenom', 'invNom', 'invEmail', 'invTel'].forEach(function (id) {
+    ['invPrenom', 'invNom', 'invEmail', 'invTel', 'invMdp', 'invMdp2'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
+    document.getElementById('invMdpVoir').checked = false;
+    document.getElementById('invMdpChanger').checked = true;
+    document.getElementById('invMdpForce').textContent = '';
+    basculerVisibiliteMdp();
+    document.querySelectorAll('#invMdpMode button').forEach(function (b, i) {
+      b.classList.toggle('active', i === 0);
+    });
+    document.getElementById('invMdpChamps').style.display = 'none';
     document.getElementById('invRole').selectedIndex = 0;
     document.getElementById('invStatut').selectedIndex = 0;
+  }
+
+  /* ============ Mot de passe d'un compte ============
+     La maquette ne conserve jamais le mot de passe en clair : elle en garde
+     une empreinte, comme le ferait le serveur. Suffisant pour vérifier le
+     parcours, et sans faux-semblant sur la sécurité. */
+
+  function empreinteMdp(texte) {
+    var h = 5381;
+    for (var i = 0; i < texte.length; i++) h = ((h << 5) + h + texte.charCodeAt(i)) >>> 0;
+    return 'h' + h.toString(16);
+  }
+
+  function forceMdp(mdp) {
+    var score = 0;
+    if (mdp.length >= 10) score++;
+    if (mdp.length >= 14) score++;
+    if (/[a-z]/.test(mdp) && /[A-Z]/.test(mdp)) score++;
+    if (/[0-9]/.test(mdp)) score++;
+    if (/[^A-Za-z0-9]/.test(mdp)) score++;
+    if (mdp.length < 8) return { ok: false, libelle: 'Trop court — 8 caractères minimum', couleur: 'var(--critical)' };
+    if (score <= 2) return { ok: true, libelle: 'Force : faible', couleur: 'var(--critical)' };
+    if (score === 3) return { ok: true, libelle: 'Force : correcte', couleur: 'var(--warn)' };
+    return { ok: true, libelle: 'Force : bonne', couleur: 'var(--good)' };
+  }
+
+  function modeMdp() {
+    var b = document.querySelector('#invMdpMode button.active');
+    return b ? b.dataset.mode : 'invitation';
+  }
+
+  function genererMotDePasse() {
+    var alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!?@#%';
+    var octets = new Uint32Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(octets);
+    var mdp = Array.prototype.map.call(octets, function (n) { return alphabet[n % alphabet.length]; }).join('');
+    document.getElementById('invMdp').value = mdp;
+    document.getElementById('invMdp2').value = mdp;
+    document.getElementById('invMdpVoir').checked = true;
+    basculerVisibiliteMdp();
+    majForceMdp();
+  }
+
+  function basculerVisibiliteMdp() {
+    var type = document.getElementById('invMdpVoir').checked ? 'text' : 'password';
+    document.getElementById('invMdp').type = type;
+    document.getElementById('invMdp2').type = type;
+  }
+
+  function majForceMdp() {
+    var mdp = document.getElementById('invMdp').value;
+    var el = document.getElementById('invMdpForce');
+    if (!mdp) { el.textContent = ''; return; }
+    var f = forceMdp(mdp);
+    el.textContent = f.libelle;
+    el.style.color = f.couleur;
+  }
+
+  document.getElementById('invMdpMode').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    document.querySelectorAll('#invMdpMode button').forEach(function (x) { x.classList.remove('active'); });
+    b.classList.add('active');
+    var defini = b.dataset.mode === 'defini';
+    document.getElementById('invMdpChamps').style.display = defini ? 'flex' : 'none';
+    document.getElementById('invMdpNote').textContent = defini
+      ? "Vous communiquez ce mot de passe à l'utilisateur par un autre canal. Il ne sera plus affiché ensuite."
+      : "Un lien d'activation lui est envoyé : vous ne connaîtrez jamais son mot de passe. C'est la méthode recommandée.";
+  });
+
+  document.getElementById('invMdp').addEventListener('input', majForceMdp);
+
+  /* Réinitialisation depuis la liste des comptes */
+  function definirMotDePasse(id) {
+    var u = users.find(function (x) { return x.id === id; });
+    if (!u) return;
+    var mdp = prompt('Nouveau mot de passe provisoire pour ' + nomComplet(u) + ' :\n\n'
+      + '8 caractères minimum. Il devra le changer à sa première connexion.');
+    if (mdp === null) return;
+    var f = forceMdp(mdp.trim());
+    if (!f.ok) { alert(f.libelle); return; }
+    u.motdepasse = empreinteMdp(mdp.trim());
+    u.doitChanger = true;
+    u.status = 'active';
+    persistUsers();
+    sagaTracer('Définition mot de passe', nomComplet(u));
+    renderUsers();
+    alert('Mot de passe défini pour ' + nomComplet(u) + '.\n\n'
+      + 'Communiquez-le lui par un canal sûr : il ne sera plus affiché.');
   }
 
   function sendInvite() {
@@ -958,6 +1093,20 @@
     }
 
     var statut = document.getElementById('invStatut').value;
+
+    // Mot de passe défini par l'administratrice, ou choisi par l'utilisateur
+    var empreinte = null, doitChanger = false;
+    if (modeMdp() === 'defini') {
+      var mdp = document.getElementById('invMdp').value;
+      var mdp2 = document.getElementById('invMdp2').value;
+      var f = forceMdp(mdp);
+      if (!f.ok) { alert(f.libelle); document.getElementById('invMdp').focus(); return; }
+      if (mdp !== mdp2) { alert('Les deux mots de passe ne correspondent pas.'); document.getElementById('invMdp2').focus(); return; }
+      empreinte = empreinteMdp(mdp);
+      doitChanger = document.getElementById('invMdpChanger').checked;
+      statut = 'active';
+    }
+
     users.push({
       id: Date.now(),
       prenom: prenom, nom: nom, email: email,
@@ -967,6 +1116,8 @@
       last: statut === 'active' ? 'Jamais connecté' : '—',
       status: statut,
       owner: false,
+      motdepasse: empreinte,
+      doitChanger: doitChanger,
       creele: sagaAujourdhui()
     });
     persistUsers();

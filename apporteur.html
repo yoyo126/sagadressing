@@ -312,7 +312,7 @@
   renderSagaSidebar('apporteurs');
   initTabs();
 
-  var TODAY_ISO = '2026-08-01';
+  var TODAY_ISO = sagaAujourdhui();   // date réelle du poste
   var MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
   function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }

@@ -157,7 +157,7 @@ SagaPdf.prototype.rectangle = function (x, y, l, h, couleur) {
 SagaPdf.prototype.dessinerEnTete = function () {
   var hautLogo = 0;
   if (this.image) {
-    var maxH = 46, maxL = 150;
+    var maxH = 78, maxL = 240;
     var ratio = Math.min(maxL / this.image.largeur, maxH / this.image.hauteur);
     var l = this.image.largeur * ratio, h = this.image.hauteur * ratio;
     this.flux.push('q ' + l.toFixed(2) + ' 0 0 ' + h.toFixed(2) + ' ' +
@@ -177,7 +177,7 @@ SagaPdf.prototype.dessinerEnTete = function () {
     }, this);
   }
 
-  this.y = this.marge + Math.max(hautLogo, 40) + 16;
+  this.y = this.marge + Math.max(hautLogo, 46) + 18;
   this.ligne(this.marge, this.y, this.largeur - this.marge, this.y, [0.78, 0.66, 0.48], 1.4);
   this.y += 26;
 };

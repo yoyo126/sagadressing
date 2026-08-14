@@ -79,7 +79,36 @@
         </div>
       </section>
 
-      <section class="content-grid content-grid-simple">
+      <section class="content-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Notes et choses à faire</h2>
+            <div class="toggle-group" id="notesFiltre">
+              <button data-filtre="todo" class="active">À faire</button>
+              <button data-filtre="note">Notes</button>
+              <button data-filtre="fait">Faites</button>
+              <button data-filtre="tout">Tout</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+            <div class="toggle-group" id="noteTypeToggle">
+              <button data-type="todo" class="active">À faire</button>
+              <button data-type="note">Note</button>
+            </div>
+            <input class="form-input" id="noteText" style="flex:1; min-width:200px;"
+                   placeholder="Ex. Relancer Julie pour son contrat" />
+            <select class="form-select" id="noteCliente" style="max-width:200px;"></select>
+            <button class="btn btn-primary btn-sm" onclick="ajouterNote()">Ajouter</button>
+          </div>
+
+          <ul class="note-list" id="notesList"></ul>
+          <div id="notesVide" class="empty-state" style="display:none; margin-top:8px;">
+            <div class="t">Rien à afficher</div>
+            <div class="s">Ajoutez une chose à faire ou une note ci-dessus</div>
+          </div>
+        </div>
+
         <div class="side-col">
           <div class="panel">
             <div class="panel-head">
@@ -359,6 +388,104 @@
     applyPeriod(btn.dataset.period);
   });
 
+  /* ============ Notes et choses à faire ============
+     Même liste que sur les fiches clientes : ce qui est ajouté ici
+     apparaît sur la fiche concernée, et inversement. */
+
+  function filtreNotes() {
+    var b = document.querySelector('#notesFiltre button.active');
+    return b ? b.dataset.filtre : 'todo';
+  }
+
+  function typeNoteChoisi() {
+    var b = document.querySelector('#noteTypeToggle button.active');
+    return b ? b.dataset.type : 'todo';
+  }
+
+  function remplirChoixCliente() {
+    document.getElementById('noteCliente').innerHTML =
+      '<option value="">Sans cliente</option>' +
+      sagaToutesClientes().map(function (c) {
+        return '<option value="' + c.lettre + '">' + (c.nom || c.prenom) + ' (' + c.lettre + ')</option>';
+      }).join('');
+  }
+
+  function renderNotes() {
+    var filtre = filtreNotes();
+    var notes = sagaNotes().filter(function (n) {
+      if (filtre === 'todo') return n.type === 'todo' && !n.done;
+      if (filtre === 'note') return n.type === 'note';
+      if (filtre === 'fait') return n.done;
+      return true;
+    }).sort(function (a, b) {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return b.date.localeCompare(a.date);
+    });
+
+    document.getElementById('notesVide').style.display = notes.length ? 'none' : 'flex';
+    document.getElementById('notesList').innerHTML = notes.map(function (n) {
+      var check = n.type === 'todo'
+        ? '<input type="checkbox" class="note-check"' + (n.done ? ' checked' : '') +
+          ' onchange="basculerNote(\'' + n.id + '\')" title="Marquer comme fait" />'
+        : '<span class="note-bullet"></span>';
+      var tag = n.type === 'todo'
+        ? '<span class="agenda-kind"' + (n.done ? ' style="background:var(--good-bg); color:var(--good);"' : '') + '>' +
+          (n.done ? 'Fait' : 'À faire') + '</span>'
+        : '';
+      var etiquette = n.lettre
+        ? '<a href="cliente.html?c=' + (sagaFicheDressing(n.lettre) || '') + '" class="note-cliente">' +
+          sagaEtiquetteNote(n) + '</a>'
+        : '<span class="muted">Général</span>';
+      return '<li class="note-item' + (n.done ? ' done' : '') + '">' +
+          check +
+          '<div class="note-body">' +
+            '<div class="note-text">' + tag + n.texte + '</div>' +
+            '<div class="note-meta">' + sagaDateFR(n.date) + ' · ' + etiquette + '</div>' +
+          '</div>' +
+          '<button class="btn btn-ghost btn-sm" onclick="supprimerNote(\'' + n.id + '\')">Supprimer</button>' +
+        '</li>';
+    }).join('');
+  }
+
+  function ajouterNote() {
+    var champ = document.getElementById('noteText');
+    var texte = champ.value.trim();
+    if (!texte) { champ.focus(); return; }
+    sagaAjouterNote(typeNoteChoisi(), texte, document.getElementById('noteCliente').value);
+    champ.value = '';
+    renderNotes();
+  }
+
+  function basculerNote(id) { sagaBasculerNote(id); renderNotes(); }
+
+  function supprimerNote(id) {
+    var n = sagaNotes().filter(function (x) { return x.id === id; })[0];
+    if (n && !confirm('Supprimer cette note ?\n\n« ' + n.texte + ' »')) return;
+    sagaSupprimerNote(id);
+    renderNotes();
+  }
+
+  document.getElementById('notesFiltre').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    document.querySelectorAll('#notesFiltre button').forEach(function (x) { x.classList.remove('active'); });
+    b.classList.add('active');
+    renderNotes();
+  });
+
+  document.getElementById('noteTypeToggle').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    document.querySelectorAll('#noteTypeToggle button').forEach(function (x) { x.classList.remove('active'); });
+    b.classList.add('active');
+  });
+
+  document.getElementById('noteText').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') ajouterNote();
+  });
+
+  remplirChoixCliente();
+  renderNotes();
   renderAgendaDash();
   applyPeriod("30j");
 </script>

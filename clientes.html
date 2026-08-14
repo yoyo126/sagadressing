@@ -38,19 +38,25 @@
         <div class="panel-head"><h2>Nouvelle cliente</h2></div>
         <div class="form-grid" style="max-width:520px;">
           <div class="form-field" style="flex-direction:row; gap:12px;">
-            <div style="flex:2;">
+            <div style="flex:1;">
               <label class="form-label" for="nPrenom">Prénom</label>
               <input class="form-input" id="nPrenom" placeholder="Ex. Léa" />
             </div>
             <div style="flex:1;">
-              <label class="form-label" for="nLettre">Lettre</label>
-              <input class="form-input" id="nLettre" maxlength="1" placeholder="L" />
-              <span class="card-note" id="letterWarn" style="display:none; color:var(--critical);">Lettre déjà utilisée</span>
+              <label class="form-label" for="nNom">Nom</label>
+              <input class="form-input" id="nNom" placeholder="Ex. Dupont" />
             </div>
           </div>
           <div class="form-field">
-            <label class="form-label" for="nNom">Nom complet</label>
-            <input class="form-input" id="nNom" placeholder="Ex. Léa Dupont" />
+            <label class="form-label" for="nAdresse">Adresse complète</label>
+            <input class="form-input" id="nAdresse" placeholder="Ex. 15 rue du Faubourg Saint-Antoine, 75011 Paris" />
+            <span class="card-note">Reprise automatiquement dans les contrats et bons de restitution.</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="nLettre">Lettre du dressing</label>
+            <input class="form-input" id="nLettre" maxlength="1" placeholder="L" style="max-width:110px;" />
+            <span class="card-note">Identifie ses articles dans les exports Whatnot. Elle doit rester unique.</span>
+            <span class="card-note" id="letterWarn" style="display:none; color:var(--critical);">Lettre déjà utilisée</span>
           </div>
           <div class="form-field" style="flex-direction:row; gap:12px;">
             <div style="flex:1;">
@@ -312,7 +318,7 @@
   }
 
   function resetNewForm() {
-    ['nPrenom', 'nLettre', 'nNom', 'nEmail', 'nTel'].forEach(function (id) {
+    ['nPrenom', 'nNom', 'nAdresse', 'nLettre', 'nEmail', 'nTel'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
     document.getElementById('nCommission').value = 30;
@@ -323,10 +329,12 @@
 
   function addCliente() {
     var prenom = document.getElementById('nPrenom').value.trim();
+    var nomFamille = document.getElementById('nNom').value.trim();
     var lettre = document.getElementById('nLettre').value.trim().toUpperCase();
     var warn = document.getElementById('letterWarn');
 
     if (!prenom) { document.getElementById('nPrenom').focus(); return; }
+    if (!nomFamille) { document.getElementById('nNom').focus(); return; }
     if (!lettre) { document.getElementById('nLettre').focus(); return; }
 
     // La lettre identifie le dressing dans les CSV Whatnot : elle doit rester unique
@@ -341,9 +349,10 @@
     clientes.push({
       key: cle,
       prenom: prenom,
-      nom: document.getElementById('nNom').value.trim() || prenom,
+      nom: prenom + ' ' + nomFamille,
       email: document.getElementById('nEmail').value.trim(),
       tel: document.getElementById('nTel').value.trim(),
+      adresse: document.getElementById('nAdresse').value.trim(),
       lettre: lettre,
       apporteur: document.getElementById('nApporteur').value,
       pct: parseInt(document.getElementById('nCommission').value, 10) || 30,
@@ -352,7 +361,7 @@
       vignette: vignetteEnCours
     });
     persist();
-    creerFicheDetaillee(cle, prenom, lettre);
+    creerFicheDetaillee(cle, prenom, lettre, prenom + ' ' + nomFamille);
     sagaTracer('Création cliente', prenom + ' (' + lettre + ')');
 
     toggleNewForm();   // ferme et vide le formulaire
@@ -361,24 +370,22 @@
 
   /* La page fiche lit `clients_data` : sans cette entrée, une cliente créée
      ici n'aurait aucune fiche à ouvrir. */
-  function creerFicheDetaillee(cle, prenom, lettre) {
+  function creerFicheDetaillee(cle, prenom, lettre, nomComplet) {
     var fiches = sagaLoad('clients_data', {});
     if (fiches[cle]) return;
     fiches[cle] = {
       prenom: prenom,
-      nom: document.getElementById('nNom').value.trim() || prenom,
+      nom: nomComplet,
       lettre: lettre,
       statut: 'Active',
       tel: document.getElementById('nTel').value.trim(),
       email: document.getElementById('nEmail').value.trim(),
-      adresse: '',
+      adresse: document.getElementById('nAdresse').value.trim(),
       commission: parseInt(document.getElementById('nCommission').value, 10) || 30,
       apporteur: document.getElementById('nApporteur').value || null,
       apporteurPct: document.getElementById('nApporteur').value ? 8 : 0,
       depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
-      pending: null,
-      lives: [],
-      notes: []
+      pending: null
     };
     sagaSave('clients_data', fiches);
   }

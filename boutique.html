@@ -43,9 +43,10 @@
                 <input type="text" id="dressSearch" placeholder="Rechercher une cliente (nom ou lettre)…" autocomplete="off" />
               </div>
             </div>
+            <p class="card-note" id="dressAide" style="margin:0 0 12px;">—</p>
             <div style="display:flex; gap:8px; margin-bottom:12px;">
-              <button class="btn btn-ghost btn-sm" onclick="selectDressings(true)">Tout sélectionner</button>
-              <button class="btn btn-ghost btn-sm" onclick="selectDressings(false)">Tout désélectionner</button>
+              <button class="btn btn-ghost btn-sm" onclick="selectDressings(true)">Tout cocher</button>
+              <button class="btn btn-ghost btn-sm" onclick="selectDressings(false)">Tout décocher</button>
             </div>
             <div id="dressList" class="dress-list"></div>
             <p class="card-note" style="margin-top:12px;">
@@ -201,12 +202,16 @@
     return (c && c.vignette) || '';
   }
 
+  /* Avec cent dressings, tout afficher devient illisible : la liste ne montre
+     que les clientes retenues. Les autres se trouvent par la recherche. */
   function dressingsVisibles() {
     var q = (document.getElementById('dressSearch').value || '').trim().toLowerCase();
-    if (!q) return clientes;
-    return clientes.filter(function (c) {
-      return (c.nom + ' ' + c.prenom + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
-    });
+    if (q) {
+      return clientes.filter(function (c) {
+        return (c.nom + ' ' + c.prenom + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
+      });
+    }
+    return clientes.filter(function (c) { return config.selection[c.lettre]; });
   }
 
   function selectDressings(tout) {
@@ -218,6 +223,15 @@
 
   function renderDressings() {
     var liste = dressingsVisibles();
+    var q = (document.getElementById('dressSearch').value || '').trim();
+    var choisies = clientes.filter(function (c) { return config.selection[c.lettre]; }).length;
+
+    document.getElementById('dressAide').textContent = q
+      ? 'Résultats de la recherche — cochez pour ajouter à la boutique.'
+      : (choisies
+          ? 'Seules les clientes retenues sont affichées. Utilisez la recherche pour en ajouter.'
+          : 'Aucune cliente retenue. Recherchez une cliente pour l\'ajouter à la boutique.');
+
     document.getElementById('dressList').innerHTML = liste.map(function (c) {
       var img = imageDe(c.lettre);
       var vign = img
@@ -233,7 +247,8 @@
         '<input type="file" accept="image/*" id="img_' + c.lettre + '" style="display:none;" onchange="changeImage(\'' + c.lettre + '\', this)" />' +
         '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.lettre + '\').click()">Changer</button>' +
       '</label>';
-    }).join('') || '<p class="card-note">Aucune cliente ne correspond.</p>';
+    }).join('') || '<p class="card-note">' +
+      (q ? 'Aucune cliente ne correspond à « ' + q + ' ».' : 'Recherchez une cliente pour la retenir.') + '</p>';
 
     var n = clientes.filter(function (c) { return config.selection[c.lettre]; }).length;
     document.getElementById('dressCount').textContent = n + ' sélectionné(s) sur ' + clientes.length;

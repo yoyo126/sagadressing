@@ -232,6 +232,81 @@ var SAGA_LIVES_DEFAUT = [
     paiements: { M: { date: '2026-07-22', mode: 'Virement' }, C: { date: '2026-07-22', mode: 'Virement' }, B: { date: '2026-07-22', mode: 'Virement' } }
   },
   {
+    id: 'l-20260703', date: '2026-07-03', titre: 'Live du 3 juillet',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-07-04' },
+    articles: [
+      { id: 'g1', libelle: 'Manteau long camel',   lettre: 'M', montant: 640, type: 'vente' },
+      { id: 'g2', libelle: 'Lot 6 hauts été',      lettre: 'M', montant: 1000, type: 'vente' },
+      { id: 'g3', libelle: 'Sandales cuir T38',    lettre: 'C', montant: 480, type: 'vente' }
+    ],
+    paiements: {}
+  },
+  {
+    id: 'l-20260625', date: '2026-06-25', titre: 'Live du 25 juin',
+    categorie: "Robes d'été", fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-06-26' },
+    articles: [
+      { id: 'h1', libelle: 'Robe longue imprimée', lettre: 'C', montant: 890, type: 'vente' },
+      { id: 'h2', libelle: 'Kimono soie',          lettre: 'C', montant: 560, type: 'vente' },
+      { id: 'h3', libelle: 'Chapeau paille',       lettre: 'R', montant: 120, type: 'vente' }
+    ],
+    paiements: { C: { date: '2026-06-30', mode: 'Virement' }, R: { date: '2026-06-30', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260619', date: '2026-06-19', titre: 'Live du 19 juin',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-06-20' },
+    articles: [
+      { id: 'i1', libelle: 'Blouse brodée',        lettre: 'M', montant: 425, type: 'vente' },
+      { id: 'i2', libelle: 'Pantalon lin blanc',   lettre: 'M', montant: 680, type: 'vente' },
+      { id: 'i3', libelle: 'Sac cabas raphia',     lettre: 'P', montant: 340, type: 'vente' }
+    ],
+    paiements: { M: { date: '2026-06-24', mode: 'Virement' }, P: { date: '2026-06-24', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260612', date: '2026-06-12', titre: 'Live du 12 juin',
+    categorie: 'Sacs & accessoires', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-06-13' },
+    articles: [
+      { id: 'j1', libelle: 'Sac bandoulière cuir', lettre: 'B', montant: 980, type: 'vente' },
+      { id: 'j2', libelle: 'Lot ceintures',        lettre: 'B', montant: 700, type: 'vente' },
+      { id: 'j3', libelle: 'Lunettes vintage',     lettre: 'D', montant: 260, type: 'vente' }
+    ],
+    paiements: { B: { date: '2026-06-17', mode: 'Virement' }, D: { date: '2026-06-17', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260608', date: '2026-06-08', titre: 'Live du 8 juin',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-06-09' },
+    articles: [
+      { id: 'k1', libelle: 'Veste tailleur',       lettre: 'F', montant: 890, type: 'vente' },
+      { id: 'k2', libelle: 'Lot 3 jupes',          lettre: 'F', montant: 560, type: 'vente' }
+    ],
+    paiements: { F: { date: '2026-06-12', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260522', date: '2026-05-22', titre: 'Live du 22 mai',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-05-23' },
+    articles: [
+      { id: 'm1', libelle: 'Trench mi-saison',     lettre: 'M', montant: 480, type: 'vente' },
+      { id: 'm2', libelle: 'Lot accessoires',      lettre: 'M', montant: 300, type: 'vente' },
+      { id: 'm3', libelle: 'Bottines daim',        lettre: 'T', montant: 290, type: 'vente' }
+    ],
+    paiements: { M: { date: '2026-05-27', mode: 'Virement' }, T: { date: '2026-05-27', mode: 'Virement' } }
+  },
+  {
+    id: 'l-20260424', date: '2026-04-24', titre: 'Live du 24 avril',
+    categorie: 'Mix saison', fraisPct: 0,
+    encaisse: { statut: 'Reçu', date: '2026-04-25' },
+    articles: [
+      { id: 'n1', libelle: 'Pull cachemire',       lettre: 'M', montant: 345, type: 'vente' },
+      { id: 'n2', libelle: 'Lot 2 robes hiver',    lettre: 'M', montant: 200, type: 'vente' }
+    ],
+    paiements: { M: { date: '2026-04-29', mode: 'Virement' } }
+  },
+  {
     id: 'l-20260713', date: '2026-07-13', titre: 'Live du 13 juillet',
     categorie: 'Mix saison', fraisPct: 0,
     encaisse: { statut: 'Reçu', date: '2026-07-14' },
@@ -421,6 +496,153 @@ function sagaDecalageJours(iso) {
   return Math.round((new Date(iso + 'T00:00:00') - new Date(sagaAujourdhui() + 'T00:00:00')) / 86400000);
 }
 
+/* ============================================================
+   Ventes d'une cliente — source unique
+   Les ventes vivaient en double : une copie dans la fiche cliente,
+   une autre dans le store des lives. Les deux divergeaient (live
+   supprimé encore visible, cliente absente de sa propre fiche…).
+   Tout est désormais dérivé de `lives` + `ventes_directes`.
+   ============================================================ */
+
+function sagaVentesDirectes() { return sagaLoad('ventes_directes', SAGA_VENTES_DIRECTES_DEFAUT); }
+function sagaSaveVentesDirectes(v) { return sagaSave('ventes_directes', v); }
+
+var SAGA_VENTES_DIRECTES_DEFAUT = [
+  { id: 'vd1', date: '2026-07-28', lettre: 'F', libelle: 'Sac vendu en main propre',
+    montant: 260, frais: 0, mode: 'Remise en main propre', paye: 0 },
+  { id: 'vd2', date: '2026-07-22', lettre: 'M', libelle: 'Veste vendue sur Vinted',
+    montant: 245, frais: 5, mode: 'Autre plateforme (Vinted, Leboncoin…)', paye: 1, datePaiement: '2026-07-25' },
+  { id: 'vd3', date: '2026-07-18', lettre: 'B', libelle: 'Lot de foulards',
+    montant: 180, frais: 0, mode: 'Virement direct', paye: 1, datePaiement: '2026-07-20' }
+];
+
+/* Décompte d'une vente hors Whatnot : ni frais de plateforme, ni giveaway */
+function sagaDecompteDirect(v) {
+  var t = sagaTauxDressing(v.lettre);
+  var commSaga = v.montant * t.commission / 100;
+  var commApporteur = v.apporteur ? v.montant * t.apporteurPct / 100 : 0;
+  return {
+    ventes: v.montant, giveaways: 0, base: v.montant,
+    commSaga: commSaga, commApporteur: commApporteur, frais: v.frais || 0,
+    net: v.montant - commSaga - commApporteur - (v.frais || 0),
+    apporteur: v.apporteur ? t.apporteur : ''
+  };
+}
+
+/* Toutes les ventes d'un dressing, lives et hors live réunis, du plus récent au plus ancien.
+   C'est ce que lit la fiche cliente : elle ne conserve plus sa propre copie. */
+function sagaVentesDuDressing(lettre) {
+  var res = [];
+
+  sagaLives().forEach(function (live) {
+    if (sagaLettresDuLive(live).indexOf(lettre) === -1) return;
+    var d = sagaDecompte(live, lettre);
+    res.push({
+      origine: 'live', liveId: live.id, date: live.date, label: live.titre,
+      lettre: lettre, ventes: d.ventes, giveaways: d.giveaways,
+      commission: d.commSaga, apporteurMontant: d.commApporteur, frais: 0,
+      net: d.net, paye: d.paye ? 1 : 0,
+      datePaiement: d.paye ? d.paiement.date : '', modePaiement: d.paye ? d.paiement.mode : '',
+      nbArticles: d.articles.length
+    });
+  });
+
+  sagaVentesDirectes().filter(function (v) { return v.lettre === lettre; }).forEach(function (v) {
+    var d = sagaDecompteDirect(v);
+    res.push({
+      origine: 'direct', venteId: v.id, date: v.date, label: v.libelle,
+      lettre: lettre, ventes: d.ventes, giveaways: 0,
+      commission: d.commSaga, apporteurMontant: d.commApporteur, frais: d.frais,
+      net: d.net, paye: v.paye ? 1 : 0,
+      datePaiement: v.datePaiement || '', modePaiement: v.paye ? 'Virement' : '',
+      nbArticles: 1
+    });
+  });
+
+  return res.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+}
+
+/* Marque une vente réglée, quel que soit son support de stockage */
+function sagaMarquerPayee(vente, dateIso) {
+  if (vente.origine === 'live') {
+    var lives = sagaLives();
+    var live = lives.filter(function (l) { return l.id === vente.liveId; })[0];
+    if (!live) return false;
+    live.paiements = live.paiements || {};
+    live.paiements[vente.lettre] = { date: dateIso, mode: 'Virement' };
+    return sagaSaveLives(lives);
+  }
+  var ventes = sagaVentesDirectes();
+  var v = ventes.filter(function (x) { return x.id === vente.venteId; })[0];
+  if (!v) return false;
+  v.paye = 1; v.datePaiement = dateIso;
+  return sagaSaveVentesDirectes(ventes);
+}
+
+function sagaAnnulerPaiement(vente) {
+  if (vente.origine === 'live') {
+    var lives = sagaLives();
+    var live = lives.filter(function (l) { return l.id === vente.liveId; })[0];
+    if (!live || !live.paiements) return false;
+    delete live.paiements[vente.lettre];
+    return sagaSaveLives(lives);
+  }
+  var ventes = sagaVentesDirectes();
+  var v = ventes.filter(function (x) { return x.id === vente.venteId; })[0];
+  if (!v) return false;
+  v.paye = 0; delete v.datePaiement;
+  return sagaSaveVentesDirectes(ventes);
+}
+
+/* ============================================================
+   Notes et choses à faire — partagées
+   Une note peut être rattachée à une cliente (lettre) ou rester
+   générale : les deux vues lisent la même liste.
+   ============================================================ */
+
+var SAGA_NOTES_DEFAUT = [
+  { id: 'n1', type: 'todo', lettre: 'M', texte: "Rendre à Fanny les 3 pièces d'hiver mises de côté.", date: '2026-08-10', done: false },
+  { id: 'n2', type: 'note', lettre: 'M', texte: 'Préfère les lives le mardi soir. Ne veut pas vendre les pièces Sézane sous 25 €.', date: '2026-07-18', done: false },
+  { id: 'n3', type: 'todo', lettre: 'C', texte: 'Relancer Julie pour la signature de son contrat.', date: '2026-08-12', done: false },
+  { id: 'n4', type: 'todo', lettre: '',  texte: 'Commander des housses et des étiquettes.', date: '2026-08-13', done: false },
+  { id: 'n5', type: 'todo', lettre: 'B', texte: 'Récupérer le dressing de Camille (12 caisses).', date: '2026-08-05', done: true },
+  { id: 'n6', type: 'note', lettre: '',  texte: 'Whatnot passe en promo 0 frais du 20 au 25 août.', date: '2026-08-11', done: false }
+];
+
+function sagaNotes() { return sagaLoad('notes', SAGA_NOTES_DEFAUT); }
+function sagaSaveNotes(n) { return sagaSave('notes', n); }
+
+function sagaAjouterNote(type, texte, lettre) {
+  var notes = sagaNotes();
+  notes.unshift({
+    id: 'n' + Date.now(), type: type, lettre: lettre || '',
+    texte: texte, date: sagaAujourdhui(), done: false
+  });
+  sagaSaveNotes(notes);
+  sagaTracer(type === 'todo' ? 'Ajout à faire' : 'Ajout note', texte.slice(0, 60));
+  return notes;
+}
+
+function sagaBasculerNote(id) {
+  var notes = sagaNotes();
+  var n = notes.filter(function (x) { return x.id === id; })[0];
+  if (n) { n.done = !n.done; sagaSaveNotes(notes); }
+  return notes;
+}
+
+function sagaSupprimerNote(id) {
+  var notes = sagaNotes().filter(function (x) { return x.id !== id; });
+  sagaSaveNotes(notes);
+  return notes;
+}
+
+// Étiquette de la cliente rattachée, pour l'affichage
+function sagaEtiquetteNote(note) {
+  if (!note.lettre) return '';
+  var i = sagaInfosCliente(note.lettre);
+  return i.nom + ' (' + note.lettre + ')';
+}
+
 var SAGA_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
 function sagaEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
@@ -526,9 +748,19 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.4.0';
+var SAGA_VERSION = '1.5.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.5.0', date: '2026-08-14', titre: 'Source unique des ventes', points: [
+    'Les ventes ne sont plus recopiées sur la fiche cliente : lives et ventes hors live sont la seule source',
+    'Un live supprimé disparaît partout ; une cliente ajoutée à un live apparaît aussitôt sur sa fiche',
+    'Notes et choses à faire partagées, avec vue générale sur le tableau de bord',
+    'Création cliente alignée sur celle des apporteurs : prénom, nom, adresse',
+    'Mot de passe définissable à la création d\'un utilisateur',
+    'Boutique : seules les clientes retenues sont affichées, les autres se trouvent par la recherche',
+    'Cartes du tableau de bord adaptées à la largeur disponible',
+    'Logo agrandi dans les documents PDF'
+  ]},
   { version: '1.4.0', date: '2026-08-14', titre: 'Lisibilité, journal et calendriers', points: [
     'Typographie agrandie sur toute l\'application',
     'Logo repris dans le menu et sur tous les documents',
