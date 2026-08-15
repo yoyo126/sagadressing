@@ -140,11 +140,19 @@
             </div>
             <div class="form-field">
               <label class="form-label" for="aType">Type</label>
-              <select class="form-select" id="aType">
+              <select class="form-select" id="aType" onchange="majChampGiveaway()">
                 <option value="vente">Vente Whatnot</option>
                 <option value="horslive">Vente hors Whatnot (pas de frais plateforme)</option>
-                <option value="giveaway">Giveaway (déduit du net)</option>
+                <option value="giveaway">Giveaway (cadeau offert)</option>
               </select>
+            </div>
+            <div class="form-field" id="aFraisField" style="display:none;">
+              <label class="form-label" for="aFrais">Frais de port du cadeau (€)</label>
+              <input class="form-input" type="number" id="aFrais" step="0.01" placeholder="Ex. 6" />
+              <span class="card-note">
+                Saga finance le cadeau ; seuls les frais de port sont refacturés à la cliente,
+                dans la limite de 10 € par live.
+              </span>
             </div>
             <div style="display:flex; gap:10px;">
               <button class="btn btn-primary btn-sm" id="aSubmit" onclick="enregistrerArticle()">Ajouter l'article</button>
@@ -173,9 +181,13 @@
               <strong>Base</strong> = ventes × (1 − frais Whatnot %)<br/>
               <strong>Commission Saga</strong> = base × % cliente<br/>
               <strong>Commission apporteur</strong> = base × % apporteur<br/>
-              <strong>Net reversé</strong> = base − giveaways − commission Saga − commission apporteur
+              <strong>Net reversé</strong> = base − commission Saga − commission apporteur − frais de port des cadeaux
             </p>
-            <p class="card-note">Les ventes hors Whatnot ne supportent pas les frais de plateforme.</p>
+            <p class="card-note">
+              Les ventes hors Whatnot ne supportent pas les frais de plateforme.
+              Les cadeaux offerts sont financés par Saga : seuls leurs frais de port sont
+              refacturés à la cliente, dans la limite de 10 € par live.
+            </p>
           </div>
           <div class="panel">
             <div class="panel-head"><h2>Encaissement Whatnot</h2></div>
@@ -386,11 +398,18 @@
     if (!ouvert) document.getElementById('aLibelle').focus();
   }
 
+  function majChampGiveaway() {
+    document.getElementById('aFraisField').style.display =
+      document.getElementById('aType').value === 'giveaway' ? 'flex' : 'none';
+  }
+
   function resetArticleForm() {
     articleEnEdition = null;
     document.getElementById('aLibelle').value = '';
     document.getElementById('aMontant').value = '';
+    document.getElementById('aFrais').value = '';
     document.getElementById('aType').value = 'vente';
+    majChampGiveaway();
     if (filtreValide()) document.getElementById('aLettre').value = FILTRE;
     document.getElementById('aSubmit').textContent = "Ajouter l'article";
   }
@@ -404,6 +423,8 @@
     document.getElementById('aLettre').value = a.lettre;
     document.getElementById('aMontant').value = a.montant;
     document.getElementById('aType').value = a.type;
+    document.getElementById('aFrais').value = a.frais || '';
+    majChampGiveaway();
     document.getElementById('aSubmit').textContent = 'Enregistrer la correction';
     document.getElementById('aLibelle').focus();
   }
@@ -420,6 +441,7 @@
       montant: montant,
       type: document.getElementById('aType').value
     };
+    if (champs.type === 'giveaway') champs.frais = parseFloat(document.getElementById('aFrais').value) || 0;
 
     var message = '';
     if (articleEnEdition) {
@@ -559,10 +581,11 @@
       ['Ventes', sagaEUR(d.ventes)],
       ['Base après frais Whatnot (' + (LIVE.fraisPct || 0) + ' %)', sagaEUR(d.base)]
     ];
-    if (d.giveaways > 0) l.push(['− Giveaways', sagaEUR(d.giveaways)]);
     l.push(['− Commission Saga', sagaEUR(d.commSaga)]);
     if (d.apporteur) l.push(['− Commission apporteur (' + d.apporteur + ')', sagaEUR(d.commApporteur)]);
+    if (d.portGiveaway > 0) l.push(['− Frais de port des cadeaux', sagaEUR(d.portGiveaway)]);
     l.push(['Net à reverser', sagaEUR(d.net)]);
+    if (d.giveaways > 0) l.push(['Cadeaux offerts (à la charge de Saga)', sagaEUR(d.giveaways)]);
     return l;
   }
 

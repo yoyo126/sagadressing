@@ -123,7 +123,9 @@
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h2>CA par semaine</h2></div>
+          <div class="panel-head"><h2>CA par semaine</h2>
+            <span class="panel-link" style="color:var(--ink-faint);">cliquez une barre</span>
+          </div>
           <div class="bar-chart" id="repChart"></div>
           <p class="card-note" style="margin-top:14px;" id="repChartNote">—</p>
         </div>
@@ -570,7 +572,8 @@
     chart.innerHTML = weeks.map(function (w) {
       var h = Math.max(6, byWeek[w] / max * 100);
       var peak = byWeek[w] === max ? ' peak' : '';
-      return '<div class="bar' + peak + '" title="' + w + ' : ' + fmtEUR(byWeek[w]) + '">' +
+      return '<div class="bar' + peak + '" data-semaine="' + w + '" role="button" tabindex="0"' +
+             ' title="' + w + ' : ' + fmtEUR(byWeek[w]) + ' — cliquez pour le détail">' +
              '<div class="bar-fill" style="height:' + h + '%"></div>' +
              '<span class="bar-label">' + w + '</span></div>';
     }).join('');
@@ -578,6 +581,77 @@
     var best = weeks.reduce(function (a, b) { return byWeek[a] >= byWeek[b] ? a : b; });
     note.textContent = 'Meilleure semaine : ' + best + ' avec ' + fmtEUR(byWeek[best]) + ' de ventes.';
   }
+
+  /* ============ Détail d'une semaine ============
+     Une barre du graphique répondait seulement à l'infobulle : elle ouvre
+     désormais le détail des sessions de la semaine concernée. */
+  function ouvrirSemaine(cle) {
+    var numero = parseInt(cle.slice(1), 10);
+    var lignes = filteredVentes().filter(function (v) { return isoWeek(v.date) === numero; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    if (lignes.length === 0) return;
+
+    var t = totaux(lignes);
+    var du = lignes[lignes.length - 1].date, au = lignes[0].date;
+
+    var corps =
+      '<div class="calc-recap" style="margin-bottom:16px;">' +
+        '<div class="calc-row"><span>Chiffre d\'affaires</span><span class="tabular">' + fmtEUR(t.ventes) + '</span></div>' +
+        '<div class="calc-row"><span>dont hors live</span><span class="tabular">' + fmtEUR(t.direct) + '</span></div>' +
+        '<div class="calc-row"><span>Commission Saga</span><span class="tabular">' + fmtEUR(t.saga) + '</span></div>' +
+        '<div class="calc-row total"><span>Net reversé aux clientes</span><span class="tabular">' + fmtEUR(t.net) + '</span></div>' +
+      '</div>' +
+      '<div class="table-scroll"><table><thead><tr>' +
+        '<th>Date</th><th>Session</th><th>Cliente</th><th class="num">Ventes</th><th class="num">Net</th><th>Règlement</th>' +
+      '</tr></thead><tbody>' +
+      lignes.map(function (v) {
+        return '<tr>' +
+          '<td class="muted">' + sagaDateFR(v.date) + '</td>' +
+          '<td>' + (v.liveId ? '<a href="live.html?l=' + v.liveId + '&c=' + v.lettre + '" style="color:var(--brand-strong);">' + v.session + '</a>' : v.session) +
+            (v.source === 'direct' ? ' <span class="chip neutral">Hors live</span>' : '') + '</td>' +
+          '<td>' + v.nom + ' (' + v.lettre + ')</td>' +
+          '<td class="num tabular">' + fmtEUR(v.ventes) + '</td>' +
+          '<td class="num tabular"><strong>' + fmtEUR(v.net) + '</strong></td>' +
+          '<td>' + (v.paye ? '<span class="chip good">Payé</span>' : '<span class="chip warn">En attente</span>') + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+    afficherFenetre('Semaine ' + numero + ' — du ' + sagaDateFR(du) + ' au ' + sagaDateFR(au) +
+                    ' · ' + lignes.length + ' session(s)', corps);
+  }
+
+  function afficherFenetre(titre, corpsHtml) {
+    var f = document.createElement('div');
+    f.className = 'modale';
+    f.innerHTML =
+      '<div class="modale-boite" style="width:min(780px,100%);">' +
+        '<div class="modale-tete"><h2>' + titre + '</h2>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer aria-label="Fermer">✕</button></div>' +
+        '<div class="modale-corps">' + corpsHtml + '</div>' +
+      '</div>';
+    document.body.appendChild(f);
+    document.body.classList.add('modale-ouverte');
+
+    function fermer() {
+      f.remove();
+      document.body.classList.remove('modale-ouverte');
+      document.removeEventListener('keydown', auClavier);
+    }
+    function auClavier(e) { if (e.key === 'Escape') fermer(); }
+    f.querySelector('[data-fermer]').onclick = fermer;
+    f.addEventListener('mousedown', function (e) { if (e.target === f) fermer(); });
+    document.addEventListener('keydown', auClavier);
+  }
+
+  document.getElementById('repChart').addEventListener('click', function (e) {
+    var barre = e.target.closest('[data-semaine]');
+    if (barre) ouvrirSemaine(barre.dataset.semaine);
+  });
+  document.getElementById('repChart').addEventListener('keydown', function (e) {
+    var barre = e.target.closest('[data-semaine]');
+    if (barre && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ouvrirSemaine(barre.dataset.semaine); }
+  });
 
   document.getElementById('sourceToggle').addEventListener('click', function (e) {
     var btn = e.target.closest('button');

@@ -54,8 +54,13 @@ function renderSagaSidebar(activeKey) {
     });
   });
   html += '</nav>';
-  html += '<div class="sidebar-foot"><div class="user-chip"><div class="user-avatar">SG</div>' +
-          '<div class="user-meta"><div class="user-name">Sarah</div><div class="user-role">Gérante</div></div></div></div>';
+  var moi = sagaUtilisateurCourant();
+  html += '<div class="sidebar-foot">' +
+    '<div class="user-chip"><div class="user-avatar">' + sagaInitiales(moi) + '</div>' +
+      '<div class="user-meta"><div class="user-name">' + sagaNomComplet(moi) + '</div>' +
+      '<div class="user-role">' + ((SAGA_ROLES[moi.role] || {}).label || 'Utilisateur') + '</div></div></div>' +
+    '<a class="version-crm" href="parametres.html" title="Voir l\'historique des versions">Version ' + SAGA_VERSION + '</a>' +
+  '</div>';
 
   root.innerHTML = html;
 
@@ -218,7 +223,7 @@ var SAGA_LIVES_DEFAUT = [
       { id: 'a3',  libelle: 'Lot 3 foulards soie',       lettre: 'M', montant: 95,  type: 'vente' },
       { id: 'a4',  libelle: 'Escarpins vernis T37',      lettre: 'M', montant: 120, type: 'vente' },
       { id: 'a5',  libelle: 'Robe portefeuille fleurie', lettre: 'M', montant: 845, type: 'vente' },
-      { id: 'a6',  libelle: 'Pochette brodée — giveaway',lettre: 'M', montant: 60,  type: 'giveaway' },
+      { id: 'a6',  libelle: 'Pochette brodée — giveaway',lettre: 'M', montant: 60,  type: 'giveaway', frais: 6 },
       { id: 'a7',  libelle: 'Sac seau daim',             lettre: 'C', montant: 310, type: 'vente' },
       { id: 'a8',  libelle: 'Blazer oversize noir',      lettre: 'C', montant: 150, type: 'vente' },
       { id: 'a9',  libelle: 'Lot bijoux fantaisie',      lettre: 'C', montant: 75,  type: 'vente' },
@@ -226,7 +231,7 @@ var SAGA_LIVES_DEFAUT = [
       { id: 'a11', libelle: 'Ceinture cuir tressé',      lettre: 'B', montant: 65,  type: 'vente' },
       { id: 'a12', libelle: 'Bottines chelsea T38',      lettre: 'B', montant: 140, type: 'vente' },
       { id: 'a13', libelle: 'Sac banane matelassé',      lettre: 'B', montant: 1295,type: 'vente' },
-      { id: 'a14', libelle: 'Écharpe cachemire — giveaway', lettre: 'B', montant: 40, type: 'giveaway' }
+      { id: 'a14', libelle: 'Écharpe cachemire — giveaway', lettre: 'B', montant: 40, type: 'giveaway', frais: 4 }
     ],
     paiements: { B: { date: '2026-08-01', mode: 'Virement' } }
   },
@@ -478,6 +483,9 @@ function sagaInfosCliente(lettre) {
    tomber sur un demi-centime : le même montant s'arrondissait alors
    différemment selon l'ordre d'addition, et le total affiché ne
    correspondait plus à la somme des lignes affichées. */
+/* Plafond contractuel des frais de port de giveaways refacturés, par live */
+var SAGA_PLAFOND_PORT_GIVEAWAY = 10;
+
 function sagaCentimes(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 
 /* Décompte d'un dressing sur un live, recalculé depuis ses articles.
@@ -497,12 +505,24 @@ function sagaDecompte(live, lettre) {
   var base = sagaCentimes(soumisFrais * (1 - (live.fraisPct || 0) / 100) + horsLive);
   var commSaga = sagaCentimes(base * t.commission / 100);
   var commApporteur = t.apporteur ? sagaCentimes(base * t.apporteurPct / 100) : 0;
+
+  /* Giveaways : le contrat met le cadeau lui-même à la charge de Saga.
+     Seuls les frais de port sont refacturés à la cliente, plafonnés à
+     SAGA_PLAFOND_PORT_GIVEAWAY par live. La valeur du cadeau reste affichée,
+     mais elle n'est pas déduite de ce qui lui revient. */
+  var portGiveaway = Math.min(
+    arts.filter(function (a) { return a.type === 'giveaway'; })
+        .reduce(function (s, a) { return s + (a.frais || 0); }, 0),
+    SAGA_PLAFOND_PORT_GIVEAWAY
+  );
+
   var paiement = (live.paiements || {})[lettre] || null;
   return {
     lettre: lettre, prenom: t.prenom, articles: arts,
     ventes: sagaCentimes(ventes), giveaways: sagaCentimes(giveaways), base: base,
+    portGiveaway: sagaCentimes(portGiveaway),
     commSaga: commSaga, commApporteur: commApporteur, apporteur: t.apporteur,
-    net: sagaCentimes(base - giveaways - commSaga - commApporteur),
+    net: sagaCentimes(base - commSaga - commApporteur - portGiveaway),
     paye: !!paiement, paiement: paiement
   };
 }
@@ -515,15 +535,16 @@ function sagaLettresDuLive(live) {
 }
 
 function sagaTotauxLive(live) {
-  var t = { ventes: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, net: 0, reste: 0, clientes: 0 };
+  var t = { ventes: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, portGiveaway: 0, net: 0, reste: 0, clientes: 0 };
   sagaLettresDuLive(live).forEach(function (lettre) {
     var d = sagaDecompte(live, lettre);
     t.clientes++;
     t.ventes += d.ventes; t.giveaways += d.giveaways; t.base += d.base;
     t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
+    t.portGiveaway += d.portGiveaway;
     if (!d.paye) t.reste += d.net;
   });
-  ['ventes','giveaways','base','commSaga','commApporteur','net','reste']
+  ['ventes','giveaways','base','commSaga','commApporteur','portGiveaway','net','reste']
     .forEach(function (k) { t[k] = sagaCentimes(t[k]); });
   return t;
 }
@@ -803,9 +824,18 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.6.0';
+var SAGA_VERSION = '1.7.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.7.0', date: '2026-08-14', titre: 'Giveaways, agenda et lecture des chiffres', points: [
+    'Giveaways : Saga finance le cadeau, seuls les frais de port sont refacturés (10 € max par live)',
+    'Le reste à reverser se décompose entre lives et hors live, pour être rapproché de la page Lives',
+    'Tableau de bord : l\'agenda prend la colonne de droite',
+    'Agenda : le formulaire devient une fenêtre, ouverte à la demande',
+    'Rapports : chaque barre du graphique ouvre le détail de sa semaine',
+    'Version du CRM affichée en bas du menu',
+    'Sous-menus défilants et recentrés sur téléphone'
+  ]},
   { version: '1.6.0', date: '2026-08-14', titre: 'Calculs vérifiés et usage sur téléphone', points: [
     'Les ventes hors live manquaient au tableau de bord et aux rapports : 685 € non comptés',
     'Le reste à reverser portait sur la période affichée, il porte désormais sur la dette entière',
@@ -1062,8 +1092,20 @@ function initRowLinks(root) {
 
 function initTabs(root) {
   (root || document).querySelectorAll('.tabs').forEach(tabs => {
+    // Sur petit écran la barre défile : on amène l'onglet choisi sous les yeux
     tabs.querySelectorAll('.tab-item').forEach(tab => {
       tab.addEventListener('click', () => {
+        /* On centre l'onglet choisi dans la barre. Le calcul se fait par
+           rapport à la barre elle-même : offsetLeft se réfère au premier
+           ancêtre positionné, qui n'est pas forcément celui-ci. */
+        if (tabs.scrollWidth > tabs.clientWidth) {
+          const cadre = tabs.getBoundingClientRect();
+          const cible = tab.getBoundingClientRect();
+          tabs.scrollTo({
+            left: Math.max(0, tabs.scrollLeft + (cible.left - cadre.left) - (cadre.width - cible.width) / 2),
+            behavior: 'smooth'
+          });
+        }
         tabs.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         const panelId = tab.dataset.tab;

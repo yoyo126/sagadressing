@@ -17,6 +17,10 @@
           <p class="topbar-sub">Récupérations de dressing, lives programmés, autres rendez-vous</p>
         </div>
         <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="ouvrirFenetreEvenement()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nouvel événement
+          </button>
           <div class="search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="searchAgenda" placeholder="Rechercher un événement…" />
@@ -58,10 +62,22 @@
             </div>
             <div class="calendar-mini" id="calendrier"></div>
             <p class="card-note" style="margin-top:10px;">Cliquez sur un jour pour voir ce qu'il contient.</p>
+            <button class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; margin-top:10px;"
+                    onclick="ouvrirFenetreEvenement()">Ajouter un événement ce jour-là</button>
           </div>
 
-          <div class="panel">
-            <div class="panel-head"><h2 id="formTitre">Nouvel événement</h2></div>
+        </div>
+      </section>
+
+
+      <!-- Fenêtre de saisie d'un événement -->
+      <div class="modale" id="fenetreEvenement" style="display:none;">
+        <div class="modale-boite">
+          <div class="modale-tete">
+            <h2 id="formTitre">Nouvel événement</h2>
+            <button class="btn btn-ghost btn-sm" onclick="fermerFenetreEvenement()" aria-label="Fermer">✕</button>
+          </div>
+          <div class="modale-corps">
             <div class="form-grid">
               <div class="form-field">
                 <label class="form-label">Type</label>
@@ -109,9 +125,10 @@
                 <button class="btn btn-ghost" id="evtCancel" onclick="annulerEdition()" style="display:none;">Annuler</button>
               </div>
             </div>
+          
           </div>
         </div>
-      </section>
+      </div>
 
       <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
     </div>
@@ -319,6 +336,34 @@
       : 'Cherchez chaque cliente dont vous récupérez le dressing ce jour-là.';
   }
 
+  /* ============ Fenêtre de saisie ============
+     Le formulaire encombrait la colonne de droite en permanence ; il ne
+     s'ouvre plus que lorsqu'on en a besoin. */
+  function ouvrirFenetreEvenement(dateProposee) {
+    if (!enEdition) {
+      resetFormulaire();
+      document.getElementById('evtDate').value = dateProposee || jourSelectionne || sagaAujourdhui();
+    }
+    document.getElementById('fenetreEvenement').style.display = 'flex';
+    document.body.classList.add('modale-ouverte');
+  }
+
+  function fermerFenetreEvenement() {
+    document.getElementById('fenetreEvenement').style.display = 'none';
+    document.body.classList.remove('modale-ouverte');
+    enEdition = null;
+    resetFormulaire();
+  }
+
+  document.getElementById('fenetreEvenement').addEventListener('mousedown', function (e) {
+    if (e.target.id === 'fenetreEvenement') fermerFenetreEvenement();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.getElementById('fenetreEvenement').style.display === 'flex') {
+      fermerFenetreEvenement();
+    }
+  });
+
   function modifierEvenement(id) {
     var e = evenements.filter(function (x) { return x.id === id; })[0];
     if (!e) return;
@@ -340,12 +385,11 @@
     document.getElementById('formTitre').textContent = "Modifier l'événement";
     document.getElementById('evtSubmit').textContent = 'Enregistrer les modifications';
     document.getElementById('evtCancel').style.display = '';
+    document.getElementById('fenetreEvenement').style.display = 'flex';
+    document.body.classList.add('modale-ouverte');
   }
 
-  function annulerEdition() {
-    enEdition = null;
-    resetFormulaire();
-  }
+  function annulerEdition() { fermerFenetreEvenement(); }
 
   function resetFormulaire() {
     document.getElementById('evtComment').value = '';
@@ -392,8 +436,7 @@
     }
 
     persist();
-    enEdition = null;
-    resetFormulaire();
+    fermerFenetreEvenement();
     moisAffiche = new Date(date + 'T00:00:00');
     renderCalendrier();
     renderListe();

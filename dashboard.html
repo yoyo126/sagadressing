@@ -55,6 +55,7 @@
           </div>
           <div class="kpi-value tabular" data-field="reste">2 145 €</div>
           <div class="kpi-delta" data-field="resteMeta">auprès de 4 clientes</div>
+          <div class="kpi-delta" data-field="resteDetail"></div>
           <div class="kpi-spark" data-field="resteSpark"></div>
         </div>
 
@@ -81,7 +82,7 @@
 
       <section class="content-grid">
         <div class="side-col">
-        <div class="panel">
+<div class="panel">
           <div class="panel-head">
             <h2>Notes et choses à faire</h2>
             <div class="toggle-group" id="notesFiltre">
@@ -110,14 +111,7 @@
           </div>
         </div>
 
-          <div class="panel">
-            <div class="panel-head"><h2>Agenda</h2><a class="panel-link" href="agenda.html">Tout voir →</a></div>
-            <ul class="agenda-list" id="dashAgenda"></ul>
-          </div>
-        </div>
-
-        <div class="side-col">
-          <div class="panel">
+<div class="panel">
             <div class="panel-head">
               <h2>Signatures en attente</h2>
               <span class="chip warn" id="signPendingCount">4</span>
@@ -166,7 +160,13 @@
             </ul>
             <p class="card-note" style="margin-top:12px;">Mis à jour automatiquement par Yousign dès qu'une cliente ouvre ou signe un document.</p>
           </div>
+        </div>
 
+        <div class="side-col">
+<div class="panel">
+            <div class="panel-head"><h2>Agenda</h2><a class="panel-link" href="agenda.html">Tout voir →</a></div>
+            <ul class="agenda-list" id="dashAgenda"></ul>
+          </div>
         </div>
       </section>
 
@@ -237,10 +237,11 @@
     return VENTES.filter(function (v) { return !v.paye; })
       .reduce(function (a, v) {
         a.montant += v.net;
+        a[v.source] += v.net;
         a.clientes[v.lettre] = true;
         if (v.date < a.plusAncienne) a.plusAncienne = v.date;
         return a;
-      }, { montant: 0, clientes: {}, plusAncienne: '9999-12-31' });
+      }, { montant: 0, live: 0, direct: 0, clientes: {}, plusAncienne: '9999-12-31' });
   }
 
   function evolution(actuel, precedent) {
@@ -283,6 +284,13 @@
       ? 'auprès de ' + nbDues + ' cliente' + (nbDues > 1 ? 's' : '') +
         ' · la plus ancienne du ' + sagaDateFR(dette.plusAncienne)
       : 'tout est à jour';
+
+    /* La page Lives ne montre que les lives : sans ce détail, impossible de
+       rapprocher son total de celui affiché ici, qui inclut le hors live. */
+    document.querySelector('[data-field="resteDetail"]').innerHTML = dette.montant > 0
+      ? '<a href="lives.html" style="color:var(--brand-strong);">' + sagaEUR(dette.live) + ' sur les lives</a>' +
+        ' · ' + sagaEUR(dette.direct) + ' hors live'
+      : '';
 
     var prochains = sagaAgenda().filter(function (e) {
       return e.type === 'Live' && e.date >= sagaAujourdhui();

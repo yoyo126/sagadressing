@@ -905,3 +905,58 @@ tbody td { padding: 11px 8px; }
   .picker-search { padding: 10px; }
   .picker-search input { font-size: 16px; }
 }
+
+/* Version du CRM, en pied de menu */
+.version-crm {
+  display: block; margin-top: 10px; padding: 6px 8px 0;
+  font-size: 0.74rem; color: var(--sidebar-ink-muted);
+  border-top: 1px solid var(--sidebar-line);
+}
+.version-crm:hover { color: var(--sidebar-active-ink); }
+
+/* ---------- Fenêtre modale générique ---------- */
+.modale {
+  position: fixed; inset: 0; z-index: 1005;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(28,23,18,0.5);
+}
+.modale-boite {
+  background: var(--surface); border-radius: 14px;
+  width: min(560px, 100%); max-height: calc(100vh - 48px);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 60px -18px rgba(0,0,0,0.45);
+}
+.modale-tete {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 15px 18px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+.modale-corps { padding: 18px; overflow-y: auto; }
+body.modale-ouverte { overflow: hidden; }
+
+@media (max-width: 900px) {
+  .modale { padding: 0; align-items: flex-end; }
+  .modale-boite { width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; }
+}
+
+/* Barres du graphique : cliquables */
+.bar-chart .bar[data-semaine] { cursor: pointer; border-radius: 6px; }
+.bar-chart .bar[data-semaine]:hover .bar-fill,
+.bar-chart .bar[data-semaine]:focus-visible .bar-fill { background: var(--brand); }
+.bar-chart .bar[data-semaine]:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Sous-menus sur petit écran : le défilement doit se voir.
+   Un dégradé sur le bord droit signale qu'il reste des onglets. */
+@media (max-width: 900px) {
+  .panel:has(.tabs), .tabs-enveloppe { position: relative; }
+  .tabs {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+    padding-right: 26px;
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-item { scroll-snap-align: start; padding-left: 12px; padding-right: 12px; }
+  .tab-item.active { scroll-snap-align: center; }
+}
