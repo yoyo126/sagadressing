@@ -268,7 +268,7 @@
       nom: nomComplet,
       initiales: (prenom[0] + nomFamille[0]).toUpperCase(),
       adresse: document.getElementById('aAdresse').value.trim(),
-      tel: document.getElementById('aTel').value.trim(),
+      tel: sagaTelephone(document.getElementById('aTel').value),
       email: document.getElementById('aEmail').value.trim(),
       statutJur: document.getElementById('aStatutJur').value,
       siret: document.getElementById('aSiret').value.trim(),

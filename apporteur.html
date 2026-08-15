@@ -577,7 +577,7 @@
     document.getElementById('kDuSub').textContent = nbDu ? nbDu + ' commission(s) en attente' : 'tout est à jour';
 
     document.getElementById('infoList').innerHTML = [
-      ['Nom complet', A.nom], ['Email', A.email], ['Téléphone', A.tel],
+      ['Nom complet', A.nom], ['Email', A.email], ['Téléphone', sagaTelephone(A.tel)],
       ['Adresse', A.adresse || '—'],
       ['Statut juridique', A.statutJur], ['SIRET', A.siret || '—'],
       ['Commission par défaut', A.pct + ' %'],
@@ -657,7 +657,7 @@
     A.nom = nom;
     A.prenom = document.getElementById('ePrenom').value.trim() || nom;
     A.email = document.getElementById('eEmail').value.trim();
-    A.tel = document.getElementById('eTel').value.trim();
+    A.tel = sagaTelephone(document.getElementById('eTel').value);
     A.adresse = document.getElementById('eAdresse').value.trim();
     A.statutJur = document.getElementById('eStatutJur').value;
     A.siret = document.getElementById('eSiret').value.trim();

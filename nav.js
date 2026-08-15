@@ -223,7 +223,7 @@ var SAGA_LIVES_DEFAUT = [
       { id: 'a3',  libelle: 'Lot 3 foulards soie',       lettre: 'M', montant: 95,  type: 'vente' },
       { id: 'a4',  libelle: 'Escarpins vernis T37',      lettre: 'M', montant: 120, type: 'vente' },
       { id: 'a5',  libelle: 'Robe portefeuille fleurie', lettre: 'M', montant: 845, type: 'vente' },
-      { id: 'a6',  libelle: 'Pochette brodée — giveaway',lettre: 'M', montant: 60,  type: 'giveaway', frais: 6 },
+      { id: 'a6',  libelle: 'Port cadeau — pochette brodée', lettre: 'M', montant: 6, type: 'giveaway' },
       { id: 'a7',  libelle: 'Sac seau daim',             lettre: 'C', montant: 310, type: 'vente' },
       { id: 'a8',  libelle: 'Blazer oversize noir',      lettre: 'C', montant: 150, type: 'vente' },
       { id: 'a9',  libelle: 'Lot bijoux fantaisie',      lettre: 'C', montant: 75,  type: 'vente' },
@@ -231,7 +231,7 @@ var SAGA_LIVES_DEFAUT = [
       { id: 'a11', libelle: 'Ceinture cuir tressé',      lettre: 'B', montant: 65,  type: 'vente' },
       { id: 'a12', libelle: 'Bottines chelsea T38',      lettre: 'B', montant: 140, type: 'vente' },
       { id: 'a13', libelle: 'Sac banane matelassé',      lettre: 'B', montant: 1295,type: 'vente' },
-      { id: 'a14', libelle: 'Écharpe cachemire — giveaway', lettre: 'B', montant: 40, type: 'giveaway', frais: 4 }
+      { id: 'a14', libelle: 'Port cadeau — écharpe cachemire', lettre: 'B', montant: 4, type: 'giveaway' }
     ],
     paiements: { B: { date: '2026-08-01', mode: 'Virement' } }
   },
@@ -506,15 +506,11 @@ function sagaDecompte(live, lettre) {
   var commSaga = sagaCentimes(base * t.commission / 100);
   var commApporteur = t.apporteur ? sagaCentimes(base * t.apporteurPct / 100) : 0;
 
-  /* Giveaways : le contrat met le cadeau lui-même à la charge de Saga.
-     Seuls les frais de port sont refacturés à la cliente, plafonnés à
-     SAGA_PLAFOND_PORT_GIVEAWAY par live. La valeur du cadeau reste affichée,
-     mais elle n'est pas déduite de ce qui lui revient. */
-  var portGiveaway = Math.min(
-    arts.filter(function (a) { return a.type === 'giveaway'; })
-        .reduce(function (s, a) { return s + (a.frais || 0); }, 0),
-    SAGA_PLAFOND_PORT_GIVEAWAY
-  );
+  /* Giveaways : Saga finance le cadeau, la cliente n'en supporte que le port.
+     L'export Whatnot ne connaît pas la valeur du cadeau — le montant remonté
+     sur une ligne de giveaway EST le frais de port. C'est donc lui qu'on
+     refacture, plafonné à SAGA_PLAFOND_PORT_GIVEAWAY par live. */
+  var portGiveaway = Math.min(giveaways, SAGA_PLAFOND_PORT_GIVEAWAY);
 
   var paiement = (live.paiements || {})[lettre] || null;
   return {
@@ -721,6 +717,29 @@ function sagaEtiquetteNote(note) {
 
 var SAGA_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
+/* Numéros de téléphone toujours présentés par paires de chiffres.
+   Saisis collés, copiés depuis un tableur ou importés, ils s'affichent
+   partout de la même façon : 06 12 34 56 78. */
+function sagaTelephone(brut) {
+  if (!brut) return '';
+  var t = String(brut).trim();
+  var international = t.indexOf('+') === 0;
+  var chiffres = t.replace(/\D/g, '');
+
+  // Format international français : +33 6 12 34 56 78
+  if (international && chiffres.indexOf('33') === 0 && chiffres.length === 11) {
+    var reste = chiffres.slice(2);
+    return '+33 ' + reste[0] + ' ' + reste.slice(1).replace(/(\d{2})(?=\d)/g, '$1 ');
+  }
+  if (international) return '+' + chiffres.replace(/(\d{2})(?=\d)/g, '$1 ');
+
+  // Numéro français à dix chiffres
+  if (chiffres.length === 10) return chiffres.replace(/(\d{2})(?=\d)/g, '$1 ');
+
+  // Longueur inattendue : on rend le numéro tel quel plutôt que de le déformer
+  return t;
+}
+
 function sagaEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
 
 function sagaDateFR(iso) {
@@ -824,9 +843,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.7.0';
+var SAGA_VERSION = '1.7.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.7.1', date: '2026-08-14', titre: 'Ajustements', points: [
+    'Giveaways : le montant importé de Whatnot est bien le frais de port, plafonné à 10 € par live',
+    'Notes : le type choisi est respecté et la vue bascule pour montrer ce qui vient d\'être créé',
+    'Boutique : aucune cliente cochée d\'office',
+    'Téléphones affichés et enregistrés par paires de chiffres partout'
+  ]},
   { version: '1.7.0', date: '2026-08-14', titre: 'Giveaways, agenda et lecture des chiffres', points: [
     'Giveaways : Saga finance le cadeau, seuls les frais de port sont refacturés (10 € max par live)',
     'Le reste à reverser se décompose entre lives et hors live, pour être rapproché de la page Lives',

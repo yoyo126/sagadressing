@@ -85,23 +85,31 @@
 <div class="panel">
           <div class="panel-head">
             <h2>Notes et choses à faire</h2>
-            <div class="toggle-group" id="notesFiltre">
-              <button data-filtre="todo" class="active">À faire</button>
-              <button data-filtre="note">Notes</button>
-              <button data-filtre="fait">Faites</button>
-              <button data-filtre="tout">Tout</button>
+            <div class="groupe-etiquete">
+              <span class="groupe-etiquette">Afficher</span>
+              <div class="toggle-group" id="notesFiltre">
+                <button data-filtre="todo" class="active">À faire</button>
+                <button data-filtre="note">Notes</button>
+                <button data-filtre="fait">Faites</button>
+                <button data-filtre="tout">Tout</button>
+              </div>
             </div>
           </div>
 
-          <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-            <div class="toggle-group" id="noteTypeToggle">
-              <button data-type="todo" class="active">À faire</button>
-              <button data-type="note">Note</button>
+          <div class="ajout-note">
+            <div class="groupe-etiquete">
+              <span class="groupe-etiquette">Ajouter</span>
+              <div class="toggle-group" id="noteTypeToggle">
+                <button data-type="todo" class="active">Une chose à faire</button>
+                <button data-type="note">Une note</button>
+              </div>
             </div>
-            <input class="form-input" id="noteText" style="flex:1; min-width:200px;"
-                   placeholder="Ex. Relancer Julie pour son contrat" />
-            <select class="form-select" id="noteCliente" style="max-width:200px;"></select>
-            <button class="btn btn-primary btn-sm" onclick="ajouterNote()">Ajouter</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input class="form-input" id="noteText" style="flex:1; min-width:200px;"
+                     placeholder="Ex. Relancer Julie pour son contrat" />
+              <select class="form-select" id="noteCliente" style="max-width:200px;"></select>
+              <button class="btn btn-primary btn-sm" onclick="ajouterNote()">Ajouter</button>
+            </div>
           </div>
 
           <ul class="note-list" id="notesList"></ul>
@@ -446,8 +454,18 @@
     var champ = document.getElementById('noteText');
     var texte = champ.value.trim();
     if (!texte) { champ.focus(); return; }
-    sagaAjouterNote(typeNoteChoisi(), texte, document.getElementById('noteCliente').value);
+
+    var type = typeNoteChoisi();
+    sagaAjouterNote(type, texte, document.getElementById('noteCliente').value);
     champ.value = '';
+
+    /* Le filtre affiché ne correspond pas forcément à ce qu'on vient de créer :
+       une note ajoutée alors que la vue montre « À faire » semblerait perdue.
+       On bascule donc sur la bonne vue. */
+    var cible = type === 'note' ? 'note' : 'todo';
+    document.querySelectorAll('#notesFiltre button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.filtre === cible);
+    });
     renderNotes();
   }
 

@@ -101,7 +101,7 @@
             <tr>
               <th>Cliente</th>
               <th class="num">Ventes</th>
-              <th class="num">Giveaways</th>
+              <th class="num">Port cadeaux</th>
               <th class="num">Base</th>
               <th class="num">Comm. Saga</th>
               <th class="num">Comm. apporteur</th>
@@ -143,17 +143,14 @@
               <select class="form-select" id="aType" onchange="majChampGiveaway()">
                 <option value="vente">Vente Whatnot</option>
                 <option value="horslive">Vente hors Whatnot (pas de frais plateforme)</option>
-                <option value="giveaway">Giveaway (cadeau offert)</option>
+                <option value="giveaway">Giveaway (frais de port du cadeau)</option>
               </select>
             </div>
-            <div class="form-field" id="aFraisField" style="display:none;">
-              <label class="form-label" for="aFrais">Frais de port du cadeau (€)</label>
-              <input class="form-input" type="number" id="aFrais" step="0.01" placeholder="Ex. 6" />
-              <span class="card-note">
-                Saga finance le cadeau ; seuls les frais de port sont refacturés à la cliente,
-                dans la limite de 10 € par live.
-              </span>
-            </div>
+            <p class="card-note" id="aNoteGiveaway" style="display:none; margin:0;">
+              Sur une ligne de giveaway, le montant est celui des <strong>frais de port</strong> :
+              c'est ce que remonte l'export Whatnot, qui ne connaît pas la valeur du cadeau.
+              Saga finance le cadeau ; le port est refacturé à la cliente, dans la limite de 10 € par live.
+            </p>
             <div style="display:flex; gap:10px;">
               <button class="btn btn-primary btn-sm" id="aSubmit" onclick="enregistrerArticle()">Ajouter l'article</button>
               <button class="btn btn-ghost btn-sm" onclick="toggleArticleForm()">Annuler</button>
@@ -185,8 +182,9 @@
             </p>
             <p class="card-note">
               Les ventes hors Whatnot ne supportent pas les frais de plateforme.
-              Les cadeaux offerts sont financés par Saga : seuls leurs frais de port sont
-              refacturés à la cliente, dans la limite de 10 € par live.
+              Les cadeaux sont financés par Saga : seuls leurs frais de port sont refacturés
+              à la cliente, dans la limite de 10 € par live. Sur une ligne de giveaway, le
+              montant importé de Whatnot correspond déjà à ces frais de port.
             </p>
           </div>
           <div class="panel">
@@ -291,7 +289,7 @@
       row.innerHTML =
         stat('Ventes de ' + d.prenom, sagaEUR(d.ventes)) +
         stat('Commission Saga', sagaEUR(d.commSaga)) +
-        stat('Giveaways', sagaEUR(d.giveaways)) +
+        stat('Port cadeaux', sagaEUR(d.portGiveaway)) +
         stat('Net à reverser', sagaEUR(d.net), true);
       return;
     }
@@ -330,7 +328,7 @@
           '<span class="name-sub">dressing ' + lettre + ' · ' + d.articles.length + ' article(s)</span></span>' +
         '</div></td>' +
         '<td class="num tabular">' + sagaEUR(d.ventes) + '</td>' +
-        '<td class="num tabular">' + sagaEUR(d.giveaways) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(d.portGiveaway) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.base) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.commSaga) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.commApporteur) + '</td>' +
@@ -346,7 +344,7 @@
     var t = sagaTotauxLive(LIVE);
     foot.innerHTML = '<tr><td><strong>Total</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.ventes) + '</strong></td>' +
-      '<td class="num tabular"><strong>' + sagaEUR(t.giveaways) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.portGiveaway) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.base) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.commSaga) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.commApporteur) + '</strong></td>' +
@@ -399,15 +397,16 @@
   }
 
   function majChampGiveaway() {
-    document.getElementById('aFraisField').style.display =
-      document.getElementById('aType').value === 'giveaway' ? 'flex' : 'none';
+    var estGiveaway = document.getElementById('aType').value === 'giveaway';
+    document.getElementById('aNoteGiveaway').style.display = estGiveaway ? 'block' : 'none';
+    document.querySelector('label[for="aMontant"]').textContent =
+      estGiveaway ? 'Frais de port (€)' : 'Montant (€)';
   }
 
   function resetArticleForm() {
     articleEnEdition = null;
     document.getElementById('aLibelle').value = '';
     document.getElementById('aMontant').value = '';
-    document.getElementById('aFrais').value = '';
     document.getElementById('aType').value = 'vente';
     majChampGiveaway();
     if (filtreValide()) document.getElementById('aLettre').value = FILTRE;
@@ -423,7 +422,6 @@
     document.getElementById('aLettre').value = a.lettre;
     document.getElementById('aMontant').value = a.montant;
     document.getElementById('aType').value = a.type;
-    document.getElementById('aFrais').value = a.frais || '';
     majChampGiveaway();
     document.getElementById('aSubmit').textContent = 'Enregistrer la correction';
     document.getElementById('aLibelle').focus();
@@ -441,7 +439,7 @@
       montant: montant,
       type: document.getElementById('aType').value
     };
-    if (champs.type === 'giveaway') champs.frais = parseFloat(document.getElementById('aFrais').value) || 0;
+
 
     var message = '';
     if (articleEnEdition) {
@@ -583,9 +581,12 @@
     ];
     l.push(['− Commission Saga', sagaEUR(d.commSaga)]);
     if (d.apporteur) l.push(['− Commission apporteur (' + d.apporteur + ')', sagaEUR(d.commApporteur)]);
-    if (d.portGiveaway > 0) l.push(['− Frais de port des cadeaux', sagaEUR(d.portGiveaway)]);
+    if (d.portGiveaway > 0) {
+      l.push(['− Frais de port des cadeaux' +
+              (d.giveaways > SAGA_PLAFOND_PORT_GIVEAWAY ? ' (plafonné à ' + sagaEUR(SAGA_PLAFOND_PORT_GIVEAWAY) + ')' : ''),
+              sagaEUR(d.portGiveaway)]);
+    }
     l.push(['Net à reverser', sagaEUR(d.net)]);
-    if (d.giveaways > 0) l.push(['Cadeaux offerts (à la charge de Saga)', sagaEUR(d.giveaways)]);
     return l;
   }
 
@@ -600,7 +601,7 @@
     pdf.section('Cliente');
     pdf.paragraphe(infos.nom + '  —  dressing ' + lettre, { gras: true, taille: 10.5 });
     if (infos.adresse) pdf.paragraphe(infos.adresse);
-    var contact = [infos.tel, infos.email].filter(Boolean).join('  ·  ');
+    var contact = [sagaTelephone(infos.tel), infos.email].filter(Boolean).join('  ·  ');
     if (contact) pdf.paragraphe(contact);
 
     pdf.section('Décompte');

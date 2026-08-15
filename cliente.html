@@ -694,7 +694,7 @@
     // Coordonnées visibles directement sur la fiche
     var contacts = [
       { icone: 'M4 4h16v16H4z M4 6l8 6 8-6', texte: CLIENT.email },
-      { icone: 'M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1', texte: CLIENT.tel },
+      { icone: 'M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1', texte: sagaTelephone(CLIENT.tel) },
       { icone: 'M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z M12 12a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8', texte: CLIENT.adresse }
     ].filter(function (c) { return c.texte; });
 
@@ -760,7 +760,7 @@
 
     // Champs identité repris dans les documents
     document.getElementById('fNom').value = CLIENT.nom;
-    document.getElementById('fTelephone').value = CLIENT.tel;
+    document.getElementById('fTelephone').value = sagaTelephone(CLIENT.tel);
     document.getElementById('fEmail').value = CLIENT.email;
     document.getElementById('fCommission').value = CLIENT.commission;
 
@@ -799,7 +799,7 @@
     pdf.section('Cliente');
     pdf.paragraphe(CLIENT.nom + '  —  dressing ' + CLIENT.lettre, { gras: true, taille: 10.5 });
     if (CLIENT.adresse) pdf.paragraphe(CLIENT.adresse);
-    var contact = [CLIENT.tel, CLIENT.email].filter(Boolean).join('  ·  ');
+    var contact = [sagaTelephone(CLIENT.tel), CLIENT.email].filter(Boolean).join('  ·  ');
     if (contact) pdf.paragraphe(contact);
 
     var lignes = [['Ventes', fmtEUR(l.ventes)],
@@ -980,7 +980,7 @@
     CLIENT.prenom = prenom;
     CLIENT.lettre = lettre;
     CLIENT.nom = document.getElementById('iNom').value.trim();
-    CLIENT.tel = document.getElementById('iTel').value.trim();
+    CLIENT.tel = sagaTelephone(document.getElementById('iTel').value);
     CLIENT.email = document.getElementById('iEmail').value.trim();
     CLIENT.adresse = document.getElementById('iAdresse').value.trim();
     CLIENT.commission = parseInt(document.getElementById('iCommission').value, 10) || 0;

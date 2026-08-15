@@ -253,7 +253,7 @@
       var nomComplet = c.nom || c.prenom;
       var nameCell = '<div class="name-cell"><span class="tag-avatar">' + c.lettre + '</span>' +
         '<span><span class="name-main">' + nomComplet + '</span>' +
-        (c.tel ? '<span class="name-sub">' + c.tel + '</span>' : '') + '</span></div>';
+        (c.tel ? '<span class="name-sub">' + sagaTelephone(c.tel) + '</span>' : '') + '</span></div>';
       var statut = c.statut === 'active'
         ? '<span class="chip good">Active</span>'
         : '<span class="chip neutral">Inactive</span>';
@@ -352,7 +352,7 @@
       prenom: prenom,
       nom: prenom + ' ' + nomFamille,
       email: document.getElementById('nEmail').value.trim(),
-      tel: document.getElementById('nTel').value.trim(),
+      tel: sagaTelephone(document.getElementById('nTel').value),
       adresse: document.getElementById('nAdresse').value.trim(),
       lettre: lettre,
       apporteur: document.getElementById('nApporteur').value,
@@ -379,7 +379,7 @@
       nom: nomComplet,
       lettre: lettre,
       statut: 'Active',
-      tel: document.getElementById('nTel').value.trim(),
+      tel: sagaTelephone(document.getElementById('nTel').value),
       email: document.getElementById('nEmail').value.trim(),
       adresse: document.getElementById('nAdresse').value.trim(),
       commission: parseInt(document.getElementById('nCommission').value, 10) || 30,

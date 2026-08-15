@@ -183,9 +183,8 @@
     config.paliersActifs = {};
     config.paliers.forEach(function (p) { config.paliersActifs[p] = true; });
   }
-  clientes.forEach(function (c) {
-    if (config.selection[c.lettre] === undefined) config.selection[c.lettre] = true;
-  });
+  /* Aucune cliente n'est retenue d'office : la boutique se compose
+     volontairement, cliente par cliente, via la recherche. */
 
   function persist() { sagaSave('boutique_config', config); }
 

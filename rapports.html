@@ -322,7 +322,7 @@
       pdf.section('Cliente');
       pdf.paragraphe(i.nom + '  —  dressing ' + lettreFiltre, { gras: true, taille: 10.5 });
       if (i.adresse) pdf.paragraphe(i.adresse);
-      var contact = [i.tel, i.email].filter(Boolean).join('  ·  ');
+      var contact = [sagaTelephone(i.tel), i.email].filter(Boolean).join('  ·  ');
       if (contact) pdf.paragraphe(contact);
     }
 
