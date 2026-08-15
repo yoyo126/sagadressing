@@ -755,9 +755,8 @@ tbody td { padding: 11px 8px; }
    large, elles s'étiraient jusqu'à 80 px et le mois paraissait vide.
    Hauteur fixe et largeur plafonnée pour rester compact et lisible.
    ============================================================ */
-.calendar-mini { max-width: 340px; margin: 0 auto; gap: 2px; }
-.calendar-mini .day { aspect-ratio: auto; height: 40px; }
-.calendar-mini .day.has-event::after { bottom: 5px; }
+.calendar-mini { max-width: none; margin: 0; gap: 4px; }
+.calendar-mini .day.has-event::after { bottom: 6px; }
 
 /* Les deux colonnes gardent une largeur comparable : à 1,7fr contre 1fr,
    le panneau latéral devenait trop étroit et le principal trop vide. */
@@ -972,4 +971,30 @@ body.modale-ouverte { overflow: hidden; }
   display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;
   padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px;
   background: var(--surface-alt);
+}
+
+/* ============================================================
+   Calendrier mensuel de l'agenda
+   Il remplit désormais son panneau : la colonne est resserrée pour
+   qu'il garde des cases presque carrées, sans s'étirer ni flotter.
+   ============================================================ */
+.content-grid-agenda { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 380px); }
+@media (max-width: 1150px) { .content-grid-agenda { grid-template-columns: 1fr; } }
+
+.calendar-mini { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar-mini .dow {
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--ink-faint); text-align: center; padding-bottom: 8px;
+}
+.calendar-mini .day {
+  aspect-ratio: 1 / 1;
+  max-height: 52px;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.calendar-mini .day.has-event::after { width: 5px; height: 5px; }
+
+@media (max-width: 900px) {
+  .calendar-mini .day { max-height: 46px; }
 }

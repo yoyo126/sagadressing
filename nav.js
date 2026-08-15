@@ -842,9 +842,12 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.7.2';
+var SAGA_VERSION = '1.7.3';
 
 var SAGA_VERSIONS = [
+  { version: '1.7.3', date: '2026-08-14', titre: 'Calendrier remis en proportion', points: [
+    'Le calendrier remplit son panneau, avec des cases carrées de taille lisible'
+  ]},
   { version: '1.7.2', date: '2026-08-14', titre: 'Appellation « Giveaway » rétablie', points: [
     'Le terme « Giveaway » revient partout : colonne, indicateurs, décompte et libellés'
   ]},
