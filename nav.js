@@ -223,7 +223,7 @@ var SAGA_LIVES_DEFAUT = [
       { id: 'a3',  libelle: 'Lot 3 foulards soie',       lettre: 'M', montant: 95,  type: 'vente' },
       { id: 'a4',  libelle: 'Escarpins vernis T37',      lettre: 'M', montant: 120, type: 'vente' },
       { id: 'a5',  libelle: 'Robe portefeuille fleurie', lettre: 'M', montant: 845, type: 'vente' },
-      { id: 'a6',  libelle: 'Port cadeau — pochette brodée', lettre: 'M', montant: 6, type: 'giveaway' },
+      { id: 'a6',  libelle: 'Pochette brodée — giveaway',    lettre: 'M', montant: 6, type: 'giveaway' },
       { id: 'a7',  libelle: 'Sac seau daim',             lettre: 'C', montant: 310, type: 'vente' },
       { id: 'a8',  libelle: 'Blazer oversize noir',      lettre: 'C', montant: 150, type: 'vente' },
       { id: 'a9',  libelle: 'Lot bijoux fantaisie',      lettre: 'C', montant: 75,  type: 'vente' },
@@ -231,7 +231,7 @@ var SAGA_LIVES_DEFAUT = [
       { id: 'a11', libelle: 'Ceinture cuir tressé',      lettre: 'B', montant: 65,  type: 'vente' },
       { id: 'a12', libelle: 'Bottines chelsea T38',      lettre: 'B', montant: 140, type: 'vente' },
       { id: 'a13', libelle: 'Sac banane matelassé',      lettre: 'B', montant: 1295,type: 'vente' },
-      { id: 'a14', libelle: 'Port cadeau — écharpe cachemire', lettre: 'B', montant: 4, type: 'giveaway' }
+      { id: 'a14', libelle: 'Écharpe cachemire — giveaway',  lettre: 'B', montant: 4, type: 'giveaway' }
     ],
     paiements: { B: { date: '2026-08-01', mode: 'Virement' } }
   },
@@ -483,8 +483,8 @@ function sagaInfosCliente(lettre) {
    tomber sur un demi-centime : le même montant s'arrondissait alors
    différemment selon l'ordre d'addition, et le total affiché ne
    correspondait plus à la somme des lignes affichées. */
-/* Plafond contractuel des frais de port de giveaways refacturés, par live */
-var SAGA_PLAFOND_PORT_GIVEAWAY = 10;
+/* Plafond contractuel des giveaways déduits, par live */
+var SAGA_PLAFOND_GIVEAWAY = 10;
 
 function sagaCentimes(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 
@@ -506,11 +506,10 @@ function sagaDecompte(live, lettre) {
   var commSaga = sagaCentimes(base * t.commission / 100);
   var commApporteur = t.apporteur ? sagaCentimes(base * t.apporteurPct / 100) : 0;
 
-  /* Giveaways : Saga finance le cadeau, la cliente n'en supporte que le port.
-     L'export Whatnot ne connaît pas la valeur du cadeau — le montant remonté
-     sur une ligne de giveaway EST le frais de port. C'est donc lui qu'on
-     refacture, plafonné à SAGA_PLAFOND_PORT_GIVEAWAY par live. */
-  var portGiveaway = Math.min(giveaways, SAGA_PLAFOND_PORT_GIVEAWAY);
+  /* Giveaways : le montant remonté par Whatnot correspond aux frais de port
+     du cadeau — la plateforme n'en connaît pas la valeur, que Saga finance.
+     Ce montant est déduit du net de la cliente, plafonné par live. */
+  var portGiveaway = Math.min(giveaways, SAGA_PLAFOND_GIVEAWAY);
 
   var paiement = (live.paiements || {})[lettre] || null;
   return {
@@ -843,11 +842,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.7.1';
+var SAGA_VERSION = '1.7.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.7.2', date: '2026-08-14', titre: 'Appellation « Giveaway » rétablie', points: [
+    'Le terme « Giveaway » revient partout : colonne, indicateurs, décompte et libellés'
+  ]},
   { version: '1.7.1', date: '2026-08-14', titre: 'Ajustements', points: [
-    'Giveaways : le montant importé de Whatnot est bien le frais de port, plafonné à 10 € par live',
+    'Giveaways : le montant importé de Whatnot correspond aux frais de port, plafonné à 10 € par live',
     'Notes : le type choisi est respecté et la vue bascule pour montrer ce qui vient d\'être créé',
     'Boutique : aucune cliente cochée d\'office',
     'Téléphones affichés et enregistrés par paires de chiffres partout'
