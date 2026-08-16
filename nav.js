@@ -145,6 +145,36 @@ function sagaReset() {
     .forEach(function (k) { localStorage.removeItem(k); });
 }
 
+/* ============ Jeu de démonstration ============
+   Le CRM démarre vide : seules les données réellement saisies s'affichent,
+   ce qui permet de le tester comme un outil de travail et non comme une
+   maquette. Les exemples d'origine (clientes, lives, apporteurs, notes,
+   agenda) restent dans le code et se rechargent depuis Paramètres ; ils
+   disparaissent avec le reste au moment de la remise à zéro. */
+
+function sagaDemoActive() {
+  return localStorage.getItem(SAGA_PREFIX + 'demo') === '1';
+}
+
+function sagaDemoActiver(actif) {
+  if (actif) localStorage.setItem(SAGA_PREFIX + 'demo', '1');
+  else localStorage.removeItem(SAGA_PREFIX + 'demo');
+}
+
+/* Valeur de départ d'un jeu de données : les exemples en mode démonstration,
+   le vide le reste du temps. */
+function sagaDemo(exemples, vide) {
+  return sagaDemoActive() ? exemples : vide;
+}
+
+/* Rend un texte saisi inoffensif dans du HTML : sans cela, un nom contenant
+   « & » ou un chevron casserait l'affichage. */
+function sagaEchapper(texte) {
+  return String(texte === undefined || texte === null ? '' : texte)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /* Réduit une image avant stockage : sans ça, quelques photos suffisent
    à saturer l'espace disponible du navigateur.
    `mime` permet de garder la transparence en PNG pour l'affichage écran,
@@ -378,9 +408,9 @@ var SAGA_AGENDA_DEFAUT = [
   { id: 'e6', type: 'Live',   date: '2026-09-02', heure: '20:00', titre: 'Fanny Moreau (M)',      commentaire: 'Fin de saison été' }
 ];
 
-function sagaAgenda() { return sagaLoad('agenda', SAGA_AGENDA_DEFAUT); }
+function sagaAgenda() { return sagaLoad('agenda', sagaDemo(SAGA_AGENDA_DEFAUT, [])); }
 
-function sagaLives() { return sagaLoad('lives', SAGA_LIVES_DEFAUT); }
+function sagaLives() { return sagaLoad('lives', sagaDemo(SAGA_LIVES_DEFAUT, [])); }
 function sagaSaveLives(lives) { return sagaSave('lives', lives); }
 
 function sagaLive(id) {
@@ -400,12 +430,90 @@ var SAGA_DRESSINGS_DEFAUT = {
   R: { prenom: 'Élise',   nom: 'Élise Rousseau',  fiche: '',        commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 }
 };
 
+/* ============ Apporteurs d'affaires ============
+   Une seule liste pour toute l'application : la page des apporteurs l'affiche,
+   les formulaires clientes y prennent les noms proposés. Sans cela, les
+   formulaires proposaient deux apporteurs d'exemple qui n'existaient pas. */
+var SAGA_APPORTEURS_DEFAUT = [
+  { key:'nadia', nom:'Nadia R.', initiales:'NR', pct:8, clientes:['Fanny (M)','Camille (B)','Élise (R)'],
+    verse:292, du:287, docsManquants:2, statut:'actif' },
+  { key:'karim', nom:'Karim B.', initiales:'KB', pct:6, clientes:['Marion (F)','Nora (T)'],
+    verse:87, du:90, docsManquants:3, statut:'actif' },
+  { key:'sonia', nom:'Sonia L.', initiales:'SL', pct:8, clientes:[],
+    verse:0, du:0, docsManquants:5, statut:'inactif' }
+];
+
+function sagaApporteurs() {
+  return sagaLoad('apporteurs', sagaDemo(SAGA_APPORTEURS_DEFAUT, []));
+}
+
+/* Taux d'un apporteur, retrouvé par son nom */
+function sagaPctApporteur(nom) {
+  var a = sagaApporteurs().filter(function (x) { return x.nom === nom; })[0];
+  return a ? (a.pct || 0) : 0;
+}
+
+/* Remplit une liste déroulante d'apporteurs en conservant le choix courant. */
+function sagaRemplirApporteurs(select, valeur, avecTaux) {
+  if (!select) return;
+  var html = ['<option value="">Aucun</option>'];
+  sagaApporteurs().forEach(function (a) {
+    html.push('<option value="' + sagaEchapper(a.nom) + '">' + sagaEchapper(a.nom)
+      + (avecTaux ? ' (' + (a.pct || 0) + ' %)' : '') + '</option>');
+  });
+  select.innerHTML = html.join('');
+  select.value = valeur || '';
+}
+
+/* Fiches clientes d'exemple. Partagées par toutes les pages : le tableau de
+   bord y lit les signatures en attente, la fiche cliente son contenu. */
+var SAGA_CLIENTS_DEFAUT = {
+  fanny: {
+    prenom: 'Fanny', nom: 'Fanny Moreau', lettre: 'M', statut: 'Active',
+    tel: '06 12 34 56 78', email: 'fanny.moreau@example.com',
+    adresse: '15 rue du Faubourg Saint-Antoine, 75011 Paris',
+    commission: 30, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'mars 2026',
+    pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
+  },
+  julie: {
+    prenom: 'Julie', nom: 'Julie Renard', lettre: 'C', statut: 'Active',
+    tel: '06 22 45 78 90', email: 'julie.renard@example.com',
+    adresse: '4 avenue Jean Jaurès, 93100 Montreuil',
+    commission: 30, apporteur: null, apporteurPct: 0, depuis: 'janvier 2026',
+    pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
+  },
+  camille: {
+    prenom: 'Camille', nom: 'Camille Bertin', lettre: 'B', statut: 'Active',
+    tel: '07 33 12 45 67', email: 'camille.bertin@example.com',
+    adresse: '27 rue de la République, 69002 Lyon',
+    commission: 25, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'février 2026',
+    pending: { type: 'restitution', texte: '<strong>Bon de restitution en attente de signature</strong> — envoyé le 30 juillet, pas encore ouvert.' }
+  },
+  marion: {
+    prenom: 'Marion', nom: 'Marion Fabre', lettre: 'F', statut: 'Active',
+    tel: '06 55 78 21 34', email: 'marion.fabre@example.com',
+    adresse: '9 place du Marché, 33000 Bordeaux',
+    commission: 30, apporteur: 'Karim B.', apporteurPct: 6, depuis: 'avril 2026',
+    pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 21 juillet, sans réponse depuis 11 jours (1 relance).' }
+  }
+};
+
+/* Fiches clientes réellement disponibles : celles saisies, ou les exemples
+   quand la démonstration est chargée. */
+function sagaFiches() {
+  return sagaLoad('clients_data', sagaDemo(SAGA_CLIENTS_DEFAUT, {}));
+}
+
+/* Annuaire de secours des lettres de dressing : il ne sert qu'à la
+   démonstration. En usage réel, les lettres viennent des clientes saisies. */
+function sagaDressings() { return sagaDemo(SAGA_DRESSINGS_DEFAUT, {}); }
+
 /* Taux appliqués à une lettre de dressing.
    Priorité à la fiche cliente saisie, puis à la liste, puis au défaut. */
 function sagaTauxDressing(lettre) {
-  var d = SAGA_DRESSINGS_DEFAUT[lettre] || {};
+  var d = sagaDressings()[lettre] || {};
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
-  var fiches = sagaLoad('clients_data', {});
+  var fiches = sagaFiches();
   var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
     .filter(function (f) { return f.lettre === lettre; })[0];
 
@@ -436,13 +544,14 @@ function sagaToutesClientes() {
     res.push({ lettre: lettre, prenom: prenom || ('Dressing ' + lettre), nom: nom || '', fiche: fiche || '' });
   }
 
-  var fiches = sagaLoad('clients_data', {});
+  var fiches = sagaFiches();
   Object.keys(fiches).forEach(function (k) {
     ajouter(fiches[k].lettre, fiches[k].prenom, fiches[k].nom, k);
   });
   sagaLoad('clientes', []).forEach(function (c) { ajouter(c.lettre, c.prenom, c.nom, c.key); });
-  Object.keys(SAGA_DRESSINGS_DEFAUT).forEach(function (l) {
-    ajouter(l, SAGA_DRESSINGS_DEFAUT[l].prenom, SAGA_DRESSINGS_DEFAUT[l].nom, SAGA_DRESSINGS_DEFAUT[l].fiche);
+  var annuaire = sagaDressings();
+  Object.keys(annuaire).forEach(function (l) {
+    ajouter(l, annuaire[l].prenom, annuaire[l].nom, annuaire[l].fiche);
   });
 
   return res.sort(function (a, b) { return a.prenom.localeCompare(b.prenom, 'fr'); });
@@ -450,18 +559,18 @@ function sagaToutesClientes() {
 
 /* Clé de fiche (?c=…) correspondant à une lettre de dressing */
 function sagaFicheDressing(lettre) {
-  var fiches = sagaLoad('clients_data', {});
+  var fiches = sagaFiches();
   var cle = Object.keys(fiches).filter(function (k) { return fiches[k].lettre === lettre; })[0];
   if (cle) return cle;
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
   if (c && c.key) return c.key;
-  return (SAGA_DRESSINGS_DEFAUT[lettre] || {}).fiche || '';
+  return (sagaDressings()[lettre] || {}).fiche || '';
 }
 
 /* Coordonnées complètes d'une cliente, pour les fiches et les documents */
 function sagaInfosCliente(lettre) {
-  var d = SAGA_DRESSINGS_DEFAUT[lettre] || {};
-  var fiches = sagaLoad('clients_data', {});
+  var d = sagaDressings()[lettre] || {};
+  var fiches = sagaFiches();
   var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
     .filter(function (f) { return f.lettre === lettre; })[0];
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
@@ -574,7 +683,7 @@ function sagaDecalageJours(iso) {
    Tout est désormais dérivé de `lives` + `ventes_directes`.
    ============================================================ */
 
-function sagaVentesDirectes() { return sagaLoad('ventes_directes', SAGA_VENTES_DIRECTES_DEFAUT); }
+function sagaVentesDirectes() { return sagaLoad('ventes_directes', sagaDemo(SAGA_VENTES_DIRECTES_DEFAUT, [])); }
 function sagaSaveVentesDirectes(v) { return sagaSave('ventes_directes', v); }
 
 var SAGA_VENTES_DIRECTES_DEFAUT = [
@@ -680,7 +789,7 @@ var SAGA_NOTES_DEFAUT = [
   { id: 'n6', type: 'note', lettre: '',  texte: 'Whatnot passe en promo 0 frais du 20 au 25 août.', date: '2026-08-11', done: false }
 ];
 
-function sagaNotes() { return sagaLoad('notes', SAGA_NOTES_DEFAUT); }
+function sagaNotes() { return sagaLoad('notes', sagaDemo(SAGA_NOTES_DEFAUT, [])); }
 function sagaSaveNotes(n) { return sagaSave('notes', n); }
 
 function sagaAjouterNote(type, texte, lettre) {
@@ -1146,3 +1255,12 @@ function initTabs(root) {
     });
   });
 }
+
+/* Le bandeau « maquette — données fictives » ne vaut que pour le jeu de
+   démonstration. En usage réel il inquiéterait à tort : les chiffres affichés
+   sont alors ceux de la boutique. */
+document.addEventListener('DOMContentLoaded', function () {
+  if (sagaDemoActive()) return;
+  var badges = document.querySelectorAll('.proto-badge');
+  for (var i = 0; i < badges.length; i++) badges[i].remove();
+});

@@ -160,16 +160,8 @@
   renderSagaSidebar('apporteurs');
 
   // Chiffres alignés sur les fiches détaillées (apporteur.html)
-  var APPORTEURS_DEFAUT = [
-    { key:'nadia', nom:'Nadia R.', initiales:'NR', pct:8, clientes:['Fanny (M)','Camille (B)','Élise (R)'],
-      verse:292, du:287, docsManquants:2, statut:'actif' },
-    { key:'karim', nom:'Karim B.', initiales:'KB', pct:6, clientes:['Marion (F)','Nora (T)'],
-      verse:87, du:90, docsManquants:3, statut:'actif' },
-    { key:'sonia', nom:'Sonia L.', initiales:'SL', pct:8, clientes:[],
-      verse:0, du:0, docsManquants:5, statut:'inactif' }
-  ];
 
-  var apporteurs = sagaLoad('apporteurs', APPORTEURS_DEFAUT);
+  var apporteurs = sagaApporteurs();
   function persist() { sagaSave('apporteurs', apporteurs); }
 
   function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
@@ -200,6 +192,15 @@
         '<td>' + statut + '</td>' +
       '</tr>';
     }).join('');
+
+    if (!rows.length) {
+      document.getElementById('apporteursBody').innerHTML =
+        '<tr><td colspan="7" class="muted" style="padding:18px; text-align:center;">'
+        + (apporteurs.length === 0
+            ? 'Aucun apporteur enregistré. Ajoutez-en un avec « Nouvel apporteur ».'
+            : 'Aucun apporteur ne correspond à cette recherche.')
+        + '</td></tr>';
+    }
 
     initRowLinks(document.getElementById('apporteursBody'));
 

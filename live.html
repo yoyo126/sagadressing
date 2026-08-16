@@ -208,6 +208,15 @@
   var params = new URLSearchParams(window.location.search);
   var LIVES = sagaLives();
   var LIVE = sagaLive(params.get('l')) || LIVES[0];
+  if (!LIVE) {
+    /* Aucun live enregistré : la page n'a rien à montrer, on repart de la
+       liste. Le live neutre évite une erreur le temps de la redirection. */
+    location.replace('lives.html');
+    LIVE = {
+      id: '', date: sagaAujourdhui(), titre: '', categorie: '', fraisPct: 0,
+      encaisse: { statut: 'En attente', date: '' }, articles: []
+    };
+  }
   var FILTRE = params.get('c') || '';   // lettre de dressing, vide = tout le live (modifiable au clic)
   var articleEnEdition = null;
 

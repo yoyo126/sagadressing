@@ -566,8 +566,6 @@
                 <label class="form-label" for="iApporteur">Apporteur d'affaires</label>
                 <select class="form-select" id="iApporteur" onchange="majPctApporteur()">
                   <option value="">Aucun</option>
-                  <option value="Nadia R.">Nadia R.</option>
-                  <option value="Karim B.">Karim B.</option>
                 </select>
               </div>
               <div style="flex:1;">
@@ -601,38 +599,8 @@
   /* Identité seulement : les ventes et les notes sont partagées avec le reste
      de l'application, cette fiche n'en garde plus de copie. Les noms suivent
      l'annuaire commun (SAGA_DRESSINGS_DEFAUT). */
-  var CLIENTS_DEFAUT = {
-    fanny: {
-      prenom: 'Fanny', nom: 'Fanny Moreau', lettre: 'M', statut: 'Active',
-      tel: '06 12 34 56 78', email: 'fanny.moreau@example.com',
-      adresse: '15 rue du Faubourg Saint-Antoine, 75011 Paris',
-      commission: 30, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'mars 2026',
-      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
-    },
-    julie: {
-      prenom: 'Julie', nom: 'Julie Renard', lettre: 'C', statut: 'Active',
-      tel: '06 22 45 78 90', email: 'julie.renard@example.com',
-      adresse: '4 avenue Jean Jaurès, 93100 Montreuil',
-      commission: 30, apporteur: null, apporteurPct: 0, depuis: 'janvier 2026',
-      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
-    },
-    camille: {
-      prenom: 'Camille', nom: 'Camille Bertin', lettre: 'B', statut: 'Active',
-      tel: '07 33 12 45 67', email: 'camille.bertin@example.com',
-      adresse: '27 rue de la République, 69002 Lyon',
-      commission: 25, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'février 2026',
-      pending: { type: 'restitution', texte: '<strong>Bon de restitution en attente de signature</strong> — envoyé le 30 juillet, pas encore ouvert.' }
-    },
-    marion: {
-      prenom: 'Marion', nom: 'Marion Fabre', lettre: 'F', statut: 'Active',
-      tel: '06 55 78 21 34', email: 'marion.fabre@example.com',
-      adresse: '9 place du Marché, 33000 Bordeaux',
-      commission: 30, apporteur: 'Karim B.', apporteurPct: 6, depuis: 'avril 2026',
-      pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 21 juillet, sans réponse depuis 11 jours (1 relance).' }
-    }
-  };
 
-  var CLIENTS = sagaLoad('clients_data', CLIENTS_DEFAUT);
+  var CLIENTS = sagaFiches();
   function persistClients() { sagaSave('clients_data', CLIENTS); }
 
   function currentClientKey() {
@@ -669,7 +637,14 @@
       CLIENTS[currentClientKey()] = CLIENT;
       persistClients();
     } else {
-      CLIENT = CLIENTS.fanny;
+      /* Base vide : plus d'exemple sur lequel retomber, on renvoie vers la
+         liste. La fiche neutre évite une erreur le temps de la redirection. */
+      location.replace('clientes.html');
+      CLIENT = {
+        prenom: '', nom: '', lettre: '', statut: 'Active', tel: '', email: '',
+        adresse: '', commission: 30, apporteur: null, apporteurPct: 0,
+        depuis: '', pending: null
+      };
     }
   }
 
@@ -887,9 +862,8 @@
   }
 
   function majPctApporteur() {
-    var defauts = { 'Nadia R.': 8, 'Karim B.': 6, '': 0 };
     var a = document.getElementById('iApporteur').value;
-    document.getElementById('iApporteurPct').value = defauts[a] !== undefined ? defauts[a] : 8;
+    document.getElementById('iApporteurPct').value = a ? sagaPctApporteur(a) : 0;
   }
 
   /* Édition de la fiche : on retient l'onglet d'où l'on vient pour qu'Annuler
@@ -953,7 +927,7 @@
     document.getElementById('iAdresse').value = CLIENT.adresse || '';
     document.getElementById('iCommission').value = CLIENT.commission;
     document.getElementById('iStatut').value = CLIENT.statut;
-    document.getElementById('iApporteur').value = CLIENT.apporteur || '';
+    sagaRemplirApporteurs(document.getElementById('iApporteur'), CLIENT.apporteur || '', false);
     document.getElementById('iApporteurPct').value = CLIENT.apporteurPct || 0;
     document.getElementById('iLettreWarn').style.display = 'none';
     afficheVignette(vignetteCourante());

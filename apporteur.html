@@ -394,10 +394,20 @@
 
   /* Les apporteurs créés depuis la liste vivent dans `apporteurs_data` :
      sans cette lecture, leur fiche renverrait sur l'exemple Nadia. */
+  if (!sagaDemoActive()) APPORTEURS = {};
   var FICHES = sagaLoad('apporteurs_data', {});
   Object.keys(FICHES).forEach(function (k) { if (!APPORTEURS[k]) APPORTEURS[k] = FICHES[k]; });
 
   var A = APPORTEURS[currentKey()] || APPORTEURS.nadia;
+  if (!A) {
+    /* Base vide : on repart de la liste plutôt que d'ouvrir un exemple. */
+    location.replace('apporteurs.html');
+    A = {
+      prenom: '', nom: '', initiales: '', statut: 'Actif', email: '', tel: '',
+      statutJur: '', siret: '', pct: 0, depuis: '',
+      clientes: [], commissions: [], docs: []
+    };
+  }
 
   function persistApporteur() {
     var fiches = sagaLoad('apporteurs_data', {});

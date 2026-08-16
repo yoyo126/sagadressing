@@ -160,14 +160,6 @@
 
   var PALIERS_DEFAUT = [1,5,10,15,20,25,30,35,40,50,60,70,80,90,100,150,200,250,300,400,500];
 
-  // Les dressings viennent des fiches clientes (avec leur vignette)
-  var CLIENTES_FALLBACK = [
-    { prenom:'Fanny',   lettre:'M', statut:'active', vignette:'' },
-    { prenom:'Julie',   lettre:'C', statut:'active', vignette:'' },
-    { prenom:'Camille', lettre:'B', statut:'active', vignette:'' },
-    { prenom:'Marion',  lettre:'F', statut:'active', vignette:'' }
-  ];
-
   /* Toutes les clientes connues de l'application, pas seulement celles
      déjà enregistrées dans la liste : la boutique reste alignée sur le CRM. */
   var clientes = sagaToutesClientes().map(function (c) {

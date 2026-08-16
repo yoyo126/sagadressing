@@ -77,8 +77,6 @@
               <label class="form-label" for="nApporteur">Apporteur</label>
               <select class="form-select" id="nApporteur">
                 <option value="">Aucun</option>
-                <option value="Nadia R.">Nadia R. (8 %)</option>
-                <option value="Karim B.">Karim B. (6 %)</option>
               </select>
             </div>
           </div>
@@ -159,8 +157,8 @@
         </table>
         </div>
         <div id="emptyResult" class="empty-state" style="display:none; margin-top:14px;">
-          <div class="t">Aucune cliente ne correspond</div>
-          <div class="s">Essayez un autre nom</div>
+          <div class="t" id="emptyTitre">Aucune cliente ne correspond</div>
+          <div class="s" id="emptySous">Essayez un autre nom</div>
         </div>
       </div>
 
@@ -185,7 +183,7 @@
     { key:'',        prenom:'Élise',   nom:'Élise Rousseau',  tel:'06 99 88 77 66', email:'elise.rousseau@example.com', lettre:'R', apporteur:'Nadia R.', pct:25, ca:1120, commission:280,  reste:0,   statut:'inactive' }
   ];
 
-  var clientes = sagaLoad('clientes', CLIENTES_DEFAUT);
+  var clientes = sagaLoad('clientes', sagaDemo(CLIENTES_DEFAUT, []));
   var vignetteEnCours = '';
 
   /* Une fiche n'était ouvrable que si la cliente possédait une clé, ce qui
@@ -247,6 +245,15 @@
     var foot = document.getElementById('clientesFoot');
 
     document.getElementById('emptyResult').style.display = rows.length ? 'none' : 'flex';
+    /* Liste vraiment vide ou simple recherche infructueuse : le message diffère */
+    if (!rows.length) {
+      var vide = clientes.length === 0;
+      document.getElementById('emptyTitre').textContent =
+        vide ? 'Aucune cliente enregistrée' : 'Aucune cliente ne correspond';
+      document.getElementById('emptySous').textContent =
+        vide ? 'Créez votre première cliente avec le bouton « Nouvelle cliente »'
+             : 'Essayez un autre nom';
+    }
 
     body.innerHTML = rows.map(function (c) {
       var href = 'cliente.html?c=' + c.key;
@@ -323,7 +330,7 @@
       document.getElementById(id).value = '';
     });
     document.getElementById('nCommission').value = 30;
-    document.getElementById('nApporteur').selectedIndex = 0;
+    sagaRemplirApporteurs(document.getElementById('nApporteur'), '', true);
     document.getElementById('letterWarn').style.display = 'none';
     clearVignette();
   }
@@ -384,7 +391,7 @@
       adresse: document.getElementById('nAdresse').value.trim(),
       commission: parseInt(document.getElementById('nCommission').value, 10) || 30,
       apporteur: document.getElementById('nApporteur').value || null,
-      apporteurPct: document.getElementById('nApporteur').value ? 8 : 0,
+      apporteurPct: sagaPctApporteur(document.getElementById('nApporteur').value),
       depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
       pending: null
     };
@@ -404,6 +411,7 @@
     document.getElementById('letterWarn').style.display = 'none';
   });
 
+  sagaRemplirApporteurs(document.getElementById('nApporteur'), '', true);
   render();
 </script>
 </body>

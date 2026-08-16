@@ -122,50 +122,9 @@
 <div class="panel">
             <div class="panel-head">
               <h2>Signatures en attente</h2>
-              <span class="chip warn" id="signPendingCount">4</span>
+              <span class="chip warn" id="signPendingCount">0</span>
             </div>
-            <ul class="sign-list">
-              <li>
-                <div class="sign-doc">
-                  <span class="agenda-kind">Contrat</span>
-                  <a href="cliente.html?c=julie">Julie (C)</a>
-                </div>
-                <div class="sign-state">
-                  <span class="chip warn">Ouvert, non signé</span>
-                  <span class="muted">envoyé le 29 juil.</span>
-                </div>
-              </li>
-              <li>
-                <div class="sign-doc">
-                  <span class="agenda-kind" style="background:var(--surface-alt); color:var(--ink-muted); border:1px solid var(--line);">Restitution</span>
-                  <a href="cliente.html?c=camille">Camille (B)</a>
-                </div>
-                <div class="sign-state">
-                  <span class="chip neutral">Envoyé</span>
-                  <span class="muted">envoyé le 30 juil.</span>
-                </div>
-              </li>
-              <li>
-                <div class="sign-doc">
-                  <span class="agenda-kind">Contrat</span>
-                  <a href="cliente.html?c=marion">Marion (F)</a>
-                </div>
-                <div class="sign-state">
-                  <span class="chip warn">Sans réponse · 11 j</span>
-                  <span class="muted">1 relance envoyée</span>
-                </div>
-              </li>
-              <li>
-                <div class="sign-doc">
-                  <span class="agenda-kind">Contrat</span>
-                  <a href="cliente.html?c=nora">Nora (T)</a>
-                </div>
-                <div class="sign-state">
-                  <span class="chip critical">Refusé</span>
-                  <span class="muted">à traiter</span>
-                </div>
-              </li>
-            </ul>
+            <ul class="sign-list" id="signList"></ul>
             <p class="card-note" style="margin-top:12px;">Mis à jour automatiquement par Yousign dès qu'une cliente ouvre ou signe un document.</p>
           </div>
         </div>
@@ -316,6 +275,44 @@
   }
 
   /* ============ Agenda du tableau de bord ============ */
+  /* Signatures en attente : lues sur les fiches clientes (champ `pending`)
+     au lieu d'être écrites en dur dans la page. */
+  function renderSignatures() {
+    var fiches = sagaFiches();
+    var lignes = Object.keys(fiches)
+      .filter(function (k) { return fiches[k].pending; })
+      .map(function (k) {
+        var f = fiches[k];
+        var restitution = f.pending.type === 'restitution';
+        // Le détail (« envoyé le 29 juillet… ») suit le tiret cadratin
+        var detail = String(f.pending.texte || '').replace(/<[^>]+>/g, '');
+        var tiret = detail.indexOf('—');
+        detail = tiret === -1 ? '' : detail.slice(tiret + 1).trim();
+        var style = restitution
+          ? ' style="background:var(--surface-alt); color:var(--ink-muted); border:1px solid var(--line);"'
+          : '';
+        return '<li>'
+          + '<div class="sign-doc">'
+          +   '<span class="agenda-kind"' + style + '>'
+          +     (restitution ? 'Restitution' : 'Contrat') + '</span>'
+          +   '<a href="cliente.html?c=' + encodeURIComponent(k) + '">'
+          +     sagaEchapper(f.prenom) + ' (' + sagaEchapper(f.lettre) + ')</a>'
+          + '</div>'
+          + '<div class="sign-state">'
+          +   '<span class="chip warn">En attente</span>'
+          +   '<span class="muted">' + sagaEchapper(detail) + '</span>'
+          + '</div>'
+          + '</li>';
+      });
+
+    var compteur = document.getElementById('signPendingCount');
+    compteur.textContent = lignes.length;
+    compteur.className = lignes.length ? 'chip warn' : 'chip good';
+    document.getElementById('signList').innerHTML = lignes.length
+      ? lignes.join('')
+      : '<li><span class="muted">Aucun document en attente de signature.</span></li>';
+  }
+
   function renderAgendaDash() {
     var MOIS_COURT = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
     var prochains = sagaAgenda().filter(function (e) { return e.date >= sagaAujourdhui(); })
@@ -334,6 +331,8 @@
   }
 
   /* ============ Recherche globale ============ */
+  renderSignatures();
+
   function chercher(q) {
     q = q.trim().toLowerCase();
     var res = [];

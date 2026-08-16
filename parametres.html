@@ -579,13 +579,24 @@
           </div>
 
           <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
-            <div class="panel-head"><h2>Données de test</h2></div>
+            <div class="panel-head"><h2>Données</h2></div>
             <p class="card-note" style="max-width:720px; margin-bottom:14px;">
-              Tout ce que vous saisissez dans cette maquette (clientes, ventes, paiements, vignettes, réglages de boutique)
+              Tout ce que vous saisissez (clientes, ventes, paiements, vignettes, réglages de boutique)
               est conservé dans votre navigateur et survit aux changements de page. Rien n'est envoyé sur internet.
-              Ce bouton remet la maquette dans son état d'origine.
             </p>
-            <button class="btn btn-secondary btn-sm" onclick="resetDonnees()">Réinitialiser les données de test</button>
+            <div class="info-card" style="max-width:720px; margin-bottom:16px;">
+              <div class="info-card-title">Jeu de démonstration <span class="chip neutral" id="demoChip">—</span></div>
+              <p class="card-note">
+                Les clientes, lives, apporteurs et rendez-vous d'exemple (Fanny, Julie, Nadia R.…)
+                servent à découvrir l'application. Retirez-les pour travailler sur vos vraies données ;
+                vous pourrez toujours les recharger ensuite.
+              </p>
+              <button class="btn btn-secondary btn-sm" style="margin-top:12px;" id="demoBtn" onclick="basculerDemo()">—</button>
+            </div>
+            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
+              Pour repartir totalement de zéro : tout ce qui a été saisi est effacé, définitivement.
+            </p>
+            <button class="btn btn-secondary btn-sm" onclick="resetDonnees()">Effacer toutes les données</button>
           </div>
 
           <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
@@ -710,7 +721,9 @@
     { id:4, prenom:'Camille',nom:'Dubois',  email:'camille@sagadressing.fr',tel:'', role:'gestion', perms:null, last:'—',           status:'invited', owner:false, creele:'2026-07-28' }
   ];
 
-  var users = sagaLoad('utilisateurs_crm', USERS_DEFAUT);
+  /* Hors démonstration, seul le compte propriétaire subsiste : sans lui,
+     plus personne ne pourrait administrer le CRM. */
+  var users = sagaLoad('utilisateurs_crm', sagaDemo(USERS_DEFAUT, USERS_DEFAUT.slice(0, 1)));
   function persistUsers() { sagaSave('utilisateurs_crm', users); }
   function nomComplet(u) { return ((u.prenom || '') + ' ' + (u.nom || '')).trim() || u.name || '—'; }
 
@@ -1350,13 +1363,40 @@
   });
 
   function resetDonnees() {
-    if (!confirm('Effacer toutes les données saisies dans la maquette ?\n\n'
-      + 'Clientes créées, ventes, paiements, vignettes et réglages de boutique seront perdus.\n'
-      + 'Les données de démonstration d\'origine réapparaîtront.')) return;
+    if (!confirm('Effacer toutes les données ?\n\n'
+      + 'Clientes, ventes, paiements, vignettes et réglages de boutique seront perdus.\n'
+      + 'L\'application repartira entièrement vide.')) return;
     sagaReset();
-    alert('Données réinitialisées.');
+    alert('Données effacées. L\'application repart de zéro.');
     location.reload();
   }
+
+  /* Charge ou retire les exemples. Ils ne sont pas copiés dans le navigateur :
+     un simple témoin décide si les jeux par défaut du code s'appliquent, ce qui
+     évite qu'ils se mélangent aux données réellement saisies. */
+  function basculerDemo() {
+    if (sagaDemoActive()) {
+      if (!confirm('Retirer le jeu de démonstration ?\n\n'
+        + 'Les exemples disparaissent ; ce que vous avez saisi vous-même est conservé.')) return;
+      sagaDemoActiver(false);
+    } else {
+      if (!confirm('Charger le jeu de démonstration ?\n\n'
+        + 'Les clientes et lives d\'exemple réapparaîtront à côté de vos données.')) return;
+      sagaDemoActiver(true);
+    }
+    location.reload();
+  }
+
+  function majDemo() {
+    var actif = sagaDemoActive();
+    var chip = document.getElementById('demoChip');
+    chip.textContent = actif ? 'Chargé' : 'Retiré';
+    chip.className = actif ? 'chip warn' : 'chip good';
+    document.getElementById('demoBtn').textContent =
+      actif ? 'Retirer le jeu de démonstration' : 'Charger le jeu de démonstration';
+  }
+
+  majDemo();
 
   switchMailMethod();
   refreshSenderPreview();
