@@ -240,6 +240,13 @@
   }
 
   function render() {
+    /* Chiffres recalculés à chaque affichage depuis les ventes : la fiche ne
+       porte plus que l'identité de la cliente. */
+    clientes.forEach(function (c) {
+      var t = sagaTotauxDressing(c.lettre);
+      c.ca = t.ca; c.commission = t.commission; c.reste = t.reste;
+    });
+
     var rows = visibleClientes();
     var body = document.getElementById('clientesBody');
     var foot = document.getElementById('clientesFoot');
@@ -364,7 +371,6 @@
       lettre: lettre,
       apporteur: document.getElementById('nApporteur').value,
       pct: parseInt(document.getElementById('nCommission').value, 10) || 30,
-      ca: 0, commission: 0, reste: 0,
       statut: 'active',
       vignette: vignetteEnCours
     });

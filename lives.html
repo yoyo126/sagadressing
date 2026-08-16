@@ -42,40 +42,28 @@
         <div class="form-grid" style="max-width:520px;">
           <div class="form-field">
             <label class="form-label" for="csvFile">Fichier exporté depuis Whatnot</label>
-            <input class="form-input" type="file" id="csvFile" accept=".csv" />
-            <span class="card-note">Whatnot → Revenus → Exporter. Les virements (PAYOUT) sont ignorés automatiquement.</span>
+            <input class="form-input" type="file" id="csvFile" accept=".csv,text/csv" />
+            <span class="card-note">Whatnot → Revenus → Exporter. Les virements (PAYOUT) et les lignes annulées sont écartés automatiquement.</span>
           </div>
           <div class="form-field">
             <label class="form-label" for="csvSession">Nom de la session</label>
-            <input class="form-input" id="csvSession" placeholder="Ex. Live du 5 août" />
+            <input class="form-input" id="csvSession" placeholder="Repris de la date du fichier" />
           </div>
           <div class="form-field">
-            <label class="form-label" for="csvFrais">Frais Whatnot appliqués (%)</label>
-            <input class="form-input" type="number" id="csvFrais" value="0" />
-            <span class="card-note">0 en temps normal. À 15-20 pendant les promotions « 0 frais », où vous conservez les frais.</span>
+            <label class="form-label" for="csvCategorie">Catégorie (facultatif)</label>
+            <input class="form-input" id="csvCategorie" placeholder="Ex. Sacs &amp; accessoires" />
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn btn-primary btn-sm" onclick="runImport()">Analyser le fichier</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleImport()">Annuler</button>
           </div>
+          <p class="card-note">
+            Whatnot ne communique pas le prix affiché mais le montant réellement versé,
+            ses frais déjà déduits. Commission et part de la cliente se calculent donc sur
+            ce net — rien à régler, y compris pendant les promotions « 0 frais ».
+          </p>
         </div>
-        <div id="importResult" style="display:none; margin-top:18px;">
-          <div class="info-card">
-            <div class="info-card-title">Étape suivante : associer les lettres aux clientes</div>
-            <p class="card-note">Le fichier contient 4 lettres de dressing. Chacune doit être rattachée à une cliente avant de créer les lives.</p>
-            <div class="table-scroll" style="margin-top:12px;">
-              <table>
-                <thead><tr><th>Lettre</th><th class="num">Articles</th><th class="num">Total</th><th>Cliente</th></tr></thead>
-                <tbody>
-                  <tr><td><strong>M</strong></td><td class="num tabular">38</td><td class="num tabular">1 480 €</td><td class="muted">Fanny — reconnue</td></tr>
-                  <tr><td><strong>C</strong></td><td class="num tabular">27</td><td class="num tabular">1 660 €</td><td class="muted">Julie — reconnue</td></tr>
-                  <tr><td><strong>B</strong></td><td class="num tabular">31</td><td class="num tabular">1 500 €</td><td class="muted">Camille — reconnue</td></tr>
-                  <tr><td><strong>?</strong></td><td class="num tabular">4</td><td class="num tabular">120 €</td><td><span class="chip warn">Sans lettre — à affecter</span></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <div id="importResult" style="display:none; margin-top:18px;"></div>
       </div>
 
       <div class="panel">
@@ -255,11 +243,201 @@
   function resetImport() {
     document.getElementById('csvFile').value = '';
     document.getElementById('csvSession').value = '';
-    document.getElementById('csvFrais').value = 0;
+    document.getElementById('csvCategorie').value = '';
+    document.getElementById('importResult').innerHTML = '';
+    ANALYSE = null;
+  }
+
+  /* ============ Import d'un export Whatnot ============
+     L'analyse vit dans nav.js ; cet écran ne fait que montrer ce qui a été lu
+     et demander les arbitrages que le fichier ne contient pas : à quelle
+     cliente appartient chaque lettre, et où vont les ventes sans lettre. */
+
+  var ANALYSE = null;
+
+  function eurPrecis(n) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  }
+
+  /* Choix de dressing proposés : les clientes enregistrées, plus les lettres
+     du fichier qui n'appartiennent encore à personne — pour pouvoir importer
+     un live avant même d'avoir créé les fiches. */
+  function optionsDressings(selection, lettresDuFichier) {
+    var vues = {}, html = '';
+    sagaToutesClientes().forEach(function (c) {
+      vues[c.lettre] = true;
+      html += '<option value="' + sagaEchapper(c.lettre) + '"'
+        + (c.lettre === selection ? ' selected' : '') + '>'
+        + sagaEchapper(c.prenom) + ' (' + sagaEchapper(c.lettre) + ')</option>';
+    });
+    (lettresDuFichier || []).forEach(function (l) {
+      if (!l || vues[l]) return;
+      vues[l] = true;
+      html += '<option value="' + sagaEchapper(l) + '"'
+        + (l === selection ? ' selected' : '') + '>Lettre ' + sagaEchapper(l)
+        + ' — aucune cliente pour l\'instant</option>';
+    });
+    return html;
   }
 
   function runImport() {
-    document.getElementById('importResult').style.display = 'block';
+    var fichier = document.getElementById('csvFile').files[0];
+    var zone = document.getElementById('importResult');
+    zone.style.display = 'block';
+
+    if (!fichier) {
+      zone.innerHTML = '<div class="info-card"><div class="info-card-title">'
+        + 'Aucun fichier choisi</div><p class="card-note">'
+        + 'Sélectionnez l\'export CSV téléchargé depuis Whatnot.</p></div>';
+      return;
+    }
+
+    zone.innerHTML = '<p class="card-note">Lecture du fichier…</p>';
+    var lecteur = new FileReader();
+    lecteur.onerror = function () {
+      zone.innerHTML = '<div class="info-card"><div class="info-card-title">'
+        + 'Fichier illisible</div><p class="card-note">Le fichier n\'a pas pu être ouvert.</p></div>';
+    };
+    lecteur.onload = function (e) {
+      ANALYSE = sagaAnalyserWhatnot(e.target.result);
+      if (ANALYSE.erreur) {
+        zone.innerHTML = '<div class="info-card"><div class="info-card-title">'
+          + 'Import impossible</div><p class="card-note">' + sagaEchapper(ANALYSE.erreur) + '</p></div>';
+        ANALYSE = null;
+        return;
+      }
+      renderAnalyse();
+    };
+    lecteur.readAsText(fichier, 'utf-8');
+  }
+
+  function renderAnalyse() {
+    var a = ANALYSE;
+    var lettres = a.parLettre.map(function (g) { return g.lettre; }).filter(Boolean);
+    var sansLettre = a.parLettre.filter(function (g) { return !g.lettre; })[0];
+    var html = '';
+
+    if (!a.ventes.length) {
+      var motif = a.doublons.length
+        ? 'Toutes les lignes de ce fichier ont déjà été importées.'
+        : 'Aucune vente exploitable dans ce fichier.';
+      document.getElementById('importResult').innerHTML =
+        '<div class="info-card"><div class="info-card-title">Rien à importer</div>'
+        + '<p class="card-note">' + motif + '</p></div>';
+      return;
+    }
+
+    // Ce que contient le fichier
+    html += '<div class="info-card">'
+      + '<div class="info-card-title">Fichier lu — live du ' + sagaDateLongue(a.date) + '</div>'
+      + '<p class="card-note">'
+      + '<strong>' + a.ventes.length + ' ventes</strong> pour ' + eurPrecis(a.totalVentes)
+      + ' · <strong>' + a.giveaways.length + ' giveaways</strong> à ' + eurPrecis(a.totalGiveaways)
+      + ' (répartis au prorata des ventes)';
+    if (a.doublons.length) {
+      html += ' · <span class="chip warn">' + a.doublons.length + ' ligne(s) déjà importée(s), écartée(s)</span>';
+    }
+    if (a.ignorees.length) {
+      html += ' · <span class="chip neutral">' + a.ignorees.length + ' ligne(s) ignorée(s)</span>';
+    }
+    html += '</p></div>';
+
+    // Lettres reconnues → cliente
+    html += '<div class="info-card" style="margin-top:14px;">'
+      + '<div class="info-card-title">À qui appartient chaque lettre ?</div>'
+      + '<div class="table-scroll" style="margin-top:12px;"><table>'
+      + '<thead><tr><th>Lettre</th><th class="num">Ventes</th><th class="num">Total net</th><th>Dressing</th></tr></thead><tbody>';
+
+    a.parLettre.filter(function (g) { return g.lettre; }).forEach(function (g) {
+      html += '<tr><td><strong>' + sagaEchapper(g.lettre) + '</strong></td>'
+        + '<td class="num tabular">' + g.ventes.length + '</td>'
+        + '<td class="num tabular">' + eurPrecis(g.total) + '</td>'
+        + '<td><select class="form-select" data-lettre="' + sagaEchapper(g.lettre) + '">'
+        + optionsDressings(g.lettre, lettres) + '</select></td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // Ventes sans lettre : chacune doit être affectée
+    if (sansLettre) {
+      html += '<div class="info-card" style="margin-top:14px;">'
+        + '<div class="info-card-title">' + sansLettre.ventes.length
+        + ' ventes sans lettre de dressing <span class="chip warn">à affecter</span></div>'
+        + '<p class="card-note">Le libellé Whatnot ne portait pas de lettre. '
+        + 'Choisissez le dressing de chacune ; le live ne peut pas être créé tant qu\'il en reste une sans réponse.</p>'
+        + '<div style="display:flex; gap:10px; align-items:center; margin:12px 0;">'
+        + '<span class="card-note">Tout affecter à</span>'
+        + '<select class="form-select" id="sansLettreTout" style="max-width:260px;" onchange="affecterTout()">'
+        + '<option value="">—</option>' + optionsDressings('', lettres) + '</select></div>'
+        + '<div class="table-scroll"><table>'
+        + '<thead><tr><th>Article</th><th class="num">Montant net</th><th>Dressing</th></tr></thead><tbody>';
+
+      sansLettre.ventes.forEach(function (v) {
+        html += '<tr><td>' + sagaEchapper(v.libelle) + '</td>'
+          + '<td class="num tabular">' + eurPrecis(v.montant) + '</td>'
+          + '<td><select class="form-select" data-commande="' + sagaEchapper(v.commande) + '">'
+          + '<option value="">À choisir</option>' + optionsDressings('', lettres) + '</select></td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    // Lignes écartées, listées pour que rien ne disparaisse en silence
+    if (a.ignorees.length || a.doublons.length) {
+      html += '<div class="info-card" style="margin-top:14px;">'
+        + '<div class="info-card-title">Lignes non reprises</div><ul class="card-note" style="margin:8px 0 0 18px;">';
+      a.doublons.concat(a.ignorees).slice(0, 12).forEach(function (l) {
+        html += '<li>' + sagaEchapper(l.message.slice(0, 70)) + ' — ' + sagaEchapper(l.raison) + '</li>';
+      });
+      if (a.ignorees.length + a.doublons.length > 12) {
+        html += '<li>… et ' + (a.ignorees.length + a.doublons.length - 12) + ' autres</li>';
+      }
+      html += '</ul></div>';
+    }
+
+    html += '<div style="display:flex; gap:10px; margin-top:16px;">'
+      + '<button class="btn btn-primary btn-sm" onclick="creerLiveImporte()">Créer le live</button>'
+      + '<button class="btn btn-ghost btn-sm" onclick="toggleImport()">Annuler</button></div>';
+
+    document.getElementById('importResult').innerHTML = html;
+  }
+
+  function affecterTout() {
+    var valeur = document.getElementById('sansLettreTout').value;
+    if (!valeur) return;
+    document.querySelectorAll('#importResult select[data-commande]').forEach(function (s) {
+      s.value = valeur;
+    });
+  }
+
+  function creerLiveImporte() {
+    if (!ANALYSE) return;
+
+    var affectations = {}, sansLettre = {}, manquantes = 0;
+    document.querySelectorAll('#importResult select[data-lettre]').forEach(function (s) {
+      affectations[s.dataset.lettre] = s.value;
+    });
+    document.querySelectorAll('#importResult select[data-commande]').forEach(function (s) {
+      if (!s.value) manquantes++;
+      else sansLettre[s.dataset.commande] = s.value;
+    });
+
+    if (manquantes) {
+      alert(manquantes + ' vente(s) sans lettre attendent encore un dressing.\n\n'
+        + 'Utilisez « Tout affecter à » si elles reviennent toutes à la même cliente.');
+      return;
+    }
+
+    var live = sagaLiveDepuisWhatnot(ANALYSE, {
+      titre: document.getElementById('csvSession').value.trim(),
+      categorie: document.getElementById('csvCategorie').value.trim()
+    , affectations: affectations, sansLettre: sansLettre });
+
+    var lives = sagaLives();
+    lives.push(live);
+    if (!sagaSaveLives(lives)) return;
+
+    sagaTracer('Import Whatnot', live.titre,
+      ANALYSE.ventes.length + ' ventes · ' + eurPrecis(ANALYSE.totalVentes));
+    window.location.href = 'live.html?l=' + encodeURIComponent(live.id);
   }
 
   document.getElementById('statusToggle').addEventListener('click', (e) => {

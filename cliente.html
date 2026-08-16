@@ -701,7 +701,14 @@
         : l.label;
       var det = [];
       if (l.origine === 'live') det.push(l.nbArticles + ' article' + (l.nbArticles > 1 ? 's' : ''));
-      if (l.giveaways > 0) det.push('Giveaways : ' + fmtEUR(l.giveaways));
+      /* Ce qui est déduit, pas ce qui a été engagé : le contrat plafonne les
+         frais de port des giveaways à 10 € par live, Saga finance le reste. */
+      if (l.portGiveaway > 0) {
+        det.push('Port des giveaways : ' + fmtEURcents(l.portGiveaway)
+          + (l.giveaways > l.portGiveaway
+              ? ' (plafond contractuel ; ' + fmtEURcents(l.giveaways) + ' engagés)'
+              : ''));
+      }
       if (l.apporteurMontant > 0) det.push('Apporteur ' + CLIENT.apporteur + ' : ' + fmtEURcents(l.apporteurMontant));
       if (l.frais > 0) det.push("Frais d'envoi : " + fmtEURcents(l.frais));
       if (det.length) label += '<div class="muted" style="font-size:.8rem; margin-top:3px;">' + det.join(' · ') + '</div>';

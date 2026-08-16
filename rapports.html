@@ -152,7 +152,9 @@
         res.push({
           date: live.date, liveId: live.id, session: live.titre,
           cliente: d.prenom, nom: sagaInfosCliente(lettre).nom, lettre: lettre,
-          source: 'live', ventes: d.ventes, giveaways: d.giveaways,
+          /* Le port des giveaways est plafonné par le contrat : c'est le
+             montant déduit qui doit figurer au rapport, pas celui engagé. */
+          source: 'live', ventes: d.ventes, giveaways: d.portGiveaway,
           saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
           paye: d.paye, datePaiement: d.paye ? d.paiement.date : ''
         });
@@ -460,7 +462,16 @@
     document.getElementById('kpiCASub').innerHTML = t.ventes === 0 ? 'aucune vente sur la période'
       : fmtEUR(t.live) + ' en live · <strong style="color:var(--brand-strong)">' + fmtEUR(t.direct) + ' hors live</strong>';
     document.getElementById('kpiCommission').textContent = fmtEUR(t.saga);
-    document.getElementById('kpiCommissionSub').textContent = rows.length + ' session(s) sur la période';
+    /* Une session peut donner une ligne par cliente : on compte les lives
+       distincts, plus chaque vente hors live. */
+    var sessions = {};
+    var nbSessions = 0;
+    rows.forEach(function (v) {
+      if (!v.liveId) { nbSessions++; return; }
+      if (!sessions[v.liveId]) { sessions[v.liveId] = true; nbSessions++; }
+    });
+    document.getElementById('kpiCommissionSub').textContent =
+      nbSessions + ' session(s) sur la période';
     document.getElementById('kpiApporteur').textContent = fmtEUR(t.apporteur);
     document.getElementById('kpiApporteurSub').textContent =
       t.apporteur > 0 ? 'à régler aux apporteurs' : 'aucune commission sur la période';

@@ -631,6 +631,246 @@ function sagaDecompte(live, lettre) {
   };
 }
 
+/* ============ Import d'un export Whatnot ============
+   Whatnot → Revenus → Exporter. Le fichier ne contient pas le prix de vente
+   affiché mais le montant net réellement versé, frais de plateforme déduits :
+   c'est donc sur ce net que se calculent la commission Saga et la part de la
+   cliente. Pendant les promotions « 0 frais », le net est plus élevé et tout
+   le monde y gagne, sans réglage à faire.
+
+   Le libellé d'une vente ressemble à :
+     « Revenus générés par la vente de :  PDD 5€ F ( pas d'annulation, ni
+       reprise ) #12 »
+   la lettre qui suit le prix de départ étant celle du dressing. Les cadeaux
+   apparaissent séparément (« Charged deduction of €3.54 for giveaway order
+   … »), sans lettre : leur coût est réparti au prorata des ventes. */
+
+/* Lecteur CSV : les libellés contiennent des virgules et des guillemets,
+   un simple découpage sur la virgule ne suffit pas. */
+function sagaLireCSV(texte) {
+  var lignes = [], ligne = [], champ = '', dansGuillemets = false;
+  texte = String(texte).replace(/^﻿/, '');
+
+  function finDeChamp() { ligne.push(champ); champ = ''; }
+  function finDeLigne() {
+    finDeChamp();
+    var vide = ligne.every(function (c) { return c.trim() === ''; });
+    if (!vide) lignes.push(ligne);
+    ligne = [];
+  }
+
+  for (var i = 0; i < texte.length; i++) {
+    var c = texte.charAt(i);
+    if (dansGuillemets) {
+      if (c === '"') {
+        if (texte.charAt(i + 1) === '"') { champ += '"'; i++; }
+        else dansGuillemets = false;
+      } else champ += c;
+    } else if (c === '"') {
+      dansGuillemets = true;
+    } else if (c === ',') {
+      finDeChamp();
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && texte.charAt(i + 1) === '\n') i++;
+      finDeLigne();
+    } else champ += c;
+  }
+  if (champ !== '' || ligne.length) finDeLigne();
+  return lignes;
+}
+
+/* « 9,41 € » (avec espace insécable) → 9.41 ; « -3,54 € » → -3.54 */
+function sagaMontantWhatnot(txt) {
+  var n = parseFloat(String(txt).replace(/[^0-9,.\-]/g, '').replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+}
+
+var SAGA_MOIS_COURTS = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin',
+                        'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
+
+/* « 28 juil. 2026, 23:43:39 » → « 2026-07-28 » */
+function sagaDateWhatnot(txt) {
+  var m = String(txt).match(/(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})/);
+  if (!m) return '';
+  var mois = m[2].toLowerCase().replace(/\./g, '')
+    .replace('fevr', 'févr').replace('aout', 'août').replace('dec', 'déc');
+  var i = -1;
+  SAGA_MOIS_COURTS.forEach(function (court, k) {
+    if (i === -1 && mois.indexOf(court) === 0) i = k;
+  });
+  if (i === -1) return '';
+  return m[3] + '-' + ('0' + (i + 1)).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+}
+
+/* Lettre de dressing dans « PDD 5€ F #12 » ; vide si la vente n'en porte pas */
+function sagaLettreWhatnot(libelle) {
+  var m = String(libelle).match(/€\s*([A-Za-zÀ-ÿ])(?![A-Za-zÀ-ÿ])/);
+  return m ? m[1].toUpperCase() : '';
+}
+
+/* Numéros de commande déjà importés, pour ne pas compter deux fois le même
+   live si le fichier est déposé une seconde fois. */
+function sagaCommandesImportees() {
+  var vues = {};
+  sagaLives().forEach(function (live) {
+    (live.articles || []).forEach(function (a) {
+      if (a.commande) vues[a.commande] = live.titre || live.id;
+    });
+  });
+  return vues;
+}
+
+/* Analyse d'un export : ne touche à rien, se contente de dire ce qu'il contient. */
+function sagaAnalyserWhatnot(texte) {
+  var lignes = sagaLireCSV(texte);
+  if (lignes.length < 2) return { erreur: 'Fichier vide ou illisible.' };
+
+  var entetes = lignes[0].map(function (h) { return h.trim().toLowerCase(); });
+  function col(nom) { return entetes.indexOf(nom); }
+  var iDate = col('date de création'), iMontant = col('montant'),
+      iCommande = col('numéro de commande'), iMessage = col('message'),
+      iStatut = col('statut'), iType = col('type de transaction');
+
+  if (iMontant === -1 || iMessage === -1) {
+    return { erreur: "Ce fichier n'a pas le format d'un export Whatnot : "
+      + 'les colonnes « Montant » et « Message » sont introuvables.' };
+  }
+
+  var dejaVues = sagaCommandesImportees();
+  var ventes = [], giveaways = [], ignorees = [], doublons = [];
+
+  for (var i = 1; i < lignes.length; i++) {
+    var r = lignes[i];
+    var message = (r[iMessage] || '').trim();
+    var ligne = {
+      commande: iCommande === -1 ? '' : (r[iCommande] || '').trim(),
+      date: sagaDateWhatnot(iDate === -1 ? '' : r[iDate]),
+      montant: sagaMontantWhatnot(r[iMontant]),
+      message: message
+    };
+    var statut = iStatut === -1 ? 'completed' : (r[iStatut] || '').trim().toLowerCase();
+    var type = iType === -1 ? 'SALES' : (r[iType] || '').trim().toUpperCase();
+
+    if (statut !== 'completed') { ligne.raison = 'statut « ' + statut + ' »'; ignorees.push(ligne); continue; }
+    if (type !== 'SALES') { ligne.raison = 'ligne ' + type + ' (virement)'; ignorees.push(ligne); continue; }
+
+    if (ligne.commande && dejaVues[ligne.commande]) {
+      ligne.raison = 'déjà importée dans « ' + dejaVues[ligne.commande] + ' »';
+      doublons.push(ligne);
+      continue;
+    }
+
+    if (/giveaway/i.test(message)) {
+      ligne.montant = Math.abs(ligne.montant);   // Whatnot le note en négatif
+      giveaways.push(ligne);
+      continue;
+    }
+
+    var m = message.match(/vente de\s*:\s*(.+)$/i);
+    if (!m) { ligne.raison = 'libellé non reconnu'; ignorees.push(ligne); continue; }
+
+    ligne.libelle = m[1]
+      .replace(/\(\s*pas d['’]annulation[^)]*\)/i, '')
+      .replace(/\s+/g, ' ').trim();
+    ligne.lettre = sagaLettreWhatnot(ligne.libelle);
+
+    if (ligne.montant <= 0) { ligne.raison = 'montant nul ou négatif'; ignorees.push(ligne); continue; }
+    ventes.push(ligne);
+  }
+
+  // Regroupement par lettre, la chaîne vide rassemblant les ventes sans lettre
+  var groupes = {}, ordre = [];
+  ventes.forEach(function (v) {
+    if (!groupes[v.lettre]) { groupes[v.lettre] = { lettre: v.lettre, ventes: [], total: 0 }; ordre.push(v.lettre); }
+    groupes[v.lettre].ventes.push(v);
+    groupes[v.lettre].total = sagaCentimes(groupes[v.lettre].total + v.montant);
+  });
+
+  var dates = ventes.map(function (v) { return v.date; }).filter(Boolean).sort();
+
+  return {
+    ventes: ventes,
+    giveaways: giveaways,
+    ignorees: ignorees,
+    doublons: doublons,
+    parLettre: ordre.sort().map(function (l) { return groupes[l]; }),
+    date: dates[0] || sagaAujourdhui(),
+    totalVentes: sagaCentimes(ventes.reduce(function (s, v) { return s + v.montant; }, 0)),
+    totalGiveaways: sagaCentimes(giveaways.reduce(function (s, g) { return s + g.montant; }, 0))
+  };
+}
+
+/* Coût des giveaways réparti au prorata des ventes de chaque dressing.
+   Le dernier centime va au plus gros vendeur : sans cela, la somme des parts
+   ne retombait pas exactement sur le total à répartir. */
+function sagaRepartirGiveaways(total, totauxParLettre) {
+  var parts = {};
+  var lettres = Object.keys(totauxParLettre);
+  var somme = lettres.reduce(function (s, l) { return s + totauxParLettre[l]; }, 0);
+  if (!total || !lettres.length || somme <= 0) {
+    lettres.forEach(function (l) { parts[l] = 0; });
+    return parts;
+  }
+
+  var cumul = 0, plusGros = lettres[0];
+  lettres.forEach(function (l) {
+    parts[l] = sagaCentimes(total * totauxParLettre[l] / somme);
+    cumul = sagaCentimes(cumul + parts[l]);
+    if (totauxParLettre[l] > totauxParLettre[plusGros]) plusGros = l;
+  });
+  parts[plusGros] = sagaCentimes(parts[plusGros] + (total - cumul));
+  return parts;
+}
+
+/* Construit le live à partir de l'analyse et des choix faits à l'écran.
+   `affectations` associe chaque lettre du fichier à la lettre retenue ;
+   `sansLettre` fait de même, commande par commande, pour les ventes qui
+   n'en portaient pas. */
+function sagaLiveDepuisWhatnot(analyse, options) {
+  var affectations = options.affectations || {};
+  var sansLettre = options.sansLettre || {};
+  var articles = [], totaux = {};
+
+  analyse.ventes.forEach(function (v) {
+    var lettre = v.lettre
+      ? (affectations[v.lettre] || v.lettre)
+      : (sansLettre[v.commande] || '');
+    articles.push({
+      id: 'a' + (v.commande || articles.length),
+      commande: v.commande,
+      libelle: v.libelle,
+      lettre: lettre,
+      montant: sagaCentimes(v.montant),
+      type: 'vente'
+    });
+    totaux[lettre] = sagaCentimes((totaux[lettre] || 0) + v.montant);
+  });
+
+  var parts = sagaRepartirGiveaways(analyse.totalGiveaways, totaux);
+  Object.keys(parts).forEach(function (lettre) {
+    if (!parts[lettre]) return;
+    articles.push({
+      id: 'g-' + lettre,
+      libelle: 'Giveaways du live (' + analyse.giveaways.length + ') — part au prorata des ventes',
+      lettre: lettre,
+      montant: parts[lettre],
+      type: 'giveaway'
+    });
+  });
+
+  return {
+    id: 'l-' + analyse.date.replace(/-/g, '') + '-' + Date.now().toString(36),
+    date: analyse.date,
+    titre: options.titre || ('Live du ' + sagaDateLongue(analyse.date)),
+    categorie: options.categorie || '',
+    /* Les montants importés sont déjà nets des frais Whatnot : les déduire
+       une seconde fois amputerait la cliente. */
+    fraisPct: 0,
+    encaisse: { statut: 'En attente', date: '' },
+    articles: articles
+  };
+}
+
 /* Lettres présentes sur un live, dans l'ordre d'apparition */
 function sagaLettresDuLive(live) {
   var vues = [];
@@ -720,6 +960,7 @@ function sagaVentesDuDressing(lettre) {
     res.push({
       origine: 'live', liveId: live.id, date: live.date, label: live.titre,
       lettre: lettre, ventes: d.ventes, giveaways: d.giveaways,
+      portGiveaway: d.portGiveaway,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: 0,
       net: d.net, paye: d.paye ? 1 : 0,
       datePaiement: d.paye ? d.paiement.date : '', modePaiement: d.paye ? d.paiement.mode : '',
@@ -731,7 +972,7 @@ function sagaVentesDuDressing(lettre) {
     var d = sagaDecompteDirect(v);
     res.push({
       origine: 'direct', venteId: v.id, date: v.date, label: v.libelle,
-      lettre: lettre, ventes: d.ventes, giveaways: 0,
+      lettre: lettre, ventes: d.ventes, giveaways: 0, portGiveaway: 0,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: d.frais,
       net: d.net, paye: v.paye ? 1 : 0,
       datePaiement: v.datePaiement || '', modePaiement: v.paye ? 'Virement' : '',
@@ -740,6 +981,24 @@ function sagaVentesDuDressing(lettre) {
   });
 
   return res.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+}
+
+/* Totaux d'un dressing, lives et ventes hors live réunis.
+   La liste des clientes lisait des champs `ca` / `commission` / `reste`
+   enregistrés une fois pour toutes à la création de la fiche : ils ne
+   bougeaient plus jamais, et une vente importée n'y apparaissait pas. Tout
+   part maintenant des ventes elles-mêmes. */
+function sagaTotauxDressing(lettre) {
+  var t = { ca: 0, commission: 0, net: 0, reste: 0, nbVentes: 0 };
+  sagaVentesDuDressing(lettre).forEach(function (v) {
+    t.ca += v.ventes;
+    t.commission += v.commission;
+    t.net += v.net;
+    t.nbVentes++;
+    if (!v.paye) t.reste += v.net;
+  });
+  ['ca', 'commission', 'net', 'reste'].forEach(function (k) { t[k] = sagaCentimes(t[k]); });
+  return t;
 }
 
 /* Marque une vente réglée, quel que soit son support de stockage */

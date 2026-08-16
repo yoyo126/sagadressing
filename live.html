@@ -246,10 +246,17 @@
     if (t.reste <= 0) { chip.className = 'chip good'; chip.textContent = 'Soldée'; }
     else { chip.className = 'chip warn'; chip.textContent = 'En cours'; }
 
-    document.getElementById('liveMeta').textContent =
-      t.clientes + ' cliente' + (t.clientes > 1 ? 's' : '') + ' · ' + LIVE.categorie +
-      ' · frais Whatnot ' + (LIVE.fraisPct || 0) + ' % · ' +
-      (LIVE.encaisse && LIVE.encaisse.date ? 'reçu le ' + sagaDateLongue(LIVE.encaisse.date) : 'encaissement en attente');
+    /* Chaque mention n'apparaît que si elle dit quelque chose : une catégorie
+       vide ou des frais à 0 % laissaient des séparateurs orphelins. */
+    var meta = [t.clientes + ' cliente' + (t.clientes > 1 ? 's' : '')];
+    if (LIVE.categorie) meta.push(LIVE.categorie);
+    meta.push(LIVE.fraisPct
+      ? 'frais Whatnot ' + LIVE.fraisPct + ' %'
+      : 'montants nets des frais Whatnot');
+    meta.push(LIVE.encaisse && LIVE.encaisse.date
+      ? 'reçu le ' + sagaDateLongue(LIVE.encaisse.date)
+      : 'encaissement en attente');
+    document.getElementById('liveMeta').textContent = meta.join(' · ');
 
     document.getElementById('encaisseList').innerHTML =
       '<div class="info-row"><span class="k">Statut</span><span class="v"><span class="chip good">' +
