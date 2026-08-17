@@ -1323,9 +1323,18 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.7.3';
+var SAGA_VERSION = '1.8.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.8.0', date: '2026-08-16', titre: 'Import Whatnot réel et démarrage à vide', points: [
+    'Le CRM démarre vide : les exemples deviennent un jeu de démonstration, à charger depuis Paramètres',
+    'Import d\'un export Whatnot : le fichier est réellement lu, les lettres reconnues, les ventes sans lettre affectées à l\'écran',
+    'Les montants importés sont ceux versés par Whatnot, frais déduits : plus de taux de frais à saisir',
+    'Le coût des giveaways est réparti au prorata des ventes, dans la limite contractuelle de 10 € par live',
+    'Réimporter le même fichier ne crée plus de doublon',
+    'Liste des clientes : le chiffre d\'affaires suit les ventes au lieu d\'être figé à la création de la fiche',
+    'Justificatifs des apporteurs comptés de la même façon dans la liste et sur la fiche'
+  ]},
   { version: '1.7.3', date: '2026-08-14', titre: 'Calendrier remis en proportion', points: [
     'Le calendrier remplit son panneau, avec des cases carrées de taille lisible'
   ]},
