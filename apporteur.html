@@ -328,64 +328,8 @@
   }
 
   // Types de justificatifs attendus pour un apporteur d'affaires
-  var DOC_TYPES = [
-    { key: 'kbis',     label: 'Extrait Kbis / avis SIRENE',        required: true },
-    { key: 'urssaf',   label: 'Attestation de vigilance URSSAF',   required: true, renouvelable: true },
-    { key: 'identite', label: "Pièce d'identité",                  required: true },
-    { key: 'rib',      label: 'RIB',                               required: true },
-    { key: 'contrat',  label: "Contrat d'apporteur signé",         required: true },
-    { key: 'assurance',label: 'Attestation RC professionnelle',    required: false },
-    { key: 'das2',     label: 'Déclaration DAS2 (honoraires)',     required: false },
-    { key: 'facture',  label: 'Facture de commission',             required: false },
-    { key: 'autre',    label: 'Autre document',                    required: false }
-  ];
+  var DOC_TYPES = SAGA_DOCS_APPORTEUR;
 
-  var APPORTEURS = {
-    nadia: {
-      prenom: 'Nadia R.', nom: 'Nadia Roussel', initiales: 'NR', statut: 'Actif',
-      email: 'nadia.roussel@example.com', tel: '06 45 78 21 09',
-      statutJur: 'Auto-entrepreneur', siret: '892 411 675 00018',
-      pct: 8, depuis: 'mars 2026',
-      clientes: ['Fanny (M)', 'Camille (B)', 'Élise (R)'],
-      commissions: [
-        { date: '2026-07-29', origine: 'Live du 29/07', cliente: 'Fanny',   base: 1480, montant: 118, paye: 0 },
-        { date: '2026-07-24', origine: 'Live du 24/07', cliente: 'Camille', base: 2110, montant: 169, paye: 0 },
-        { date: '2026-07-17', origine: 'Live du 17/07', cliente: 'Fanny',   base: 870,  montant: 70,  paye: 1 },
-        { date: '2026-06-19', origine: 'Live du 19/06', cliente: 'Fanny',   base: 1105, montant: 88,  paye: 1 },
-        { date: '2026-06-12', origine: 'Live du 12/06', cliente: 'Camille', base: 1680, montant: 134, paye: 1 }
-      ],
-      docs: [
-        { type: 'kbis',     nom: 'Kbis_Nadia_Roussel.pdf',       ajoute: '2026-03-12', expire: '' },
-        { type: 'identite', nom: 'CNI_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '2031-05-04' },
-        { type: 'rib',      nom: 'RIB_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '' },
-        { type: 'urssaf',   nom: 'Vigilance_URSSAF_T1_2026.pdf', ajoute: '2026-02-10', expire: '2026-08-10' }
-      ]
-    },
-    karim: {
-      prenom: 'Karim B.', nom: 'Karim Belkacem', initiales: 'KB', statut: 'Actif',
-      email: 'karim.belkacem@example.com', tel: '07 12 66 45 30',
-      statutJur: 'Société (SASU, EURL…)', siret: '904 552 118 00027',
-      pct: 6, depuis: 'avril 2026',
-      clientes: ['Marion (F)', 'Nora (T)'],
-      commissions: [
-        { date: '2026-07-20', origine: 'Live du 20/07', cliente: 'Marion', base: 1500, montant: 90, paye: 0 },
-        { date: '2026-06-08', origine: 'Live du 08/06', cliente: 'Marion', base: 1450, montant: 87, paye: 1 }
-      ],
-      docs: [
-        { type: 'kbis',     nom: 'Kbis_KB_Conseil.pdf',   ajoute: '2026-04-02', expire: '' },
-        { type: 'rib',      nom: 'RIB_KB_Conseil.pdf',    ajoute: '2026-04-02', expire: '' }
-      ]
-    },
-    sonia: {
-      prenom: 'Sonia L.', nom: 'Sonia Lambert', initiales: 'SL', statut: 'Inactif',
-      email: 'sonia.lambert@example.com', tel: '06 33 90 74 12',
-      statutJur: 'Particulier non professionnel', siret: '',
-      pct: 8, depuis: 'janvier 2026',
-      clientes: [],
-      commissions: [],
-      docs: []
-    }
-  };
 
   function currentKey() {
     var k = new URLSearchParams(window.location.search).get('a');
@@ -394,9 +338,7 @@
 
   /* Les apporteurs créés depuis la liste vivent dans `apporteurs_data` :
      sans cette lecture, leur fiche renverrait sur l'exemple Nadia. */
-  if (!sagaDemoActive()) APPORTEURS = {};
-  var FICHES = sagaLoad('apporteurs_data', {});
-  Object.keys(FICHES).forEach(function (k) { if (!APPORTEURS[k]) APPORTEURS[k] = FICHES[k]; });
+  var APPORTEURS = sagaFichesApporteurs();
 
   var A = APPORTEURS[currentKey()] || APPORTEURS.nadia;
   if (!A) {
@@ -410,7 +352,7 @@
   }
 
   function persistApporteur() {
-    var fiches = sagaLoad('apporteurs_data', {});
+    var fiches = sagaFichesApporteurs();
     fiches[currentKey()] = A;
     sagaSave('apporteurs_data', fiches);
   }
@@ -421,14 +363,7 @@
   }
 
   // État d'un justificatif : manquant / expiré / bientôt expiré / à jour
-  function docState(doc) {
-    if (!doc) return 'missing';
-    if (!doc.expire) return 'ok';
-    var days = Math.round((new Date(doc.expire + 'T00:00:00') - new Date(TODAY_ISO + 'T00:00:00')) / 86400000);
-    if (days < 0) return 'expired';
-    if (days <= 30) return 'soon';
-    return 'ok';
-  }
+  function docState(doc) { return sagaEtatDoc(doc, TODAY_ISO); }
 
   function renderDocs() {
     var html = DOC_TYPES.filter(function (t) { return t.key !== 'autre'; }).map(function (t) {
@@ -480,11 +415,7 @@
     document.getElementById('docChecklist').innerHTML = html;
 
     // Alerte + badge sur les documents à problème
-    var problems = DOC_TYPES.filter(function (t) { return t.key !== 'autre'; }).filter(function (t) {
-      var doc = A.docs.find(function (d) { return d.type === t.key; });
-      var st = docState(doc);
-      return (t.required && !doc) || st === 'expired' || st === 'soon';
-    });
+    var problems = sagaDocsARegulariser(A, TODAY_ISO);
 
     var badge = document.getElementById('docsBadge');
     if (problems.length) {

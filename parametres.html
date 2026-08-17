@@ -592,6 +592,7 @@
                 vous pourrez toujours les recharger ensuite.
               </p>
               <button class="btn btn-secondary btn-sm" style="margin-top:12px;" id="demoBtn" onclick="basculerDemo()">—</button>
+              <p class="card-note" id="demoNote" style="margin-top:10px;"></p>
             </div>
             <p class="card-note" style="max-width:720px; margin-bottom:14px;">
               Pour repartir totalement de zéro : tout ce qui a été saisi est effacé, définitivement.
@@ -1371,17 +1372,24 @@
     location.reload();
   }
 
-  /* Charge ou retire les exemples. Ils ne sont pas copiés dans le navigateur :
-     un simple témoin décide si les jeux par défaut du code s'appliquent, ce qui
-     évite qu'ils se mélangent aux données réellement saisies. */
+  /* Les exemples ne sont pas recopiés dans le navigateur : ils s'affichent tant
+     que rien n'a été enregistré. Les charger par-dessus des données existantes
+     ne montrerait donc rien — le bouton le dit plutôt que de faire semblant. */
   function basculerDemo() {
     if (sagaDemoActive()) {
-      if (!confirm('Retirer le jeu de démonstration ?\n\n'
-        + 'Les exemples disparaissent ; ce que vous avez saisi vous-même est conservé.')) return;
+      var messages = sagaBaseVide()
+        ? 'Retirer le jeu de démonstration ?\n\nL\'application repartira vide.'
+        : 'Retirer le jeu de démonstration ?\n\n'
+          + 'Des données ont été enregistrées pendant la démonstration : elles ne se '
+          + 'distinguent plus des exemples, tout sera donc effacé.';
+      if (!confirm(messages)) return;
+      sagaReset();
       sagaDemoActiver(false);
     } else {
+      if (!sagaBaseVide()) return;
       if (!confirm('Charger le jeu de démonstration ?\n\n'
-        + 'Les clientes et lives d\'exemple réapparaîtront à côté de vos données.')) return;
+        + 'Clientes, lives, apporteurs et rendez-vous d\'exemple s\'afficheront '
+        + 'jusqu\'à ce que vous les retiriez.')) return;
       sagaDemoActiver(true);
     }
     location.reload();
@@ -1389,11 +1397,20 @@
 
   function majDemo() {
     var actif = sagaDemoActive();
+    var vide = sagaBaseVide();
     var chip = document.getElementById('demoChip');
+    var btn = document.getElementById('demoBtn');
+    var note = document.getElementById('demoNote');
+
     chip.textContent = actif ? 'Chargé' : 'Retiré';
     chip.className = actif ? 'chip warn' : 'chip good';
-    document.getElementById('demoBtn').textContent =
-      actif ? 'Retirer le jeu de démonstration' : 'Charger le jeu de démonstration';
+    btn.textContent = actif ? 'Retirer le jeu de démonstration' : 'Charger le jeu de démonstration';
+    btn.disabled = !actif && !vide;
+    btn.style.opacity = btn.disabled ? '.5' : '';
+    btn.style.cursor = btn.disabled ? 'not-allowed' : '';
+    note.textContent = actif
+      ? 'La démonstration est affichée. Ce que vous saisissez maintenant se mélange aux exemples : à retirer avant de commencer pour de vrai.'
+      : (vide ? '' : 'Indisponible : des données ont déjà été saisies. Les exemples ne s\'affichent que sur une base vide.');
   }
 
   majDemo();

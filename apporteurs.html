@@ -173,6 +173,7 @@
     });
 
     document.getElementById('apporteursBody').innerHTML = rows.map(function (a) {
+      a.docsManquants = sagaDocsManquants(a.key);
       var dossier = a.docsManquants === 0
         ? '<span class="chip good">Complet</span>'
         : '<span class="chip critical">' + a.docsManquants + ' à fournir</span>';
@@ -208,6 +209,7 @@
     var nbClientes = apporteurs.reduce(function (s, a) { return s + a.clientes.length; }, 0);
     var totalDu = apporteurs.reduce(function (s, a) { return s + a.du; }, 0);
     var totalVerse = apporteurs.reduce(function (s, a) { return s + a.verse; }, 0);
+    apporteurs.forEach(function (a) { a.docsManquants = sagaDocsManquants(a.key); });
     var totalDocs = apporteurs.reduce(function (s, a) { return s + a.docsManquants; }, 0);
     var avecDocs = apporteurs.filter(function (a) { return a.docsManquants > 0; }).length;
 
@@ -275,7 +277,7 @@
       siret: document.getElementById('aSiret').value.trim(),
       pct: parseInt(document.getElementById('aPct').value, 10) || 8,
       clientes: [], verse: 0, du: 0,
-      docsManquants: 5, statut: 'actif',
+      statut: 'actif',
       depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, '')
     };
 
@@ -295,7 +297,7 @@
   /* La page apporteur lit `apporteurs_data` : sans cette entrée, la fiche
      créée ici n'aurait rien à afficher. */
   function creerFicheDetaillee(fiche) {
-    var fiches = sagaLoad('apporteurs_data', {});
+    var fiches = sagaFichesApporteurs();
     fiches[fiche.key] = {
       prenom: fiche.prenom, nom: fiche.nom, initiales: fiche.initiales, statut: 'Actif',
       email: fiche.email, tel: fiche.tel, adresse: fiche.adresse,
@@ -360,7 +362,7 @@
     var nomFichier = 'Contrat_Apporteur_' + f.nom.replace(/\W+/g, '_');
 
     // Le PDF est conservé sur la fiche pour être re-téléchargé plus tard
-    var fiches = sagaLoad('apporteurs_data', {});
+    var fiches = sagaFichesApporteurs();
     if (fiches[f.key]) {
       fiches[f.key].docs.push({
         type: 'contrat', nom: nomFichier + '.pdf',

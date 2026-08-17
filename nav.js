@@ -167,6 +167,20 @@ function sagaDemo(exemples, vide) {
   return sagaDemoActive() ? exemples : vide;
 }
 
+/* Les jeux de données de travail, par opposition aux réglages (logo, identité)
+   et aux traces (journal, utilisateur courant). */
+var SAGA_CLES_DONNEES = ['lives', 'clientes', 'clients_data', 'apporteurs',
+                         'apporteurs_data', 'ventes_directes', 'agenda', 'notes'];
+
+/* Les exemples ne sont pas recopiés dans le navigateur : ils servent de contenu
+   par défaut tant que rien n'a été enregistré. Sur une base déjà remplie, les
+   charger n'afficherait donc rien — d'où ce garde-fou. */
+function sagaBaseVide() {
+  return !SAGA_CLES_DONNEES.some(function (cle) {
+    return localStorage.getItem(SAGA_PREFIX + cle) !== null;
+  });
+}
+
 /* Rend un texte saisi inoffensif dans du HTML : sans cela, un nom contenant
    « & » ou un chevron casserait l'affichage. */
 function sagaEchapper(texte) {
@@ -983,6 +997,105 @@ function sagaVentesDuDressing(lettre) {
   return res.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
 }
 
+/* Fiches détaillées des apporteurs d'exemple : dossier, commissions et
+   justificatifs. Partagées, pour que la liste et la fiche comptent la même
+   chose. */
+var SAGA_APPORTEURS_FICHES_DEFAUT = {
+  nadia: {
+    prenom: 'Nadia R.', nom: 'Nadia Roussel', initiales: 'NR', statut: 'Actif',
+    email: 'nadia.roussel@example.com', tel: '06 45 78 21 09',
+    statutJur: 'Auto-entrepreneur', siret: '892 411 675 00018',
+    pct: 8, depuis: 'mars 2026',
+    clientes: ['Fanny (M)', 'Camille (B)', 'Élise (R)'],
+    commissions: [
+      { date: '2026-07-29', origine: 'Live du 29/07', cliente: 'Fanny',   base: 1480, montant: 118, paye: 0 },
+      { date: '2026-07-24', origine: 'Live du 24/07', cliente: 'Camille', base: 2110, montant: 169, paye: 0 },
+      { date: '2026-07-17', origine: 'Live du 17/07', cliente: 'Fanny',   base: 870,  montant: 70,  paye: 1 },
+      { date: '2026-06-19', origine: 'Live du 19/06', cliente: 'Fanny',   base: 1105, montant: 88,  paye: 1 },
+      { date: '2026-06-12', origine: 'Live du 12/06', cliente: 'Camille', base: 1680, montant: 134, paye: 1 }
+    ],
+    docs: [
+      { type: 'kbis',     nom: 'Kbis_Nadia_Roussel.pdf',       ajoute: '2026-03-12', expire: '' },
+      { type: 'identite', nom: 'CNI_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '2031-05-04' },
+      { type: 'rib',      nom: 'RIB_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '' },
+      { type: 'urssaf',   nom: 'Vigilance_URSSAF_T1_2026.pdf', ajoute: '2026-02-10', expire: '2026-08-10' }
+    ]
+  },
+  karim: {
+    prenom: 'Karim B.', nom: 'Karim Belkacem', initiales: 'KB', statut: 'Actif',
+    email: 'karim.belkacem@example.com', tel: '07 12 66 45 30',
+    statutJur: 'Société (SASU, EURL…)', siret: '904 552 118 00027',
+    pct: 6, depuis: 'avril 2026',
+    clientes: ['Marion (F)', 'Nora (T)'],
+    commissions: [
+      { date: '2026-07-20', origine: 'Live du 20/07', cliente: 'Marion', base: 1500, montant: 90, paye: 0 },
+      { date: '2026-06-08', origine: 'Live du 08/06', cliente: 'Marion', base: 1450, montant: 87, paye: 1 }
+    ],
+    docs: [
+      { type: 'kbis',     nom: 'Kbis_KB_Conseil.pdf',   ajoute: '2026-04-02', expire: '' },
+      { type: 'rib',      nom: 'RIB_KB_Conseil.pdf',    ajoute: '2026-04-02', expire: '' }
+    ]
+  },
+  sonia: {
+    prenom: 'Sonia L.', nom: 'Sonia Lambert', initiales: 'SL', statut: 'Inactif',
+    email: 'sonia.lambert@example.com', tel: '06 33 90 74 12',
+    statutJur: 'Particulier non professionnel', siret: '',
+    pct: 8, depuis: 'janvier 2026',
+    clientes: [],
+    commissions: [],
+    docs: []
+  }
+};
+
+function sagaFichesApporteurs() {
+  return sagaLoad('apporteurs_data', sagaDemo(SAGA_APPORTEURS_FICHES_DEFAUT, {}));
+}
+
+/* Pièces exigées d'un apporteur d'affaires. Définies ici pour que la liste
+   et la fiche comptent la même chose : la liste affichait un nombre figé à
+   la création, la fiche comptait les documents réellement fournis. */
+var SAGA_DOCS_APPORTEUR = [
+  { key: 'kbis',     label: 'Extrait Kbis / avis SIRENE',      required: true },
+  { key: 'urssaf',   label: 'Attestation de vigilance URSSAF', required: true, renouvelable: true },
+  { key: 'identite', label: "Pièce d'identité",                required: true },
+  { key: 'rib',      label: 'RIB',                             required: true },
+  { key: 'contrat',  label: "Contrat d'apporteur signé",       required: true },
+  { key: 'assurance',label: 'Attestation RC professionnelle',  required: false },
+  { key: 'das2',     label: 'Déclaration DAS2 (honoraires)',   required: false },
+  { key: 'facture',  label: 'Facture de commission',           required: false },
+  { key: 'autre',    label: 'Autre document',                  required: false }
+];
+
+/* État d'un justificatif : absent, expiré, bientôt expiré, ou à jour. */
+function sagaEtatDoc(doc, aujourdhui) {
+  if (!doc) return 'missing';
+  if (!doc.expire) return 'ok';
+  var jours = Math.round(
+    (new Date(doc.expire + 'T00:00:00') - new Date((aujourdhui || sagaAujourdhui()) + 'T00:00:00'))
+    / 86400000);
+  if (jours < 0) return 'expired';
+  if (jours <= 30) return 'soon';
+  return 'ok';
+}
+
+/* Pièces à régulariser : exigées et absentes, ou expirées / bientôt expirées.
+   Une seule règle pour la liste et la fiche, qui annonçaient des comptes
+   différents pour le même apporteur. */
+function sagaDocsARegulariser(fiche, aujourdhui) {
+  var fournis = (fiche && fiche.docs) || [];
+  return SAGA_DOCS_APPORTEUR
+    .filter(function (t) { return t.key !== 'autre'; })
+    .filter(function (t) {
+      var doc = fournis.filter(function (d) { return d.type === t.key; })[0];
+      var etat = sagaEtatDoc(doc, aujourdhui);
+      return (t.required && !doc) || etat === 'expired' || etat === 'soon';
+    });
+}
+
+function sagaDocsManquants(cle) {
+  return sagaDocsARegulariser(sagaFichesApporteurs()[cle]).length;
+}
+
 /* Totaux d'un dressing, lives et ventes hors live réunis.
    La liste des clientes lisait des champs `ca` / `commission` / `reste`
    enregistrés une fois pour toutes à la création de la fiche : ils ne
@@ -1431,6 +1544,9 @@ function sagaOuvrirCalendrier(input) {
    Le document s'affiche dans une fenêtre : on le relit, puis on décide
    de l'enregistrer ou non. */
 function sagaApercuPdf(pdf, nomFichier, titre) {
+  /* Certains appelants passent déjà un nom terminé par .pdf : sans cela
+     l'aperçu annonçait « Contrat_Fanny_v1.pdf.pdf ». */
+  nomFichier = String(nomFichier || 'document').replace(/\.pdf$/i, '');
   var fond = document.createElement('div');
   fond.className = 'pdf-modal';
   fond.innerHTML =
