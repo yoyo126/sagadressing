@@ -524,27 +524,20 @@
 
   /* ============ Paiements ============ */
   // Les reversements se font toujours par virement : seule la date est demandée
-  function demanderPaiement(montant, quoi) {
-    var date = prompt('Date du virement (JJ/MM/AAAA) — ' + quoi + '\n\nMontant : ' + sagaEUR(montant),
-                      sagaDateFR(TODAY_ISO));
-    if (date === null) return null;
-    var p = date.trim().split('/');
-    if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) {
-      alert('Date invalide. Format attendu : JJ/MM/AAAA');
-      return null;
-    }
-    return { date: p[2] + '-' + p[1] + '-' + p[0], mode: 'Virement' };
-  }
-
   function payerCliente(lettre) {
     var d = sagaDecompte(LIVE, lettre);
     if (d.paye) return;
-    var p = demanderPaiement(d.net, d.prenom + ' — ' + LIVE.titre);
-    if (!p) return;
-    LIVE.paiements = LIVE.paiements || {};
-    LIVE.paiements[lettre] = p;
-    persist();
-    renderTout();
+    sagaDemanderPaiement({
+      titre: 'Régler ' + d.prenom,
+      detail: LIVE.titre + ' · ' + sagaDateLongue(LIVE.date),
+      montant: d.net, date: TODAY_ISO
+    }, function (p) {
+      LIVE.paiements = LIVE.paiements || {};
+      LIVE.paiements[lettre] = p;
+      persist();
+      sagaTracer('Règlement cliente', d.prenom, sagaEUR(d.net));
+      renderTout();
+    });
   }
 
   function annulerPaiement(lettre) {
@@ -563,12 +556,17 @@
     var enAttente = lettresDuLive().filter(function (l) { return !sagaDecompte(LIVE, l).paye; });
     if (enAttente.length === 0) { alert('Toutes les clientes de ce live sont déjà réglées.'); return; }
     var total = enAttente.reduce(function (s, l) { return s + sagaDecompte(LIVE, l).net; }, 0);
-    var p = demanderPaiement(total, enAttente.length + ' cliente(s) — ' + LIVE.titre);
-    if (!p) return;
-    LIVE.paiements = LIVE.paiements || {};
-    enAttente.forEach(function (l) { LIVE.paiements[l] = { date: p.date, mode: p.mode }; });
-    persist();
-    renderTout();
+    sagaDemanderPaiement({
+      titre: 'Régler ' + enAttente.length + ' cliente(s)',
+      detail: LIVE.titre + ' · ' + sagaDateLongue(LIVE.date),
+      montant: total, date: TODAY_ISO
+    }, function (p) {
+      LIVE.paiements = LIVE.paiements || {};
+      enAttente.forEach(function (l) { LIVE.paiements[l] = { date: p.date, mode: p.mode }; });
+      persist();
+      sagaTracer('Règlement live', LIVE.titre, sagaEUR(total));
+      renderTout();
+    });
   }
 
   /* ============ Récapitulatifs PDF ============

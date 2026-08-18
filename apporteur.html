@@ -341,6 +341,10 @@
   var APPORTEURS = sagaFichesApporteurs();
 
   var A = APPORTEURS[currentKey()] || APPORTEURS.nadia;
+  /* Nom sous lequel les fiches clientes le désignent : c'est la clé de
+     rapprochement entre un apporteur et les ventes qu'il a générées. */
+  var NOM_REFERENCE = sagaNomApporteur(currentKey()) || (A && A.prenom) || '';
+  var COMMISSIONS = [];
   if (!A) {
     /* Base vide : on repart de la liste plutôt que d'ouvrir un exemple. */
     location.replace('apporteurs.html');
@@ -478,20 +482,37 @@
 
   function renderCommissions() {
     var body = document.getElementById('commBody');
-    if (A.commissions.length === 0) {
-      body.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:22px 8px;">Aucune commission enregistrée.</td></tr>';
+    if (COMMISSIONS.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:22px 8px;">'
+        + 'Aucune commission pour le moment. Elles apparaîtront dès qu\'une cliente rattachée à '
+        + sagaEchapper(A.prenom) + ' vendra.</td></tr>';
       return;
     }
-    body.innerHTML = A.commissions.map(function (c) {
+    body.innerHTML = COMMISSIONS.map(function (c) {
+      var statut = c.paye
+        ? '<span class="chip good">Versée</span>'
+          + (c.paiement && c.paiement.date
+              ? '<div class="muted" style="font-size:.78rem; margin-top:3px;">le ' + fmtDate(c.paiement.date) + '</div>'
+              : '')
+          + '<button class="btn btn-ghost btn-sm" onclick="annulerCommission(\'' + c.cle + '\')">Annuler</button>'
+        : '<span class="chip warn">À verser</span>';
       return '<tr>' +
         '<td>' + fmtDate(c.date) + '</td>' +
-        '<td class="muted">' + c.origine + '</td>' +
-        '<td>' + c.cliente + '</td>' +
+        '<td class="muted">' + sagaEchapper(c.origine) + '<div class="muted" style="font-size:.78rem;">'
+          + sagaEchapper(c.session) + '</div></td>' +
+        '<td>' + sagaEchapper(c.cliente) + ' (' + sagaEchapper(c.lettre) + ')</td>' +
         '<td class="num tabular">' + fmtEUR(c.base) + '</td>' +
         '<td class="num tabular">' + fmtEUR(c.montant) + '</td>' +
-        '<td>' + (c.paye ? '<span class="chip good">Versée</span>' : '<span class="chip warn">À verser</span>') + '</td>' +
+        '<td>' + statut + '</td>' +
       '</tr>';
     }).join('');
+  }
+
+  function annulerCommission(cle) {
+    if (!confirm('Annuler le règlement de cette commission ?')) return;
+    sagaAnnulerCommissionApporteur(NOM_REFERENCE, cle);
+    sagaTracer('Annulation règlement apporteur', A.nom, '');
+    renderApporteur();
   }
 
   function renderApporteur() {
@@ -504,10 +525,11 @@
     document.getElementById('aMeta').textContent =
       A.statutJur + ' · commission ' + A.pct + ' % · apporteur depuis ' + A.depuis;
 
-    var paye = 0, du = 0, nbDu = 0;
-    A.commissions.forEach(function (c) {
-      if (c.paye) paye += c.montant; else { du += c.montant; nbDu++; }
-    });
+    /* Chiffres recalculés depuis les ventes à chaque affichage. */
+    COMMISSIONS = sagaCommissionsApporteur(NOM_REFERENCE);
+    var totaux = sagaTotauxApporteur(NOM_REFERENCE);
+    var paye = totaux.verse, du = totaux.du, nbDu = totaux.nbDu;
+    A.clientes = totaux.clientes;
 
     document.getElementById('kClientes').textContent = A.clientes.length;
     document.getElementById('kClientesSub').textContent = A.clientes.length ? A.clientes.join(', ') : 'aucune cliente rattachée';
@@ -620,7 +642,7 @@
 
   /* ===== Règlement des commissions ===== */
   function reglerCommissions() {
-    var enAttente = A.commissions.filter(function (c) { return !c.paye; });
+    var enAttente = COMMISSIONS.filter(function (c) { return !c.paye; });
     if (enAttente.length === 0) {
       alert('Rien à régler : toutes les commissions de ' + A.prenom + ' sont déjà versées.');
       return;
@@ -629,7 +651,10 @@
     if (!confirm('Marquer comme versées ' + enAttente.length + ' commission(s) ?\n\n'
       + 'Total : ' + fmtEUR(total) + '\nBénéficiaire : ' + A.nom)) return;
 
-    enAttente.forEach(function (c) { c.paye = 1; c.datePaiement = TODAY_ISO; });
+    sagaReglerCommissionsApporteur(NOM_REFERENCE,
+      enAttente.map(function (c) { return c.cle; }),
+      { date: TODAY_ISO, mode: 'Virement' });
+    sagaTracer('Règlement apporteur', A.nom, fmtEUR(total));
     renderApporteur();
   }
 

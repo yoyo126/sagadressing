@@ -170,7 +170,8 @@ function sagaDemo(exemples, vide) {
 /* Les jeux de données de travail, par opposition aux réglages (logo, identité)
    et aux traces (journal, utilisateur courant). */
 var SAGA_CLES_DONNEES = ['lives', 'clientes', 'clients_data', 'apporteurs',
-                         'apporteurs_data', 'ventes_directes', 'agenda', 'notes'];
+                         'apporteurs_data', 'ventes_directes', 'agenda', 'notes',
+                         'paiements_apporteurs'];
 
 /* Les exemples ne sont pas recopiés dans le navigateur : ils servent de contenu
    par défaut tant que rien n'a été enregistré. Sur une base déjà remplie, les
@@ -1007,13 +1008,6 @@ var SAGA_APPORTEURS_FICHES_DEFAUT = {
     statutJur: 'Auto-entrepreneur', siret: '892 411 675 00018',
     pct: 8, depuis: 'mars 2026',
     clientes: ['Fanny (M)', 'Camille (B)', 'Élise (R)'],
-    commissions: [
-      { date: '2026-07-29', origine: 'Live du 29/07', cliente: 'Fanny',   base: 1480, montant: 118, paye: 0 },
-      { date: '2026-07-24', origine: 'Live du 24/07', cliente: 'Camille', base: 2110, montant: 169, paye: 0 },
-      { date: '2026-07-17', origine: 'Live du 17/07', cliente: 'Fanny',   base: 870,  montant: 70,  paye: 1 },
-      { date: '2026-06-19', origine: 'Live du 19/06', cliente: 'Fanny',   base: 1105, montant: 88,  paye: 1 },
-      { date: '2026-06-12', origine: 'Live du 12/06', cliente: 'Camille', base: 1680, montant: 134, paye: 1 }
-    ],
     docs: [
       { type: 'kbis',     nom: 'Kbis_Nadia_Roussel.pdf',       ajoute: '2026-03-12', expire: '' },
       { type: 'identite', nom: 'CNI_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '2031-05-04' },
@@ -1027,10 +1021,6 @@ var SAGA_APPORTEURS_FICHES_DEFAUT = {
     statutJur: 'Société (SASU, EURL…)', siret: '904 552 118 00027',
     pct: 6, depuis: 'avril 2026',
     clientes: ['Marion (F)', 'Nora (T)'],
-    commissions: [
-      { date: '2026-07-20', origine: 'Live du 20/07', cliente: 'Marion', base: 1500, montant: 90, paye: 0 },
-      { date: '2026-06-08', origine: 'Live du 08/06', cliente: 'Marion', base: 1450, montant: 87, paye: 1 }
-    ],
     docs: [
       { type: 'kbis',     nom: 'Kbis_KB_Conseil.pdf',   ajoute: '2026-04-02', expire: '' },
       { type: 'rib',      nom: 'RIB_KB_Conseil.pdf',    ajoute: '2026-04-02', expire: '' }
@@ -1042,7 +1032,6 @@ var SAGA_APPORTEURS_FICHES_DEFAUT = {
     statutJur: 'Particulier non professionnel', siret: '',
     pct: 8, depuis: 'janvier 2026',
     clientes: [],
-    commissions: [],
     docs: []
   }
 };
@@ -1112,6 +1101,86 @@ function sagaTotauxDressing(lettre) {
   });
   ['ca', 'commission', 'net', 'reste'].forEach(function (k) { t[k] = sagaCentimes(t[k]); });
   return t;
+}
+
+/* ============ Commissions d'apporteur ============
+   Dérivées des ventes, jamais recopiées : un apporteur voit exactement ce que
+   les lives et les ventes hors live lui ont rapporté. Seuls les règlements
+   sont enregistrés, commission par commission. */
+
+/* Nom sous lequel un apporteur est désigné sur les fiches clientes */
+function sagaNomApporteur(cle) {
+  var entree = sagaApporteurs().filter(function (a) { return a.key === cle; })[0];
+  return entree ? entree.nom : '';
+}
+
+function sagaPaiementsApporteurs() { return sagaLoad('paiements_apporteurs', {}); }
+
+function sagaCommissionsApporteur(nom) {
+  if (!nom) return [];
+  var regles = sagaPaiementsApporteurs()[nom] || {};
+  var res = [];
+
+  sagaLives().forEach(function (live) {
+    sagaLettresDuLive(live).forEach(function (lettre) {
+      var d = sagaDecompte(live, lettre);
+      if (d.apporteur !== nom || !d.commApporteur) return;
+      var cle = live.id + '|' + lettre;
+      res.push({
+        cle: cle, origine: 'Live', date: live.date, session: live.titre,
+        lettre: lettre, cliente: d.prenom, base: d.base, montant: d.commApporteur,
+        paye: !!regles[cle], paiement: regles[cle] || null
+      });
+    });
+  });
+
+  sagaVentesDirectes().forEach(function (v) {
+    var d = sagaDecompteDirect(v);
+    if (d.apporteur !== nom || !d.commApporteur) return;
+    var cle = 'direct|' + v.id;
+    res.push({
+      cle: cle, origine: 'Hors live', date: v.date, session: v.libelle,
+      lettre: v.lettre, cliente: sagaTauxDressing(v.lettre).prenom,
+      base: d.base, montant: d.commApporteur,
+      paye: !!regles[cle], paiement: regles[cle] || null
+    });
+  });
+
+  return res.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+}
+
+/* Ce qu'un apporteur a touché, ce qu'on lui doit, et qui il a apporté */
+function sagaTotauxApporteur(nom) {
+  var t = { verse: 0, du: 0, nbDu: 0, total: 0, nb: 0, clientes: [] };
+
+  sagaCommissionsApporteur(nom).forEach(function (c) {
+    t.total += c.montant;
+    t.nb++;
+    if (c.paye) t.verse += c.montant;
+    else { t.du += c.montant; t.nbDu++; }
+  });
+
+  sagaToutesClientes().forEach(function (c) {
+    if (nom && sagaTauxDressing(c.lettre).apporteur === nom) {
+      t.clientes.push(c.prenom + ' (' + c.lettre + ')');
+    }
+  });
+
+  ['verse', 'du', 'total'].forEach(function (k) { t[k] = sagaCentimes(t[k]); });
+  return t;
+}
+
+function sagaReglerCommissionsApporteur(nom, cles, paiement) {
+  var tous = sagaPaiementsApporteurs();
+  tous[nom] = tous[nom] || {};
+  cles.forEach(function (cle) { tous[nom][cle] = paiement; });
+  return sagaSave('paiements_apporteurs', tous);
+}
+
+function sagaAnnulerCommissionApporteur(nom, cle) {
+  var tous = sagaPaiementsApporteurs();
+  if (tous[nom]) delete tous[nom][cle];
+  return sagaSave('paiements_apporteurs', tous);
 }
 
 /* Marque une vente réglée, quel que soit son support de stockage */
@@ -1272,12 +1341,32 @@ var SAGA_ROLES = {
   lecture: { label: 'Lecture seule',   detail: 'Consulte sans rien modifier' }
 };
 
+/* Comptes du CRM. Une seule liste, partagée par le menu et les Paramètres :
+   il y en avait deux qui s'ignoraient, si bien qu'un compte créé dans les
+   réglages n'existait nulle part ailleurs.
+   `status` vaut 'active' ou 'invited' ; `owner` marque la propriétaire, qui
+   ne peut être ni supprimée ni rétrogradée. */
 var SAGA_UTILISATEURS_DEFAUT = [
-  { id: 1, prenom: 'Sarah', nom: 'Danino', email: 'sarah@sagadressing.fr',
-    role: 'admin', statut: 'actif', creele: '2026-01-12', proprietaire: true }
+  { id: 1, prenom: 'Sarah', nom: 'Danino', email: 'sarah@sagadressing.fr', tel: '',
+    role: 'admin', perms: null, last: '—', status: 'active', owner: true,
+    creele: '2026-01-12' },
+  { id: 2, prenom: 'Léa', nom: 'Martin', email: 'lea@sagadressing.fr', tel: '',
+    role: 'gestion', perms: null, last: 'Hier', status: 'active', owner: false,
+    creele: '2026-03-04' },
+  { id: 3, prenom: 'Thomas', nom: 'Bernard', email: 'thomas@sagadressing.fr', tel: '',
+    role: 'lecture', perms: null, last: '12 juillet', status: 'active', owner: false,
+    creele: '2026-05-20' },
+  { id: 4, prenom: 'Camille', nom: 'Dubois', email: 'camille@sagadressing.fr', tel: '',
+    role: 'gestion', perms: null, last: '—', status: 'invited', owner: false,
+    creele: '2026-07-28' }
 ];
 
-function sagaUtilisateurs() { return sagaLoad('utilisateurs', SAGA_UTILISATEURS_DEFAUT); }
+/* Hors démonstration, seule la propriétaire subsiste : sans elle, plus
+   personne ne pourrait administrer le CRM. */
+function sagaUtilisateurs() {
+  return sagaLoad('utilisateurs',
+    sagaDemo(SAGA_UTILISATEURS_DEFAUT, SAGA_UTILISATEURS_DEFAUT.slice(0, 1)));
+}
 function sagaSaveUtilisateurs(u) { return sagaSave('utilisateurs', u); }
 
 function sagaUtilisateurCourant() {
@@ -1323,9 +1412,16 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.8.0';
+var SAGA_VERSION = '1.9.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.9.0', date: '2026-08-17', titre: 'Tout ce qui peut fonctionner sans serveur, fonctionne', points: [
+    'Commissions d\'apporteur calculées depuis les ventes : elles apparaissent sur sa fiche, se règlent et s\'annulent',
+    'Une seule liste d\'utilisateurs, partagée par les Paramètres et le reste du CRM',
+    'Règlements saisis dans une vraie fenêtre, avec sélecteur de date et mode de paiement',
+    'Les anciennes données d\'exemple restées dans un navigateur sont repérées et retirables d\'un clic',
+    'Les écrans qui exigent un serveur (connexion, emails, Yousign, iCloud) le disent clairement'
+  ]},
   { version: '1.8.0', date: '2026-08-16', titre: 'Import Whatnot réel et démarrage à vide', points: [
     'Le CRM démarre vide : les exemples deviennent un jeu de démonstration, à charger depuis Paramètres',
     'Import d\'un export Whatnot : le fichier est réellement lu, les lettres reconnues, les ventes sans lettre affectées à l\'écran',
@@ -1549,6 +1645,68 @@ function sagaOuvrirCalendrier(input) {
   setTimeout(function () { document.addEventListener('mousedown', sagaCalHorsClic, true); }, 0);
 }
 
+/* ============ Saisie d'un règlement ============
+   Une fenêtre plutôt que la boîte du navigateur : le sélecteur de date natif
+   s'ouvre sur téléphone, et il n'y a plus de format à respecter à la main.
+   Le résultat arrive par `auValider`, la fenêtre étant asynchrone. */
+var SAGA_MODES_PAIEMENT = ['Virement', 'Espèces', 'Chèque', 'Remise en main propre', 'Autre'];
+
+function sagaDemanderPaiement(options, auValider) {
+  options = options || {};
+  var fond = document.createElement('div');
+  fond.className = 'modale';
+  fond.innerHTML =
+    '<div class="modale-boite" style="width:min(420px,100%);">' +
+      '<div class="modale-tete"><strong>' + sagaEchapper(options.titre || 'Enregistrer un règlement') + '</strong>' +
+        '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+      '<div class="modale-corps">' +
+        (options.detail ? '<p class="card-note" style="margin-bottom:14px;">' + sagaEchapper(options.detail) + '</p>' : '') +
+        (options.montant !== undefined
+          ? '<div class="calc-recap" style="margin-bottom:16px;"><div class="calc-row calc-total">' +
+              '<span>Montant</span><span class="tabular">' + sagaEUR(options.montant) + '</span></div></div>'
+          : '') +
+        '<div class="form-field"><label class="form-label" for="sagaPaieDate">Date du règlement</label>' +
+          '<input class="form-input" type="date" id="sagaPaieDate" value="' +
+            (options.date || sagaAujourdhui()) + '" /></div>' +
+        '<div class="form-field" style="margin-top:12px;"><label class="form-label" for="sagaPaieMode">Mode</label>' +
+          '<select class="form-select" id="sagaPaieMode">' +
+            SAGA_MODES_PAIEMENT.map(function (m) {
+              return '<option value="' + m + '"' + (m === (options.mode || 'Virement') ? ' selected' : '') + '>' + m + '</option>';
+            }).join('') +
+          '</select></div>' +
+        '<div style="display:flex; gap:10px; margin-top:18px;">' +
+          '<button class="btn btn-primary btn-sm" data-valider>' +
+            sagaEchapper(options.libelleBouton || 'Enregistrer le règlement') + '</button>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(fond);
+  document.body.classList.add('modale-ouverte');
+
+  function fermer() {
+    fond.remove();
+    document.body.classList.remove('modale-ouverte');
+    document.removeEventListener('keydown', auClavier);
+  }
+  function auClavier(e) { if (e.key === 'Escape') fermer(); }
+  document.addEventListener('keydown', auClavier);
+
+  fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+  fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+
+  fond.querySelector('[data-valider]').onclick = function () {
+    var date = fond.querySelector('#sagaPaieDate').value;
+    if (!date) { fond.querySelector('#sagaPaieDate').focus(); return; }
+    var mode = fond.querySelector('#sagaPaieMode').value;
+    fermer();
+    auValider({ date: date, mode: mode });
+  };
+
+  setTimeout(function () { fond.querySelector('#sagaPaieDate').focus(); }, 0);
+}
+
 /* ============ Aperçu d'un PDF avant enregistrement ============
    Le document s'affiche dans une fenêtre : on le relit, puis on décide
    de l'enregistrer ou non. */
@@ -1640,11 +1798,81 @@ function initTabs(root) {
   });
 }
 
+/* ============ Anciennes données d'exemple ============
+   Avant que le CRM ne démarre à vide, les exemples étaient recopiés dans le
+   navigateur dès la première modification. Ils y sont restés, indiscernables
+   de vraies données. On les reconnaît à leurs identifiants d'origine, et on
+   propose de faire le ménage plutôt que de laisser chercher dans les réglages. */
+var SAGA_MARQUEURS_EXEMPLE = {
+  clientes: ['fanny', 'julie', 'camille', 'marion'],
+  lives: ['l-20260729', 'l-20260727', 'l-20260724'],
+  apporteurs: ['nadia', 'karim', 'sonia']
+};
+
+/* Vrai si les données enregistrées sont celles des exemples d'origine. */
+function sagaExemplesResiduels() {
+  if (sagaDemoActive()) return false;
+
+  var clientes = sagaLoad('clientes', null);
+  if (clientes && clientes.some(function (c) {
+    return SAGA_MARQUEURS_EXEMPLE.clientes.indexOf(c.key) !== -1;
+  })) return true;
+
+  var lives = sagaLoad('lives', null);
+  if (lives && lives.some(function (l) {
+    return SAGA_MARQUEURS_EXEMPLE.lives.indexOf(l.id) !== -1;
+  })) return true;
+
+  var apporteurs = sagaLoad('apporteurs', null);
+  if (apporteurs && apporteurs.some(function (a) {
+    return SAGA_MARQUEURS_EXEMPLE.apporteurs.indexOf(a.key) !== -1;
+  })) return true;
+
+  return false;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (!sagaExemplesResiduels()) return;
+  if (sessionStorage.getItem(SAGA_PREFIX + 'exemples_ignore')) return;
+
+  var barre = document.createElement('div');
+  barre.className = 'proto-badge';
+  /* Marqué pour survivre au nettoyage du bandeau « maquette », qui retire
+     sinon tout ce qui porte cette classe. */
+  barre.dataset.exemples = '1';
+  barre.style.cursor = 'default';
+  barre.innerHTML =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+      '<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/>' +
+      '<circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>' +
+    '<span style="flex:1;">Ce navigateur contient encore les données d\'exemple ' +
+      '(Fanny, Julie, Nadia R.…), enregistrées par une ancienne version.</span>' +
+    '<button class="btn btn-secondary btn-sm" data-nettoyer>Les retirer</button>' +
+    '<button class="btn btn-ghost btn-sm" data-ignorer>Plus tard</button>';
+
+  var contenu = document.querySelector('.content, .main, main') || document.body;
+  var apres = contenu.querySelector('header');
+  if (apres && apres.parentNode) apres.parentNode.insertBefore(barre, apres.nextSibling);
+  else contenu.insertBefore(barre, contenu.firstChild);
+
+  barre.querySelector('[data-ignorer]').onclick = function () {
+    sessionStorage.setItem(SAGA_PREFIX + 'exemples_ignore', '1');
+    barre.remove();
+  };
+  barre.querySelector('[data-nettoyer]').onclick = function () {
+    if (!confirm('Retirer les données d\'exemple ?\n\n'
+      + 'Tout ce que contient ce navigateur sera effacé, y compris ce que vous '
+      + 'auriez saisi vous-même. Le CRM repartira vide.')) return;
+    sagaReset();
+    location.reload();
+  };
+});
+
 /* Le bandeau « maquette — données fictives » ne vaut que pour le jeu de
    démonstration. En usage réel il inquiéterait à tort : les chiffres affichés
    sont alors ceux de la boutique. */
 document.addEventListener('DOMContentLoaded', function () {
   if (sagaDemoActive()) return;
-  var badges = document.querySelectorAll('.proto-badge');
+  var badges = document.querySelectorAll('.proto-badge:not([data-exemples])');
   for (var i = 0; i < badges.length; i++) badges[i].remove();
 });

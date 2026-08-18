@@ -174,6 +174,8 @@
 
     document.getElementById('apporteursBody').innerHTML = rows.map(function (a) {
       a.docsManquants = sagaDocsManquants(a.key);
+      var t = sagaTotauxApporteur(a.nom);
+      a.clientes = t.clientes; a.verse = t.verse; a.du = t.du;
       var dossier = a.docsManquants === 0
         ? '<span class="chip good">Complet</span>'
         : '<span class="chip critical">' + a.docsManquants + ' à fournir</span>';
@@ -209,7 +211,11 @@
     var nbClientes = apporteurs.reduce(function (s, a) { return s + a.clientes.length; }, 0);
     var totalDu = apporteurs.reduce(function (s, a) { return s + a.du; }, 0);
     var totalVerse = apporteurs.reduce(function (s, a) { return s + a.verse; }, 0);
-    apporteurs.forEach(function (a) { a.docsManquants = sagaDocsManquants(a.key); });
+    apporteurs.forEach(function (a) {
+      a.docsManquants = sagaDocsManquants(a.key);
+      var t = sagaTotauxApporteur(a.nom);
+      a.clientes = t.clientes; a.verse = t.verse; a.du = t.du;
+    });
     var totalDocs = apporteurs.reduce(function (s, a) { return s + a.docsManquants; }, 0);
     var avecDocs = apporteurs.filter(function (a) { return a.docsManquants > 0; }).length;
 
@@ -276,7 +282,6 @@
       statutJur: document.getElementById('aStatutJur').value,
       siret: document.getElementById('aSiret').value.trim(),
       pct: parseInt(document.getElementById('aPct').value, 10) || 8,
-      clientes: [], verse: 0, du: 0,
       statut: 'actif',
       depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, '')
     };
@@ -303,7 +308,7 @@
       email: fiche.email, tel: fiche.tel, adresse: fiche.adresse,
       statutJur: fiche.statutJur, siret: fiche.siret,
       pct: fiche.pct, depuis: fiche.depuis,
-      clientes: [], commissions: [], docs: []
+      docs: []
     };
     sagaSave('apporteurs_data', fiches);
   }

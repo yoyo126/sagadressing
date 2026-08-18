@@ -156,6 +156,7 @@
 
         <!-- ============ YOUSIGN ============ -->
         <div class="tab-panel" id="tab-yousign" data-panel-group="param" style="margin-top:20px;">
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Pas encore branché.</strong> Yousign n'est pas raccordé : aucun contrat n'est envoyé ni signé électroniquement. Les contrats et bons de restitution se génèrent bien en PDF, à faire signer par vos propres moyens.</span></div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Yousign</h2>
             <span class="chip neutral" id="ysChip">Non connecté</span>
@@ -214,6 +215,7 @@
 
         <!-- ============ ICLOUD ============ -->
         <div class="tab-panel" id="tab-icloud" data-panel-group="param" style="margin-top:20px;">
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Pas encore branché.</strong> La synchronisation iCloud demande un serveur : l'agenda du CRM reste pour l'instant indépendant de votre agenda Apple.</span></div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Agenda iCloud</h2>
             <span class="chip neutral" id="icloudStatusChip">Non connecté</span>
@@ -262,6 +264,7 @@
 
         <!-- ============ UTILISATEURS ============ -->
         <div class="tab-panel" id="tab-users" data-panel-group="param" style="margin-top:20px;">
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Pas encore branché.</strong> Les comptes se créent et s'organisent, mais personne ne se connecte encore : sans serveur, chaque appareil garde ses propres données. Les rôles définis ici seront appliqués dès que les comptes seront raccordés.</span></div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Comptes</h2>
             <div style="display:flex; align-items:center; gap:12px;">
@@ -438,6 +441,7 @@
 
         <!-- ============ ENVOI DES EMAILS ============ -->
         <div class="tab-panel" id="tab-email" data-panel-group="param" style="margin-top:20px;">
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Pas encore branché.</strong> Aucun email ne part pour l'instant : le CRM est un site sans serveur, il ne peut pas expédier de courrier. Les réglages ci-dessous sont conservés et serviront le jour où l'envoi sera raccordé.</span></div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Envoi des emails</h2>
           </div>
@@ -715,17 +719,10 @@
 
   var ROLE_LABELS = { admin:'Administratrice', gestion:'Gestionnaire', lecture:'Lecture seule', custom:'Droits personnalisés' };
 
-  var USERS_DEFAUT = [
-    { id:1, prenom:'Sarah',  nom:'Danino',  email:'sarah@sagadressing.fr',  tel:'', role:'admin',   perms:null, last:"Aujourd'hui", status:'active',  owner:true,  creele:'2026-01-12' },
-    { id:2, prenom:'Léa',    nom:'Martin',  email:'lea@sagadressing.fr',    tel:'', role:'gestion', perms:null, last:'Hier',        status:'active',  owner:false, creele:'2026-03-04' },
-    { id:3, prenom:'Thomas', nom:'Bernard', email:'thomas@sagadressing.fr', tel:'', role:'lecture', perms:null, last:'12 juillet',  status:'active',  owner:false, creele:'2026-05-20' },
-    { id:4, prenom:'Camille',nom:'Dubois',  email:'camille@sagadressing.fr',tel:'', role:'gestion', perms:null, last:'—',           status:'invited', owner:false, creele:'2026-07-28' }
-  ];
 
-  /* Hors démonstration, seul le compte propriétaire subsiste : sans lui,
-     plus personne ne pourrait administrer le CRM. */
-  var users = sagaLoad('utilisateurs_crm', sagaDemo(USERS_DEFAUT, USERS_DEFAUT.slice(0, 1)));
-  function persistUsers() { sagaSave('utilisateurs_crm', users); }
+  // Même liste que le reste du CRM (nav.js)
+  var users = sagaUtilisateurs();
+  function persistUsers() { sagaSaveUtilisateurs(users); }
   function nomComplet(u) { return ((u.prenom || '') + ' ' + (u.nom || '')).trim() || u.name || '—'; }
 
   var editingUserId = null;
