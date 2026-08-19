@@ -572,6 +572,253 @@ function sagaToutesClientes() {
   return res.sort(function (a, b) { return a.prenom.localeCompare(b.prenom, 'fr'); });
 }
 
+/* ============ Codes dressing : doublons assumés ============
+   Deux clientes peuvent porter le même code — deux Carole en C, par exemple.
+   La création ne l'interdit plus : c'est la génération de la boutique qui le
+   refuse, puisque c'est là que le code doit désigner une seule cliente. */
+
+/* Contrairement à sagaToutesClientes(), qui regroupe par code, cette liste
+   garde chaque cliente séparément : les doublons y restent visibles. */
+function sagaListeClientes() {
+  var res = [], vues = {}, codesVus = {};
+
+  function ajouter(c, secours) {
+    if (!c.lettre && !c.prenom) return;
+    var id = c.key || ('code:' + c.lettre);
+    if (vues[id]) return;
+    // L'annuaire de démonstration ne sert qu'à combler les codes sans cliente
+    if (secours && codesVus[c.lettre]) return;
+    vues[id] = true;
+    codesVus[c.lettre] = true;
+    c.id = id;
+    res.push(c);
+  }
+
+  sagaLoad('clientes', []).forEach(function (c) {
+    ajouter({ key: c.key || '', prenom: c.prenom, nom: c.nom || c.prenom, lettre: c.lettre,
+              statut: c.statut === 'inactive' ? 'inactive' : 'active', vignette: c.vignette || '' });
+  });
+  var fiches = sagaFiches();
+  Object.keys(fiches).forEach(function (k) {
+    var f = fiches[k];
+    ajouter({ key: k, prenom: f.prenom, nom: f.nom || f.prenom, lettre: f.lettre,
+              statut: f.statut === 'Inactive' ? 'inactive' : 'active', vignette: '' });
+  });
+  var annuaire = sagaDressings();
+  Object.keys(annuaire).forEach(function (l) {
+    var d = annuaire[l];
+    ajouter({ key: d.fiche || '', prenom: d.prenom, nom: d.nom || d.prenom, lettre: l,
+              statut: 'active', vignette: '' }, true);
+  });
+
+  return res.sort(function (a, b) {
+    return String(a.prenom || '').localeCompare(String(b.prenom || ''), 'fr');
+  });
+}
+
+/* Codes portés par plus d'une cliente : { CODE: [clientes] } */
+function sagaCodesEnDoublon(liste) {
+  var par = {}, out = {};
+  (liste || sagaListeClientes()).forEach(function (c) {
+    var code = String(c.lettre || '').toUpperCase();
+    if (!code) return;
+    (par[code] = par[code] || []).push(c);
+  });
+  Object.keys(par).forEach(function (code) {
+    if (par[code].length > 1) out[code] = par[code];
+  });
+  return out;
+}
+
+/* Autres clientes portant déjà ce code (`sauf` = clé de celle qu'on édite) */
+function sagaClientesDuCode(code, sauf) {
+  code = String(code || '').toUpperCase();
+  return sagaListeClientes().filter(function (c) {
+    return String(c.lettre || '').toUpperCase() === code && c.id !== sauf && c.key !== sauf;
+  });
+}
+
+/* Un code s'écrit partout de la même façon : majuscules, sans espace,
+   une à trois lettres. « c a » saisi à la main devient donc « CA ». */
+function sagaNormaliserCode(brut) {
+  return String(brut || '').toUpperCase().replace(/[^A-ZÀ-Ý]/g, '').slice(0, 3);
+}
+
+/* Clé de fiche déduite du prénom et du code */
+function sagaCleCliente(prenom, code) {
+  var base = String(prenom || 'cliente').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return base + '-' + String(code || '').toLowerCase();
+}
+
+/* Création d'une cliente depuis n'importe quelle page. La liste et la fiche
+   détaillée sont écrites ensemble : sans la seconde, une cliente créée
+   depuis un live n'aurait aucune fiche à ouvrir. */
+function sagaCreerCliente(champs) {
+  champs = champs || {};
+  var prenom = String(champs.prenom || '').trim();
+  var code = sagaNormaliserCode(champs.lettre);
+  var nomComplet = String(champs.nom || '').trim() || prenom;
+
+  var store = sagaLoad('clientes', []);
+  var cle = sagaCleCliente(prenom, code), base = cle, n = 2;
+  // Deux clientes de même prénom et de même code auraient sinon la même fiche
+  while (store.some(function (c) { return c.key === cle; })) { cle = base + '-' + (n++); }
+
+  var entree = {
+    key: cle,
+    prenom: prenom,
+    nom: nomComplet,
+    email: String(champs.email || '').trim(),
+    tel: sagaTelephone(champs.tel || ''),
+    adresse: String(champs.adresse || '').trim(),
+    lettre: code,
+    apporteur: champs.apporteur || '',
+    pct: parseInt(champs.pct, 10) || 30,
+    statut: 'active',
+    vignette: champs.vignette || ''
+  };
+  store.push(entree);
+  sagaSave('clientes', store);
+
+  var fiches = sagaFiches();
+  fiches[cle] = {
+    prenom: prenom, nom: nomComplet, lettre: code, statut: 'Active',
+    tel: entree.tel, email: entree.email, adresse: entree.adresse,
+    commission: entree.pct,
+    apporteur: entree.apporteur || null,
+    apporteurPct: sagaPctApporteur(entree.apporteur),
+    depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
+    pending: null
+  };
+  sagaSave('clients_data', fiches);
+  sagaTracer('Création cliente', prenom + ' (' + code + ')');
+  return entree;
+}
+
+/* Changement de code d'une cliente, depuis la liste comme depuis la boutique.
+   Les ventes restent rattachées à l'ancien code : elles sont enregistrées par
+   code de dressing, pas par fiche. L'appelant en avertit. */
+function sagaChangerCodeCliente(cle, nouveauCode) {
+  var code = sagaNormaliserCode(nouveauCode);
+  if (!cle || !code) return '';
+
+  var store = sagaLoad('clientes', []);
+  var entree = store.filter(function (c) { return c.key === cle; })[0];
+  var ancien = entree ? entree.lettre : '';
+  if (entree) { entree.lettre = code; sagaSave('clientes', store); }
+
+  var fiches = sagaFiches();
+  if (fiches[cle]) {
+    ancien = ancien || fiches[cle].lettre;
+    fiches[cle].lettre = code;
+    sagaSave('clients_data', fiches);
+  }
+  sagaTracer('Changement de code dressing', (entree ? entree.prenom : cle) + ' : ' + ancien + ' → ' + code);
+  return ancien;
+}
+
+/* Formulaire minimal de création, ouvrable au milieu d'un autre écran :
+   attribuer un article à une cliente encore inconnue ne doit pas obliger à
+   quitter le live en cours. Rappelle sagaCreerCliente() puis auCreer(entree). */
+function sagaModaleNouvelleCliente(options, auCreer) {
+  options = options || {};
+  var fond = document.createElement('div');
+  fond.className = 'modale';
+  fond.innerHTML =
+    '<div class="modale-boite" style="width:min(460px,100%);">' +
+      '<div class="modale-tete"><strong>Nouvelle cliente</strong>' +
+        '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+      '<div class="modale-corps">' +
+        '<p class="card-note" style="margin-bottom:14px;">' +
+          (options.detail ? sagaEchapper(options.detail)
+                          : 'La fiche complète pourra être complétée ensuite dans Clientes.') + '</p>' +
+        '<div class="form-field" style="flex-direction:row; gap:12px;">' +
+          '<div style="flex:1;"><label class="form-label" for="sagaNcPrenom">Prénom</label>' +
+            '<input class="form-input" id="sagaNcPrenom" placeholder="Ex. Carole" /></div>' +
+          '<div style="flex:1;"><label class="form-label" for="sagaNcNom">Nom</label>' +
+            '<input class="form-input" id="sagaNcNom" placeholder="Ex. Dupont" /></div>' +
+        '</div>' +
+        '<div class="form-field" style="flex-direction:row; gap:12px; margin-top:12px;">' +
+          '<div style="flex:1;"><label class="form-label" for="sagaNcCode">Code dressing</label>' +
+            '<input class="form-input" id="sagaNcCode" maxlength="3" placeholder="C ou CA" ' +
+              'value="' + sagaEchapper(options.code || '') + '" /></div>' +
+          '<div style="flex:1;"><label class="form-label" for="sagaNcPct">Commission Saga (%)</label>' +
+            '<input class="form-input" type="number" id="sagaNcPct" value="30" /></div>' +
+        '</div>' +
+        '<span class="card-note" id="sagaNcInfo" style="display:block; margin-top:8px;">' +
+          'Une à trois lettres. Deux clientes peuvent porter le même code : ' +
+          'la boutique le signalera au moment de la génération.</span>' +
+        '<div class="form-field" style="margin-top:12px;">' +
+          '<label class="form-label" for="sagaNcApporteur">Apporteur</label>' +
+          '<select class="form-select" id="sagaNcApporteur"></select></div>' +
+        '<div style="display:flex; gap:10px; margin-top:18px;">' +
+          '<button class="btn btn-primary btn-sm" data-valider>Créer la cliente</button>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(fond);
+  document.body.classList.add('modale-ouverte');
+  sagaRemplirApporteurs(fond.querySelector('#sagaNcApporteur'), '', true);
+
+  function fermer() {
+    fond.remove();
+    document.body.classList.remove('modale-ouverte');
+    document.removeEventListener('keydown', auClavier);
+    if (options.auFermer) options.auFermer();
+  }
+  function auClavier(e) { if (e.key === 'Escape') fermer(); }
+  document.addEventListener('keydown', auClavier);
+
+  fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+  fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+
+  var champCode = fond.querySelector('#sagaNcCode');
+  var info = fond.querySelector('#sagaNcInfo');
+
+  // Le doublon est annoncé, pas interdit : c'est la boutique qui tranchera
+  function verifierCode() {
+    var code = sagaNormaliserCode(champCode.value);
+    var autres = code ? sagaClientesDuCode(code) : [];
+    if (!autres.length) {
+      info.style.color = '';
+      info.textContent = 'Une à trois lettres. Deux clientes peuvent porter le même code : '
+        + 'la boutique le signalera au moment de la génération.';
+      return;
+    }
+    info.style.color = 'var(--warn, #a8710f)';
+    info.textContent = 'Code déjà porté par ' + autres.map(function (c) {
+      return c.nom || c.prenom;
+    }).join(', ') + ' — à départager avant de générer la boutique.';
+  }
+  champCode.addEventListener('input', verifierCode);
+  verifierCode();
+
+  fond.querySelector('[data-valider]').onclick = function () {
+    var prenom = fond.querySelector('#sagaNcPrenom').value.trim();
+    var code = sagaNormaliserCode(champCode.value);
+    if (!prenom) { fond.querySelector('#sagaNcPrenom').focus(); return; }
+    if (!code) { champCode.focus(); return; }
+    var nom = fond.querySelector('#sagaNcNom').value.trim();
+    var entree = sagaCreerCliente({
+      prenom: prenom,
+      nom: nom ? prenom + ' ' + nom : prenom,
+      lettre: code,
+      pct: parseInt(fond.querySelector('#sagaNcPct').value, 10) || 30,
+      apporteur: fond.querySelector('#sagaNcApporteur').value
+    });
+    fond.remove();
+    document.body.classList.remove('modale-ouverte');
+    document.removeEventListener('keydown', auClavier);
+    if (auCreer) auCreer(entree);
+  };
+
+  setTimeout(function () { fond.querySelector('#sagaNcPrenom').focus(); }, 0);
+}
+
 /* Clé de fiche (?c=…) correspondant à une lettre de dressing */
 function sagaFicheDressing(lettre) {
   var fiches = sagaFiches();
@@ -717,10 +964,20 @@ function sagaDateWhatnot(txt) {
   return m[3] + '-' + ('0' + (i + 1)).slice(-2) + '-' + ('0' + m[1]).slice(-2);
 }
 
-/* Lettre de dressing dans « PDD 5€ F #12 » ; vide si la vente n'en porte pas */
+/* Code de dressing dans « PDD 5€ F #12 » ou « PDD 5€ CA #12 » ;
+   vide si la vente n'en porte pas. Un code de deux ou trois lettres n'est
+   retenu que s'il correspond à une cliente connue : sans cela, un mot collé
+   au montant serait pris pour un code. */
 function sagaLettreWhatnot(libelle) {
-  var m = String(libelle).match(/€\s*([A-Za-zÀ-ÿ])(?![A-Za-zÀ-ÿ])/);
-  return m ? m[1].toUpperCase() : '';
+  var m = String(libelle).match(/€\s*([A-Za-zÀ-ÿ]{1,3})(?![A-Za-zÀ-ÿ])/);
+  if (!m) return '';
+  var code = m[1].toUpperCase();
+  if (code.length === 1) return code;
+  var connus = {};
+  sagaListeClientes().forEach(function (c) {
+    if (c.lettre) connus[String(c.lettre).toUpperCase()] = true;
+  });
+  return connus[code] ? code : code.charAt(0);
 }
 
 /* Numéros de commande déjà importés, pour ne pas compter deux fois le même

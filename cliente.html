@@ -121,7 +121,11 @@
         </div>
 
         <div class="tab-panel active" id="tab-lives" data-panel-group="cliente" style="margin-top:18px;">
-          <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:14px;">
+            <button class="btn btn-ghost btn-sm" onclick="ouvrirExportPdf()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exporter en PDF
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="toggleDirectSaleForm()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Ajouter une vente hors live
@@ -519,9 +523,9 @@
                 <input class="form-input" id="iPrenom" />
               </div>
               <div style="flex:1;">
-                <label class="form-label" for="iLettre">Lettre dressing</label>
-                <input class="form-input" id="iLettre" maxlength="1" />
-                <span class="card-note" id="iLettreWarn" style="display:none; color:var(--critical);">Lettre déjà utilisée</span>
+                <label class="form-label" for="iLettre">Code dressing</label>
+                <input class="form-input" id="iLettre" maxlength="3" />
+                <span class="card-note" id="iLettreWarn" style="display:none; color:var(--warn);">—</span>
               </div>
             </div>
 
@@ -823,11 +827,13 @@
 
   function clientesStore() { return sagaLoad('clientes', []); }
 
+  /* La clé prime sur le code : deux clientes peuvent porter le même code,
+     et l'on retomberait sinon sur la fiche de l'autre. */
   function entreeListe(store) {
     var cle = currentClientKey();
-    return store.filter(function (c) {
-      return (c.key && c.key === cle) || c.lettre === CLIENT.lettre;
-    })[0] || null;
+    return store.filter(function (c) { return c.key && c.key === cle; })[0]
+        || store.filter(function (c) { return !c.key && c.lettre === CLIENT.lettre; })[0]
+        || null;
   }
 
   function vignetteCourante() {
@@ -936,27 +942,41 @@
     document.getElementById('iStatut').value = CLIENT.statut;
     sagaRemplirApporteurs(document.getElementById('iApporteur'), CLIENT.apporteur || '', false);
     document.getElementById('iApporteurPct').value = CLIENT.apporteurPct || 0;
-    document.getElementById('iLettreWarn').style.display = 'none';
+    verifierCodeInfos();
     afficheVignette(vignetteCourante());
   }
 
   function saveInfos() {
     var prenom = document.getElementById('iPrenom').value.trim();
-    var lettre = document.getElementById('iLettre').value.trim().toUpperCase();
+    var lettre = sagaNormaliserCode(document.getElementById('iLettre').value);
     if (!prenom) { document.getElementById('iPrenom').focus(); return; }
     if (!lettre) { document.getElementById('iLettre').focus(); return; }
 
-    // La lettre identifie le dressing dans les CSV Whatnot : elle doit rester unique
-    var conflit = clientesStore().some(function (c) {
-      return c.lettre === lettre && c.lettre !== CLIENT.lettre;
-    });
-    if (conflit) {
-      document.getElementById('iLettreWarn').style.display = 'block';
-      document.getElementById('iLettre').focus();
-      return;
+    /* Un code partagé avec une autre cliente est accepté ici — c'est la
+       génération de la boutique qui exigera de les départager. On prévient
+       quand même, et on rappelle ce que le changement déplace. */
+    var homonymes = sagaClientesDuCode(lettre, currentClientKey());
+    if (homonymes.length) {
+      var noms = homonymes.map(function (c) { return c.nom || c.prenom; }).join(', ');
+      if (!confirm('Le code « ' + lettre + ' » est déjà porté par ' + noms + '.\n\n'
+          + 'Vous pouvez l\'enregistrer quand même : la génération de la boutique '
+          + 'vous demandera de départager les deux codes.\n\nEnregistrer ?')) {
+        document.getElementById('iLettre').focus();
+        return;
+      }
     }
 
     var ancienneLettre = CLIENT.lettre;
+    /* Les ventes sont rattachées au code, pas à la fiche : changer de code
+       les laisserait sur l'ancien. On le dit avant, pas après. */
+    if (lettre !== ancienneLettre && sagaVentesDuDressing(ancienneLettre).length) {
+      if (!confirm('Les ventes déjà enregistrées restent rattachées au code « '
+          + ancienneLettre + ' » et ne suivront pas ' + prenom + ' sur « ' + lettre + ' ».\n\n'
+          + 'Changer le code malgré tout ?')) {
+        document.getElementById('iLettre').focus();
+        return;
+      }
+    }
 
     CLIENT.prenom = prenom;
     CLIENT.lettre = lettre;
@@ -972,9 +992,9 @@
 
     // Report dans la liste des clientes (et donc dans la boutique)
     var store = clientesStore();
-    var e = store.filter(function (c) {
-      return (c.key && c.key === currentClientKey()) || c.lettre === ancienneLettre;
-    })[0];
+    // Même règle qu'entreeListe() : on ne se trompe pas de cliente sur un code partagé
+    var e = store.filter(function (c) { return c.key && c.key === currentClientKey(); })[0]
+         || store.filter(function (c) { return !c.key && c.lettre === ancienneLettre; })[0];
     // Si la liste n'a pas encore été ouverte, l'entrée n'existe pas : on la crée
     if (!e) {
       e = { key: currentClientKey(), ca: 0, commission: 0, reste: 0, vignette: '' };
@@ -1000,6 +1020,166 @@
     ongletAvantEdition = null;
     flashInfos('✓ Enregistré');
   }
+  /* Le doublon de code est annoncé sous le champ, sans bloquer la saisie */
+  function verifierCodeInfos() {
+    var warn = document.getElementById('iLettreWarn');
+    var code = sagaNormaliserCode(document.getElementById('iLettre').value);
+    var autres = code ? sagaClientesDuCode(code, currentClientKey()) : [];
+    if (!autres.length) { warn.style.display = 'none'; return; }
+    warn.textContent = 'Code déjà porté par ' + autres.map(function (c) {
+      return c.nom || c.prenom;
+    }).join(', ') + ' — à départager avant de générer la boutique.';
+    warn.style.display = 'block';
+  }
+  document.getElementById('iLettre').addEventListener('input', verifierCodeInfos);
+
+  /* ============ Export PDF du relevé ============
+     Le tableau des ventes de la fiche, mis en document : c'est la pièce que
+     l'on envoie à la cliente ou que l'on garde pour la comptabilité. */
+  function ouvrirExportPdf() {
+    var range = currentRange();
+    var fond = document.createElement('div');
+    fond.className = 'modale';
+    fond.innerHTML =
+      '<div class="modale-boite" style="width:min(440px,100%);">' +
+        '<div class="modale-tete"><strong>Exporter en PDF</strong>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+        '<div class="modale-corps">' +
+          '<p class="card-note" style="margin-bottom:14px;">Relevé des ventes de ' +
+            sagaEchapper(CLIENT.nom || CLIENT.prenom) + ' — lives et ventes hors live.</p>' +
+          '<div class="form-field"><label class="form-label" for="expPeriode">Période</label>' +
+            '<select class="form-select" id="expPeriode">' +
+              '<option value="periode">Période affichée (' + sagaEchapper(range.label) + ')</option>' +
+              '<option value="tout">Tout depuis le début</option>' +
+            '</select></div>' +
+          '<label class="dress-row" style="margin-top:14px; cursor:pointer;">' +
+            '<input type="checkbox" id="expDetail" checked />' +
+            '<span class="dress-name">Détail des articles de chaque live</span></label>' +
+          '<label class="dress-row" style="cursor:pointer;">' +
+            '<input type="checkbox" id="expImpayes" />' +
+            '<span class="dress-name">Uniquement les ventes non réglées</span></label>' +
+          '<div style="display:flex; gap:10px; margin-top:18px;">' +
+            '<button class="btn btn-primary btn-sm" data-valider>Générer le PDF</button>' +
+            '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(fond);
+    document.body.classList.add('modale-ouverte');
+
+    function fermer() {
+      fond.remove();
+      document.body.classList.remove('modale-ouverte');
+      document.removeEventListener('keydown', auClavier);
+    }
+    function auClavier(e) { if (e.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', auClavier);
+    fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+    fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+
+    fond.querySelector('[data-valider]').onclick = function () {
+      var options = {
+        tout: fond.querySelector('#expPeriode').value === 'tout',
+        detail: fond.querySelector('#expDetail').checked,
+        impayes: fond.querySelector('#expImpayes').checked
+      };
+      fermer();
+      exporterRelevePdf(options);
+    };
+  }
+
+  function exporterRelevePdf(options) {
+    var range = options.tout
+      ? { from: '0000-01-01', to: '9999-12-31', label: 'depuis le début' }
+      : currentRange();
+
+    var lignes = VENTES.filter(function (l) {
+      if (l.date < range.from || l.date > range.to) return false;
+      if (options.impayes && l.paye) return false;
+      return true;
+    });
+
+    if (!lignes.length) {
+      alert('Rien à exporter : aucune vente ne correspond à ce que vous avez choisi.');
+      return;
+    }
+
+    var totaux = lignes.reduce(function (t, l) {
+      t.ventes += l.ventes; t.commission += l.commission;
+      t.apporteur += l.apporteurMontant || 0; t.frais += l.frais || 0;
+      t.net += l.net;
+      if (l.paye) t.regle += l.net; else t.reste += l.net;
+      return t;
+    }, { ventes: 0, commission: 0, apporteur: 0, frais: 0, net: 0, regle: 0, reste: 0 });
+
+    var pdf = sagaNouveauPdf('Relevé ' + (CLIENT.nom || CLIENT.prenom));
+    pdf.titre('Relevé des ventes');
+    pdf.sousTitre(lignes.length + ' vente(s) — ' + range.label
+      + (options.impayes ? ' — non réglées uniquement' : '')
+      + ' · édité le ' + sagaDateLongue(TODAY_ISO));
+
+    pdf.section('Cliente');
+    pdf.paragraphe((CLIENT.nom || CLIENT.prenom) + '  —  dressing ' + CLIENT.lettre,
+      { gras: true, taille: 10.5 });
+    if (CLIENT.adresse) pdf.paragraphe(CLIENT.adresse);
+    var contact = [sagaTelephone(CLIENT.tel), CLIENT.email].filter(Boolean).join('  ·  ');
+    if (contact) pdf.paragraphe(contact);
+
+    pdf.section('Ventes de la période');
+    pdf.tableau([
+      { titre: 'Date',       cle: 'date',   largeur: 12 },
+      { titre: 'Live / vente', cle: 'label', largeur: 34 },
+      { titre: 'Ventes',     cle: 'ventes', largeur: 13, aligne: 'droite' },
+      { titre: 'Commission', cle: 'com',    largeur: 13, aligne: 'droite' },
+      { titre: 'Net',        cle: 'net',    largeur: 13, aligne: 'droite' },
+      { titre: 'Statut',     cle: 'statut', largeur: 15, discret: true }
+    ], lignes.map(function (l) {
+      return {
+        date: fmtDateShortFR(l.date),
+        label: l.label + (l.origine === 'direct' ? ' (hors live)' : ''),
+        ventes: fmtEUR(l.ventes), com: fmtEUR(l.commission), net: fmtEUR(l.net),
+        statut: l.paye ? 'Réglé' + (l.datePaiement ? ' ' + fmtDateShortFR(l.datePaiement) : '') : 'En attente'
+      };
+    }), {
+      date: '', label: 'Total',
+      ventes: fmtEUR(totaux.ventes), com: fmtEUR(totaux.commission), net: fmtEUR(totaux.net)
+    });
+
+    var decompte = [['Chiffre d\'affaires', fmtEUR(totaux.ventes)],
+                    ['− Commission Saga', fmtEUR(totaux.commission)]];
+    if (totaux.apporteur > 0) decompte.push(['− Commission apporteur (' + CLIENT.apporteur + ')', fmtEUR(totaux.apporteur)]);
+    if (totaux.frais > 0) decompte.push(['− Frais d\'envoi', fmtEUR(totaux.frais)]);
+    decompte.push(['− Déjà reversé', fmtEUR(totaux.regle)]);
+    decompte.push(['Reste à reverser', fmtEUR(totaux.reste)]);
+
+    pdf.section('Décompte');
+    pdf.decompte(decompte);
+
+    if (options.detail) {
+      lignes.forEach(function (l) {
+        var live = l.origine === 'live' ? sagaLive(l.liveId) : null;
+        if (!live) return;
+        var arts = live.articles.filter(function (a) { return a.lettre === CLIENT.lettre; });
+        if (!arts.length) return;
+        pdf.section(l.label + ' — ' + arts.length + ' article(s)');
+        pdf.tableau([
+          { titre: 'Article', cle: 'libelle', largeur: 58 },
+          { titre: 'Montant', cle: 'montant', largeur: 21, aligne: 'droite' },
+          { titre: 'Type',    cle: 'type',    largeur: 21, discret: true }
+        ], arts.map(function (a) {
+          return {
+            libelle: a.libelle, montant: fmtEUR(a.montant),
+            type: a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente'
+          };
+        }));
+      });
+    }
+
+    sagaApercuPdf(pdf, 'Releve_' + CLIENT.prenom + '_' + TODAY_ISO,
+      'Relevé des ventes — ' + (CLIENT.nom || CLIENT.prenom));
+  }
+
   var MONTHS_FR_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   var TODAY_ISO = sagaAujourdhui();   // le CRM travaille sur la date réelle du poste
 

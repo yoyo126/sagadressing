@@ -131,7 +131,7 @@
             <div class="form-field" style="flex-direction:row; gap:12px;">
               <div style="flex:1;">
                 <label class="form-label" for="aLettre">Dressing</label>
-                <select class="form-select" id="aLettre"></select>
+                <select class="form-select" id="aLettre" onchange="auChangementDeDressing()"></select>
               </div>
               <div style="flex:1;">
                 <label class="form-label" for="aMontant">Montant (€)</label>
@@ -393,15 +393,37 @@
   /* Toutes les clientes connues sont proposées, pas seulement celles déjà
      présentes sur ce live : c'est ce qui permet de réattribuer un article à
      quelqu'un qui n'y figurait pas encore. */
-  function renderChoixLettres() {
+  function renderChoixLettres(selection) {
+    var champ = document.getElementById('aLettre');
+    var courant = selection || champ.value;
     var lettres = lettresDuLive().slice();
     sagaToutesClientes().forEach(function (c) {
       if (lettres.indexOf(c.lettre) === -1) lettres.push(c.lettre);
     });
-    document.getElementById('aLettre').innerHTML = lettres.map(function (l) {
+    champ.innerHTML = lettres.map(function (l) {
       var t = sagaTauxDressing(l);
       return '<option value="' + l + '">' + l + ' — ' + t.prenom + '</option>';
-    }).join('');
+    }).join('') +
+      /* Une vente peut revenir à quelqu'un qui n'est pas encore au fichier :
+         on crée la cliente sans quitter le live. */
+      '<option value="__nouvelle__">＋ Nouvelle cliente…</option>';
+    if (courant && courant !== '__nouvelle__') champ.value = courant;
+  }
+
+  /* Choix « Nouvelle cliente » : la fiche est créée, puis aussitôt
+     sélectionnée pour l'article en cours de saisie. */
+  function auChangementDeDressing() {
+    var champ = document.getElementById('aLettre');
+    if (champ.value !== '__nouvelle__') return;
+    var precedent = champ.dataset.precedent || '';
+    sagaModaleNouvelleCliente({
+      detail: 'Elle sera enregistrée dans Clientes, et l\'article lui sera attribué.',
+      auFermer: function () { renderChoixLettres(precedent); }
+    }, function (entree) {
+      renderChoixLettres(entree.lettre);
+      annoncer(entree.nom + ' a été créée (dressing ' + entree.lettre
+        + ') — l\'article lui sera attribué.');
+    });
   }
 
   function toggleArticleForm() {
@@ -429,6 +451,10 @@
     document.getElementById('aSubmit').textContent = "Ajouter l'article";
   }
 
+  document.getElementById('aLettre').addEventListener('focus', function () {
+    this.dataset.precedent = this.value;
+  });
+
   function editerArticle(id) {
     var a = LIVE.articles.filter(function (x) { return x.id === id; })[0];
     if (!a) return;
@@ -449,9 +475,15 @@
     if (!libelle) { document.getElementById('aLibelle').focus(); return; }
     if (isNaN(montant)) { document.getElementById('aMontant').focus(); return; }
 
+    var codeChoisi = document.getElementById('aLettre').value;
+    if (!codeChoisi || codeChoisi === '__nouvelle__') {
+      document.getElementById('aLettre').focus();
+      return;
+    }
+
     var champs = {
       libelle: libelle,
-      lettre: document.getElementById('aLettre').value,
+      lettre: codeChoisi,
       montant: montant,
       type: document.getElementById('aType').value
     };

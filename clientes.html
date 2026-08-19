@@ -21,6 +21,10 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="searchInput" placeholder="Rechercher une cliente…" />
           </div>
+          <button class="btn btn-secondary" onclick="exporterListePdf()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exporter en PDF
+          </button>
           <button class="btn btn-primary" onclick="toggleNewForm()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nouvelle cliente
@@ -53,10 +57,10 @@
             <span class="card-note">Reprise automatiquement dans les contrats et bons de restitution.</span>
           </div>
           <div class="form-field">
-            <label class="form-label" for="nLettre">Lettre du dressing</label>
-            <input class="form-input" id="nLettre" maxlength="1" placeholder="L" style="max-width:110px;" />
-            <span class="card-note">Identifie ses articles dans les exports Whatnot. Elle doit rester unique.</span>
-            <span class="card-note" id="letterWarn" style="display:none; color:var(--critical);">Lettre déjà utilisée</span>
+            <label class="form-label" for="nLettre">Code du dressing</label>
+            <input class="form-input" id="nLettre" maxlength="3" placeholder="L ou LA" style="max-width:110px;" />
+            <span class="card-note">Identifie ses articles dans les exports Whatnot. Une à trois lettres : « C » et « CA » distinguent deux clientes dont le prénom commence pareil.</span>
+            <span class="card-note" id="letterWarn" style="display:none; color:var(--warn);">—</span>
           </div>
           <div class="form-field" style="flex-direction:row; gap:12px;">
             <div style="flex:1;">
@@ -185,21 +189,15 @@
 
   var clientes = sagaLoad('clientes', sagaDemo(CLIENTES_DEFAUT, []));
   var vignetteEnCours = '';
+  var DOUBLONS = {};
 
   /* Une fiche n'était ouvrable que si la cliente possédait une clé, ce qui
      n'était le cas que des quatre exemples d'origine. On en attribue une à
      toutes, y compris aux clientes créées depuis l'application. */
-  function cleDepuis(prenom, lettre) {
-    var base = (prenom || 'cliente').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    return base + '-' + (lettre || '').toLowerCase();
-  }
-
   (function completerLesCles() {
     var modifie = false;
     clientes.forEach(function (c) {
-      if (!c.key) { c.key = cleDepuis(c.prenom, c.lettre); modifie = true; }
+      if (!c.key) { c.key = sagaCleCliente(c.prenom, c.lettre); modifie = true; }
     });
     if (modifie) persist();
   })();
@@ -247,6 +245,8 @@
       c.ca = t.ca; c.commission = t.commission; c.reste = t.reste;
     });
 
+    DOUBLONS = sagaCodesEnDoublon();
+
     var rows = visibleClientes();
     var body = document.getElementById('clientesBody');
     var foot = document.getElementById('clientesFoot');
@@ -271,6 +271,11 @@
       var statut = c.statut === 'active'
         ? '<span class="chip good">Active</span>'
         : '<span class="chip neutral">Inactive</span>';
+      // Un code partagé se voit dès la liste, avant d'être bloquant en boutique
+      if (DOUBLONS[c.lettre]) {
+        statut += ' <span class="chip warn" title="Code ' + c.lettre +
+          ' partagé avec une autre cliente">Code en double</span>';
+      }
       var reste = c.reste > 0
         ? '<strong style="color:var(--brand-strong)">' + fmtEUR(c.reste) + '</strong>'
         : '<span class="muted">—</span>';
@@ -345,63 +350,91 @@
   function addCliente() {
     var prenom = document.getElementById('nPrenom').value.trim();
     var nomFamille = document.getElementById('nNom').value.trim();
-    var lettre = document.getElementById('nLettre').value.trim().toUpperCase();
-    var warn = document.getElementById('letterWarn');
+    var lettre = sagaNormaliserCode(document.getElementById('nLettre').value);
 
     if (!prenom) { document.getElementById('nPrenom').focus(); return; }
     if (!nomFamille) { document.getElementById('nNom').focus(); return; }
     if (!lettre) { document.getElementById('nLettre').focus(); return; }
 
-    // La lettre identifie le dressing dans les CSV Whatnot : elle doit rester unique
-    if (clientes.some(function (c) { return c.lettre === lettre; })) {
-      warn.style.display = 'block';
-      document.getElementById('nLettre').focus();
-      return;
+    /* Un code déjà pris n'empêche plus la création : deux Carole peuvent
+       coexister en « C ». C'est la génération de la boutique qui exigera de
+       les départager, puisque c'est là que le code doit désigner une seule
+       cliente. */
+    var homonymes = sagaClientesDuCode(lettre);
+    if (homonymes.length) {
+      var noms = homonymes.map(function (c) { return c.nom || c.prenom; }).join(', ');
+      if (!confirm('Le code « ' + lettre + ' » est déjà porté par ' + noms + '.\n\n'
+          + 'Vous pouvez créer cette cliente quand même : la génération de la boutique '
+          + 'vous demandera alors de départager les deux codes.\n\nCréer la fiche ?')) {
+        document.getElementById('nLettre').focus();
+        return;
+      }
     }
-    warn.style.display = 'none';
 
-    var cle = cleDepuis(prenom, lettre);
-    clientes.push({
-      key: cle,
+    var entree = sagaCreerCliente({
       prenom: prenom,
       nom: prenom + ' ' + nomFamille,
       email: document.getElementById('nEmail').value.trim(),
-      tel: sagaTelephone(document.getElementById('nTel').value),
+      tel: document.getElementById('nTel').value,
       adresse: document.getElementById('nAdresse').value.trim(),
       lettre: lettre,
       apporteur: document.getElementById('nApporteur').value,
       pct: parseInt(document.getElementById('nCommission').value, 10) || 30,
-      statut: 'active',
       vignette: vignetteEnCours
     });
-    persist();
-    creerFicheDetaillee(cle, prenom, lettre, prenom + ' ' + nomFamille);
-    sagaTracer('Création cliente', prenom + ' (' + lettre + ')');
+    clientes.push(entree);
 
     toggleNewForm();   // ferme et vide le formulaire
     render();
   }
 
-  /* La page fiche lit `clients_data` : sans cette entrée, une cliente créée
-     ici n'aurait aucune fiche à ouvrir. */
-  function creerFicheDetaillee(cle, prenom, lettre, nomComplet) {
-    var fiches = sagaLoad('clients_data', {});
-    if (fiches[cle]) return;
-    fiches[cle] = {
-      prenom: prenom,
-      nom: nomComplet,
-      lettre: lettre,
-      statut: 'Active',
-      tel: sagaTelephone(document.getElementById('nTel').value),
-      email: document.getElementById('nEmail').value.trim(),
-      adresse: document.getElementById('nAdresse').value.trim(),
-      commission: parseInt(document.getElementById('nCommission').value, 10) || 30,
-      apporteur: document.getElementById('nApporteur').value || null,
-      apporteurPct: sagaPctApporteur(document.getElementById('nApporteur').value),
-      depuis: sagaDateLongue(sagaAujourdhui()).replace(/^\d+ /, ''),
-      pending: null
-    };
-    sagaSave('clients_data', fiches);
+  /* ===== Export PDF =====
+     Reprend exactement ce qui est affiché : même filtre, même recherche,
+     mêmes totaux que le tableau à l'écran. */
+  function exporterListePdf() {
+    var rows = visibleClientes();
+    if (!rows.length) { alert('Rien à exporter : aucune cliente ne correspond au filtre en cours.'); return; }
+
+    var st = currentStatus();
+    var libelleFiltre = st === 'active' ? 'clientes actives'
+                      : st === 'inactive' ? 'clientes inactives' : 'toutes les clientes';
+    var q = document.getElementById('searchInput').value.trim();
+
+    var pdf = sagaNouveauPdf('Liste des clientes');
+    pdf.titre('Liste des clientes');
+    pdf.sousTitre(rows.length + ' cliente(s) — ' + libelleFiltre
+      + (q ? ' — recherche « ' + q + ' »' : '')
+      + ' · édité le ' + sagaDateLongue(sagaAujourdhui()));
+
+    pdf.tableau([
+      { titre: 'Code',       cle: 'code',   largeur: 9 },
+      { titre: 'Cliente',    cle: 'nom',    largeur: 27 },
+      { titre: 'Apporteur',  cle: 'app',    largeur: 16, discret: true },
+      { titre: 'Taux',       cle: 'taux',   largeur: 9,  aligne: 'droite' },
+      { titre: 'CA total',   cle: 'ca',     largeur: 13, aligne: 'droite' },
+      { titre: 'Commission', cle: 'com',    largeur: 13, aligne: 'droite' },
+      { titre: 'À reverser', cle: 'reste',  largeur: 13, aligne: 'droite' }
+    ], rows.map(function (c) {
+      return {
+        code: c.lettre, nom: c.nom || c.prenom, app: c.apporteur || '—',
+        taux: c.pct + ' %', ca: fmtEUR(c.ca), com: fmtEUR(c.commission),
+        reste: c.reste > 0 ? fmtEUR(c.reste) : '—'
+      };
+    }), {
+      code: '', nom: 'Total',
+      ca: fmtEUR(rows.reduce(function (s, c) { return s + c.ca; }, 0)),
+      com: fmtEUR(rows.reduce(function (s, c) { return s + c.commission; }, 0)),
+      reste: fmtEUR(rows.reduce(function (s, c) { return s + c.reste; }, 0))
+    });
+
+    var enDouble = Object.keys(sagaCodesEnDoublon(rows));
+    if (enDouble.length) {
+      pdf.section('À régulariser');
+      pdf.paragraphe('Code(s) portés par plusieurs clientes : ' + enDouble.join(', ')
+        + '. La génération de la boutique demandera de les départager.');
+    }
+
+    sagaApercuPdf(pdf, 'Clientes_' + sagaAujourdhui(), 'Liste des clientes');
   }
 
   document.getElementById('statusToggle').addEventListener('click', function (e) {
@@ -414,7 +447,14 @@
 
   document.getElementById('searchInput').addEventListener('input', render);
   document.getElementById('nLettre').addEventListener('input', function () {
-    document.getElementById('letterWarn').style.display = 'none';
+    var code = sagaNormaliserCode(this.value);
+    var warn = document.getElementById('letterWarn');
+    var autres = code ? sagaClientesDuCode(code) : [];
+    if (!autres.length) { warn.style.display = 'none'; return; }
+    warn.textContent = 'Code déjà porté par ' + autres.map(function (c) {
+      return c.nom || c.prenom;
+    }).join(', ') + ' — à départager avant de générer la boutique.';
+    warn.style.display = 'block';
   });
 
   sagaRemplirApporteurs(document.getElementById('nApporteur'), '', true);

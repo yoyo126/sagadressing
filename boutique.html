@@ -29,6 +29,8 @@
         Maquette design — le fichier généré est en revanche bien réel et téléchargeable
       </div>
 
+      <div class="alert-bar" id="doublonsAlerte" style="display:none; flex-direction:column; align-items:stretch; gap:10px;"></div>
+
       <div class="content-grid">
         <div class="side-col">
           <!-- Dressings -->
@@ -160,16 +162,33 @@
 
   var PALIERS_DEFAUT = [1,5,10,15,20,25,30,35,40,50,60,70,80,90,100,150,200,250,300,400,500];
 
-  /* Toutes les clientes connues de l'application, pas seulement celles
-     déjà enregistrées dans la liste : la boutique reste alignée sur le CRM. */
-  var clientes = sagaToutesClientes().map(function (c) {
-    var entree = sagaLoad('clientes', []).filter(function (x) { return x.lettre === c.lettre; })[0] || {};
-    return {
-      prenom: c.prenom, nom: c.nom || c.prenom, lettre: c.lettre,
-      statut: entree.statut || 'active', vignette: entree.vignette || ''
-    };
-  }).filter(function (c) { return c.statut === 'active'; });
+  /* Toutes les clientes connues de l'application, chacune pour elle-même :
+     deux clientes peuvent porter le même code, et c'est justement ici qu'il
+     faut le voir. La sélection est donc repérée par cliente, pas par code. */
+  var clientes = [];
+  function chargerClientes() {
+    clientes = sagaListeClientes().filter(function (c) { return c.statut === 'active'; });
+  }
+  chargerClientes();
+
   var config = sagaLoad('boutique_config', { paliers: PALIERS_DEFAUT.slice(), selection: {}, images: {} });
+
+  /* Les configurations enregistrées avant ce changement étaient rangées par
+     code : on les reprend telles quelles pour ne rien perdre. */
+  (function migrerSelectionParCode() {
+    var modifie = false;
+    clientes.forEach(function (c) {
+      if (config.selection[c.id] === undefined && config.selection[c.lettre] !== undefined) {
+        config.selection[c.id] = config.selection[c.lettre];
+        modifie = true;
+      }
+      if (config.images[c.id] === undefined && config.images[c.lettre] !== undefined) {
+        config.images[c.id] = config.images[c.lettre];
+        modifie = true;
+      }
+    });
+    if (modifie) sagaSave('boutique_config', config);
+  })();
 
   if (!config.paliersActifs) {
     config.paliersActifs = {};
@@ -186,11 +205,8 @@
     rechercheDressTimer = setTimeout(renderDressings, 200);
   });
 
-  function imageDe(lettre) {
-    var override = config.images[lettre];
-    if (override) return override;
-    var c = clientes.find(function (x) { return x.lettre === lettre; });
-    return (c && c.vignette) || '';
+  function imageDe(c) {
+    return config.images[c.id] || c.vignette || '';
   }
 
   /* Avec cent dressings, tout afficher devient illisible : la liste ne montre
@@ -202,11 +218,15 @@
         return (c.nom + ' ' + c.prenom + ' ' + c.lettre).toLowerCase().indexOf(q) !== -1;
       });
     }
-    return clientes.filter(function (c) { return config.selection[c.lettre]; });
+    return clientes.filter(function (c) { return config.selection[c.id]; });
+  }
+
+  function clientesRetenues() {
+    return clientes.filter(function (c) { return config.selection[c.id]; });
   }
 
   function selectDressings(tout) {
-    dressingsVisibles().forEach(function (c) { config.selection[c.lettre] = tout; });
+    dressingsVisibles().forEach(function (c) { config.selection[c.id] = tout; });
     persist();
     renderDressings();
     refreshApercu();
@@ -215,7 +235,7 @@
   function renderDressings() {
     var liste = dressingsVisibles();
     var q = (document.getElementById('dressSearch').value || '').trim();
-    var choisies = clientes.filter(function (c) { return config.selection[c.lettre]; }).length;
+    var choisies = clientesRetenues().length;
 
     document.getElementById('dressAide').textContent = q
       ? 'Résultats de la recherche — cochez pour ajouter à la boutique.'
@@ -223,39 +243,111 @@
           ? 'Seules les clientes retenues sont affichées. Utilisez la recherche pour en ajouter.'
           : 'Aucune cliente retenue. Recherchez une cliente pour l\'ajouter à la boutique.');
 
+    var doublons = sagaCodesEnDoublon(clientes);
+
     document.getElementById('dressList').innerHTML = liste.map(function (c) {
-      var img = imageDe(c.lettre);
+      var img = imageDe(c);
       var vign = img
         ? '<img class="vignette-thumb" src="' + img + '" alt="" />'
         : '<span class="vignette-thumb empty">—</span>';
-      var perso = config.images[c.lettre] ? ' <span class="chip neutral" style="font-size:.62rem;">remplacée</span>' : '';
+      var perso = config.images[c.id] ? ' <span class="chip neutral" style="font-size:.62rem;">remplacée</span>' : '';
+      var conflit = doublons[c.lettre]
+        ? ' <span class="chip warn" style="font-size:.62rem;">code en double</span>' : '';
+      var ref = sagaEchapper(c.id).replace(/'/g, "\\'");
       return '<label class="dress-row">' +
-        '<input type="checkbox" ' + (config.selection[c.lettre] ? 'checked' : '') +
-          ' onchange="toggleDress(\'' + c.lettre + '\', this.checked)" />' +
+        '<input type="checkbox" ' + (config.selection[c.id] ? 'checked' : '') +
+          ' onchange="toggleDress(\'' + ref + '\', this.checked)" />' +
         vign +
-        '<span class="dress-name"><strong>' + c.lettre + '</strong> · ' + (c.nom || c.prenom) + perso +
+        '<span class="dress-name"><strong>' + c.lettre + '</strong> · ' + (c.nom || c.prenom) + perso + conflit +
           (img ? '' : '<div class="muted" style="font-size:.7rem;">Aucune vignette</div>') + '</span>' +
-        '<input type="file" accept="image/*" id="img_' + c.lettre + '" style="display:none;" onchange="changeImage(\'' + c.lettre + '\', this)" />' +
-        '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.lettre + '\').click()">Changer</button>' +
+        '<input type="file" accept="image/*" id="img_' + c.id + '" style="display:none;" onchange="changeImage(\'' + ref + '\', this)" />' +
+        '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.id + '\').click()">Changer</button>' +
       '</label>';
     }).join('') || '<p class="card-note">' +
       (q ? 'Aucune cliente ne correspond à « ' + q + ' ».' : 'Recherchez une cliente pour la retenir.') + '</p>';
 
-    var n = clientes.filter(function (c) { return config.selection[c.lettre]; }).length;
-    document.getElementById('dressCount').textContent = n + ' sélectionné(s) sur ' + clientes.length;
+    document.getElementById('dressCount').textContent =
+      choisies + ' sélectionné(s) sur ' + clientes.length;
+    renderDoublons();
   }
 
-  function toggleDress(lettre, checked) {
-    config.selection[lettre] = checked;
+  function toggleDress(id, checked) {
+    config.selection[id] = checked;
     persist(); renderDressings(); refreshApercu();
   }
 
-  function changeImage(lettre, input) {
+  function changeImage(id, input) {
     if (!input.files || !input.files[0]) return;
     sagaReadImage(input.files[0], 600, function (dataUrl) {
-      config.images[lettre] = dataUrl;
+      config.images[id] = dataUrl;
       persist(); renderDressings(); refreshApercu();
     });
+  }
+
+  /* ---------- Codes en double ----------
+     Le code part tel quel dans le titre de l'annonce : si deux clientes
+     retenues portent le même, rien ne permettra de savoir à qui revient une
+     vente. On le signale ici, et on laisse corriger sans quitter l'écran. */
+  function conflitsSelection() {
+    return sagaCodesEnDoublon(clientesRetenues());
+  }
+
+  function renderDoublons() {
+    var conflits = conflitsSelection();
+    var codes = Object.keys(conflits);
+    var bandeau = document.getElementById('doublonsAlerte');
+
+    if (!codes.length) { bandeau.style.display = 'none'; bandeau.innerHTML = ''; return; }
+
+    bandeau.style.display = 'flex';
+    bandeau.innerHTML =
+      '<div style="display:flex; gap:10px; align-items:flex-start;">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none; margin-top:2px;"><path d="M12 3 2 20h20L12 3Z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r=".6" fill="currentColor" stroke="none"/></svg>' +
+        '<span><strong>' + codes.length + ' code' + (codes.length > 1 ? 's' : '') +
+          ' porté' + (codes.length > 1 ? 's' : '') + ' par plusieurs clientes retenues.</strong> ' +
+          'Le fichier ne peut pas être généré tant que chaque code ne désigne qu\'une cliente. ' +
+          'Donnez un code distinct à l\'une d\'elles — « C » et « CA », par exemple. ' +
+          'Les ventes déjà enregistrées restent rattachées à l\'ancien code.</span>' +
+      '</div>' +
+      codes.map(function (code) {
+        return '<div style="border-top:1px solid var(--line); padding-top:10px;">' +
+          '<div class="muted" style="font-size:.8rem; margin-bottom:6px;">Code « ' + code + ' »</div>' +
+          conflits[code].map(function (c) {
+            var ref = sagaEchapper(c.id).replace(/'/g, "\\'");
+            return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">' +
+              '<span style="flex:1; min-width:160px;">' + sagaEchapper(c.nom || c.prenom) + '</span>' +
+              '<input class="form-input" style="max-width:90px;" maxlength="3" value="' +
+                sagaEchapper(c.lettre) + '" id="fix_' + c.id + '" ' +
+                (c.key ? '' : 'disabled title="Cliente de démonstration, non modifiable" ') + '/>' +
+              (c.key
+                ? '<button class="btn btn-secondary btn-sm" onclick="appliquerCode(\'' + ref + '\')">Appliquer</button>'
+                : '<span class="card-note">exemple</span>') +
+            '</div>';
+          }).join('') +
+        '</div>';
+      }).join('');
+  }
+
+  function appliquerCode(id) {
+    var c = clientes.filter(function (x) { return x.id === id; })[0];
+    if (!c || !c.key) return;
+    var nouveau = sagaNormaliserCode(document.getElementById('fix_' + id).value);
+    if (!nouveau) { document.getElementById('fix_' + id).focus(); return; }
+    if (nouveau === c.lettre) return;
+
+    var ventes = sagaVentesDuDressing(c.lettre).length;
+    if (ventes && !confirm('« ' + (c.nom || c.prenom) + ' » a ' + ventes
+        + ' vente(s) enregistrée(s) sous le code « ' + c.lettre + ' ».\n\n'
+        + 'Elles y resteront rattachées : seuls les prochains articles et les '
+        + 'annonces de la boutique porteront « ' + nouveau + ' ».\n\nChanger le code ?')) {
+      return;
+    }
+
+    sagaChangerCodeCliente(c.key, nouveau);
+    // La sélection et la vignette suivent la cliente, pas le code : rien à reporter
+    chargerClientes();
+    renderDressings();
+    refreshApercu();
   }
 
   function renderPaliers() {
@@ -300,10 +392,10 @@
 
   function lignes() {
     var out = [];
-    clientes.filter(function (c) { return config.selection[c.lettre]; }).forEach(function (c) {
+    clientesRetenues().forEach(function (c) {
       config.paliers.filter(function (p) { return config.paliersActifs[p]; }).forEach(function (p) {
         out.push({ lettre: c.lettre, prenom: c.prenom, prix: p,
-                   titre: titrePour(p, c.lettre), sku: c.lettre + '_' + p, image: imageDe(c.lettre) });
+                   titre: titrePour(p, c.lettre), sku: c.lettre + '_' + p, image: imageDe(c) });
       });
     });
     return out;
@@ -342,6 +434,21 @@
     var L = lignes();
     if (L.length === 0) {
       alert('Rien à générer : sélectionnez au moins un dressing et un palier de prix.');
+      return;
+    }
+
+    /* Deux clientes sous le même code rendraient les ventes impossibles à
+       attribuer à la lecture de l'export Whatnot : on s'arrête là. */
+    var conflits = conflitsSelection();
+    var codes = Object.keys(conflits);
+    if (codes.length) {
+      alert('Génération impossible : ' + codes.map(function (code) {
+        return 'le code « ' + code + ' » est porté par '
+          + conflits[code].map(function (c) { return c.nom || c.prenom; }).join(' et ');
+      }).join(', ') + '.\n\n'
+      + 'Donnez un code distinct à l\'une d\'elles dans le bandeau en haut de la page '
+      + '(« C » et « CA », par exemple), puis relancez la génération.');
+      document.getElementById('doublonsAlerte').scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
