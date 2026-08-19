@@ -277,7 +277,48 @@
         + (l === selection ? ' selected' : '') + '>Lettre ' + sagaEchapper(l)
         + ' — aucune cliente pour l\'instant</option>';
     });
+    /* Un live peut arriver avant la fiche : la cliente se crée ici même,
+       sans quitter l'import en cours. */
+    html += '<option value="__nouvelle__">＋ Nouvelle cliente…</option>';
     return html;
+  }
+
+  /* ===== Création d'une cliente pendant l'import =====
+     Toutes les listes de l'écran sont reconstruites après coup, en gardant
+     les choix déjà faits : la nouvelle cliente devient proposable partout. */
+  var LETTRES_IMPORT = [];
+
+  function initChoixImport() {
+    document.querySelectorAll('#importResult select').forEach(function (s) {
+      s.dataset.precedent = s.value;
+      s.addEventListener('change', auChoixDressingImport);
+    });
+  }
+
+  function auChoixDressingImport(e) {
+    var select = e.target;
+    if (select.value !== '__nouvelle__') { select.dataset.precedent = select.value; return; }
+    sagaModaleNouvelleCliente({
+      code: select.dataset.lettre || '',
+      detail: 'Elle sera enregistrée dans Clientes, et les ventes de ce live lui reviendront.',
+      auFermer: function () { select.value = select.dataset.precedent || ''; }
+    }, function (entree) {
+      rafraichirChoixImport();
+      select.value = entree.lettre;
+      select.dataset.precedent = entree.lettre;
+      if (select.id === 'sansLettreTout') affecterTout();
+    });
+  }
+
+  function rafraichirChoixImport() {
+    document.querySelectorAll('#importResult select').forEach(function (s) {
+      var valeur = s.value === '__nouvelle__' ? (s.dataset.precedent || '') : s.value;
+      var prefixe = s.id === 'sansLettreTout' ? '<option value="">—</option>'
+                  : (s.dataset.commande !== undefined ? '<option value="">À choisir</option>' : '');
+      s.innerHTML = prefixe + optionsDressings(valeur, LETTRES_IMPORT);
+      s.value = valeur;
+      s.dataset.precedent = valeur;
+    });
   }
 
   function runImport() {
@@ -314,6 +355,7 @@
   function renderAnalyse() {
     var a = ANALYSE;
     var lettres = a.parLettre.map(function (g) { return g.lettre; }).filter(Boolean);
+    LETTRES_IMPORT = lettres;
     var sansLettre = a.parLettre.filter(function (g) { return !g.lettre; })[0];
     var html = '';
 
@@ -398,11 +440,13 @@
       + '<button class="btn btn-ghost btn-sm" onclick="toggleImport()">Annuler</button></div>';
 
     document.getElementById('importResult').innerHTML = html;
+    initChoixImport();
   }
 
   function affecterTout() {
     var valeur = document.getElementById('sansLettreTout').value;
-    if (!valeur) return;
+    // « Nouvelle cliente » n'est pas une affectation : on attend la création
+    if (!valeur || valeur === '__nouvelle__') return;
     document.querySelectorAll('#importResult select[data-commande]').forEach(function (s) {
       s.value = valeur;
     });
@@ -413,10 +457,10 @@
 
     var affectations = {}, sansLettre = {}, manquantes = 0;
     document.querySelectorAll('#importResult select[data-lettre]').forEach(function (s) {
-      affectations[s.dataset.lettre] = s.value;
+      if (s.value && s.value !== '__nouvelle__') affectations[s.dataset.lettre] = s.value;
     });
     document.querySelectorAll('#importResult select[data-commande]').forEach(function (s) {
-      if (!s.value) manquantes++;
+      if (!s.value || s.value === '__nouvelle__') manquantes++;
       else sansLettre[s.dataset.commande] = s.value;
     });
 
