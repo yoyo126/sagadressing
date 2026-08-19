@@ -9,7 +9,7 @@ saga_session_demarrer();
 
 /* Déjà connectée : inutile de redemander */
 if (saga_utilisateur()) {
-    header('Location: dashboard.php');
+    header('Location: index.php');
     exit;
 }
 
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                dans l'URL pourrait sinon expédier ailleurs après connexion. */
             $vers = (string) filter_input(INPUT_GET, 'vers');
             $vers = preg_match('#^/[A-Za-z0-9_\-./?=&]*$#', $vers) && strpos($vers, '//') !== 0
-                  ? $vers : 'dashboard.php';
+                  ? $vers : 'index.php';
             header('Location: ' . $vers);
             exit;
         }
