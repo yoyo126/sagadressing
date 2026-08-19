@@ -1,3 +1,4 @@
 # L'accès à la base ne doit jamais partir sur GitHub
 serveur/config.php
 .DS_Store
+serveur/build/

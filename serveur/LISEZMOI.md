@@ -41,10 +41,37 @@ part de la version courante. Deux personnes qui modifient en même temps ne
 s'écrasent donc pas en silence. Chaque version précédente est conservée dans
 `etat_historique` — c'est le filet en cas de fausse manœuvre.
 
+## Construire la version serveur
+
+```bash
+python3 serveur/construire.py
+```
+
+Le script dérive les pages `.php` des pages `.html` de l'application — une
+seule version à maintenir — et rassemble tout dans `serveur/build/`, qui est
+le dossier à téléverser dans `/CRM`. Chaque page reçoit trois choses : une
+ligne qui exige la connexion, l'état du CRM écrit dans la page, et
+`server-sync.js` chargé juste après `nav.js`.
+
+`serveur/build/` n'est pas versionné : il se régénère.
+
+## Comment l'application parle au serveur
+
+L'application lisait le stockage du navigateur de façon immédiate, à quatre-vingt-dix
+endroits. Plutôt que de tout réécrire en attente réseau :
+
+1. `entete.php` écrit l'état complet dans la page, dans une balise JSON ;
+2. `server-sync.js` la lit, vide le stockage local et le réamorce — le serveur
+   fait foi, d'éventuels restes locaux ne peuvent pas ressurgir ;
+3. il enveloppe `sagaSave` : chaque enregistrement local programme un envoi,
+   différé de 900 ms pour ne pas partir dix fois de suite ;
+4. `api.php` refuse un envoi parti d'une version périmée (code 409) : la page
+   se recharge alors sur l'état du serveur plutôt que d'écraser celui d'un
+   autre poste.
+
 ## Ce qui manque encore
 
-- `api.php` : lecture et écriture de l'état, avec le verrou de version
-- `server-sync.js` : côté navigateur, remplace le stockage local par le serveur
-- La transformation des pages `.html` en `.php` protégées par la connexion
 - Le convertisseur des données de l'ancien CRM
-- La sauvegarde automatique de la base
+- La sauvegarde automatique de la base (Tâches cron d'IONOS)
+- La gestion des comptes dans les Paramètres, encore adossée à une liste
+  locale et non aux vrais comptes de la table `utilisateurs`
