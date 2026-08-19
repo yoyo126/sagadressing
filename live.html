@@ -145,7 +145,7 @@
             <p class="card-note" id="aNoteGiveaway" style="display:none; margin:0;">
               Sur une ligne de giveaway, le montant importé de Whatnot correspond aux frais de port :
               Whatnot ne connaît pas la valeur du cadeau. Saga finance le cadeau, ces frais sont
-              refacturés à la cliente dans la limite de 10 € par live.
+              refacturés à la cliente, au prorata de ses ventes sur ce live.
             </p>
             <div style="display:flex; gap:10px;">
               <button class="btn btn-primary btn-sm" id="aSubmit" onclick="enregistrerArticle()">Ajouter l'article</button>
@@ -180,7 +180,7 @@
               Les ventes hors Whatnot ne supportent pas les frais de plateforme.
               Les giveaways correspondent aux frais de port des cadeaux : Whatnot ne remonte
               pas la valeur du cadeau, financé par Saga. Ils sont déduits du net de la cliente,
-              dans la limite de 10 € par live.
+              au prorata de ses ventes sur le live.
             </p>
           </div>
           <div class="panel">
@@ -624,9 +624,7 @@
     l.push(['− Commission Saga', sagaEUR(d.commSaga)]);
     if (d.apporteur) l.push(['− Commission apporteur (' + d.apporteur + ')', sagaEUR(d.commApporteur)]);
     if (d.portGiveaway > 0) {
-      l.push(['− Giveaways' +
-              (d.giveaways > SAGA_PLAFOND_GIVEAWAY ? ' (plafonné à ' + sagaEUR(SAGA_PLAFOND_GIVEAWAY) + ')' : ''),
-              sagaEUR(d.portGiveaway)]);
+      l.push(['− Frais de port des giveaways', sagaEUR(d.portGiveaway)]);
     }
     l.push(['Net à reverser', sagaEUR(d.net)]);
     return l;

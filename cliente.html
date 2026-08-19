@@ -336,7 +336,7 @@
                 <p>Le Déposant choisit : <span class="field" data-field="fixationPrix">Fixer elle-même un prix de départ conseillé</span>. Dans ce cas, le Dépositaire pourra adapter les prix selon le marché et les enchères.</p>
 
                 <h3>5. Commission</h3>
-                <p>Le Dépositaire perçoit <span class="field" data-field="commission">30</span>% du prix de vente net vendeur (après déduction des frais Whatnot et frais de transaction). Les cadeaux promotionnels « giveaways » offerts lors des ventes sont entièrement financés par le Dépositaire. Les frais de port afférents à l'envoi de ces cadeaux restent à la charge du Déposant, dans la limite maximale de 10 € au total par live. Ces frais sont directement déduits du montant à reverser et détaillés sur le relevé de vente.</p>
+                <p>Le Dépositaire perçoit <span class="field" data-field="commission">30</span>% du prix de vente net vendeur (après déduction des frais Whatnot et frais de transaction). Les cadeaux promotionnels « giveaways » offerts lors des ventes sont entièrement financés par le Dépositaire. Les frais de port afférents à l'envoi de ces cadeaux restent à la charge du Déposant ; lorsqu'un live réunit plusieurs déposants, ils sont répartis entre eux au prorata de leurs ventes respectives sur ce live. Ces frais sont directement déduits du montant à reverser et détaillés sur le relevé de vente.</p>
 
                 <h3>6. Gestion des ventes</h3>
                 <p>Le Dépositaire gère la mise en vente, la communication avec les acheteurs et l'expédition. Obligation de moyens uniquement.</p>
@@ -706,12 +706,10 @@
       var det = [];
       if (l.origine === 'live') det.push(l.nbArticles + ' article' + (l.nbArticles > 1 ? 's' : ''));
       /* Ce qui est déduit, pas ce qui a été engagé : le contrat plafonne les
-         frais de port des giveaways à 10 € par live, Saga finance le reste. */
+         frais de port des giveaways sont refacturés en totalité, au prorata
+         des ventes de la cliente sur le live. */
       if (l.portGiveaway > 0) {
-        det.push('Port des giveaways : ' + fmtEURcents(l.portGiveaway)
-          + (l.giveaways > l.portGiveaway
-              ? ' (plafond contractuel ; ' + fmtEURcents(l.giveaways) + ' engagés)'
-              : ''));
+        det.push('Port des giveaways : ' + fmtEURcents(l.portGiveaway));
       }
       if (l.apporteurMontant > 0) det.push('Apporteur ' + CLIENT.apporteur + ' : ' + fmtEURcents(l.apporteurMontant));
       if (l.frais > 0) det.push("Frais d'envoi : " + fmtEURcents(l.frais));

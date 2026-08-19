@@ -629,8 +629,10 @@ function sagaInfosCliente(lettre) {
    tomber sur un demi-centime : le même montant s'arrondissait alors
    différemment selon l'ordre d'addition, et le total affiché ne
    correspondait plus à la somme des lignes affichées. */
-/* Plafond contractuel des giveaways déduits, par live */
-var SAGA_PLAFOND_GIVEAWAY = 10;
+/* Les frais de port des giveaways sont intégralement supportés par la
+   cliente, au prorata de ses ventes sur le live — cette répartition est faite
+   à l'import (sagaRepartirGiveaways). Il n'y a plus de plafond : la règle des
+   10 € par live a été abandonnée le 19/08/2026, le contrat suit. */
 
 function sagaCentimes(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 
@@ -654,8 +656,8 @@ function sagaDecompte(live, lettre) {
 
   /* Giveaways : le montant remonté par Whatnot correspond aux frais de port
      du cadeau — la plateforme n'en connaît pas la valeur, que Saga finance.
-     Ce montant est déduit du net de la cliente, plafonné par live. */
-  var portGiveaway = Math.min(giveaways, SAGA_PLAFOND_GIVEAWAY);
+     Ces frais sont déduits en totalité du net de la cliente. */
+  var portGiveaway = giveaways;
 
   var paiement = (live.paiements || {})[lettre] || null;
   return {
@@ -1378,9 +1380,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.11.2';
+var SAGA_VERSION = '1.12.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.12.0', date: '2026-08-19', titre: 'Giveaways : plafond supprimé', points: [
+    'Les frais de port des giveaways sont désormais déduits en totalité, sans plafond de 10 €',
+    'Ils restent répartis entre les clientes d\'un même live au prorata de leurs ventes',
+    'Le contrat de dépôt-vente est mis à jour en conséquence — texte à faire valider'
+  ]},
   { version: '1.11.2', date: '2026-08-19', titre: 'Base réellement vide et mentions légales exactes', points: [
     'Derniers restes des données d\'exemple retirés : coordonnées inscrites en dur dans le contrat, fiches ouvertes par défaut sur une cliente inventée',
     'Une fiche ouverte sans référence renvoie vers la liste au lieu d\'afficher une page vide',
@@ -1415,7 +1422,7 @@ var SAGA_VERSIONS = [
     'Le CRM démarre vide : les exemples deviennent un jeu de démonstration, à charger depuis Paramètres',
     'Import d\'un export Whatnot : le fichier est réellement lu, les lettres reconnues, les ventes sans lettre affectées à l\'écran',
     'Les montants importés sont ceux versés par Whatnot, frais déduits : plus de taux de frais à saisir',
-    'Le coût des giveaways est réparti au prorata des ventes, dans la limite contractuelle de 10 € par live',
+    'Le coût des giveaways est réparti entre les clientes du live, au prorata de leurs ventes',
     'Réimporter le même fichier ne crée plus de doublon',
     'Liste des clientes : le chiffre d\'affaires suit les ventes au lieu d\'être figé à la création de la fiche',
     'Justificatifs des apporteurs comptés de la même façon dans la liste et sur la fiche'
@@ -1427,13 +1434,13 @@ var SAGA_VERSIONS = [
     'Le terme « Giveaway » revient partout : colonne, indicateurs, décompte et libellés'
   ]},
   { version: '1.7.1', date: '2026-08-14', titre: 'Ajustements', points: [
-    'Giveaways : le montant importé de Whatnot correspond aux frais de port, plafonné à 10 € par live',
+    'Giveaways : le montant importé de Whatnot correspond aux frais de port du cadeau',
     'Notes : le type choisi est respecté et la vue bascule pour montrer ce qui vient d\'être créé',
     'Boutique : aucune cliente cochée d\'office',
     'Téléphones affichés et enregistrés par paires de chiffres partout'
   ]},
   { version: '1.7.0', date: '2026-08-14', titre: 'Giveaways, agenda et lecture des chiffres', points: [
-    'Giveaways : Saga finance le cadeau, seuls les frais de port sont refacturés (10 € max par live)',
+    'Giveaways : Saga finance le cadeau, seuls les frais de port sont refacturés à la cliente',
     'Le reste à reverser se décompose entre lives et hors live, pour être rapproché de la page Lives',
     'Tableau de bord : l\'agenda prend la colonne de droite',
     'Agenda : le formulaire devient une fenêtre, ouverte à la demande',
