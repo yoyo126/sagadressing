@@ -316,7 +316,7 @@
                 <h3>1. Parties</h3>
                 <p>Entre les soussignés :<br/>
                 <strong>SAGA DRESSING</strong><br/>
-                SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 102 429 833<br/>
+                SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 103 429 833<br/>
                 Représentée par Sarah Danino<br/>
                 Ci-après « le Dépositaire »</p>
                 <p>Et :<br/>
@@ -444,7 +444,7 @@
               <div class="doc-preview" id="restitPreview">
                 <div class="doc-title">BON DE RESTITUTION DE DRESSING</div>
 
-                <p>Entre <strong>SAGA DRESSING</strong>, SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 102 429 833,
+                <p>Entre <strong>SAGA DRESSING</strong>, SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 103 429 833,
                 représentée par Sarah Danino, ci-après « le Dépositaire »,</p>
                 <p>Et <span class="field" data-rfield="nom">—</span>,
                 ci-après « le Déposant ».</p>
@@ -1468,6 +1468,11 @@
     document.getElementById('contratEmpty').style.display = 'none';
     document.getElementById('contratWorkspace').style.display = 'block';
     document.getElementById('fDate').value = TODAY_ISO;
+    /* L'adresse est promise « reprise automatiquement dans les contrats » au
+       moment de créer la fiche : on la reprend donc vraiment, sans écraser une
+       adresse déjà corrigée pour ce contrat. */
+    var champAdresse = document.getElementById('fAdresse');
+    if (!champAdresse.value && CLIENT.adresse) champAdresse.value = CLIENT.adresse;
     setFormDisabled(false);
     setSignStep('draft');
     ['stepSentSub', 'stepViewedSub', 'stepSignedSub'].forEach(id => document.getElementById(id).textContent = '—');

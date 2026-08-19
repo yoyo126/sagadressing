@@ -1378,9 +1378,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.11.1';
+var SAGA_VERSION = '1.11.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.11.2', date: '2026-08-19', titre: 'Base réellement vide et mentions légales exactes', points: [
+    'Derniers restes des données d\'exemple retirés : coordonnées inscrites en dur dans le contrat, fiches ouvertes par défaut sur une cliente inventée',
+    'Une fiche ouverte sans référence renvoie vers la liste au lieu d\'afficher une page vide',
+    'SIRET corrigé dans le contrat de dépôt-vente et la convention d\'apporteur : 103 429 833'
+  ]},
   { version: '1.11.1', date: '2026-08-19', titre: 'Textes saisis rendus inoffensifs', points: [
     'Un nom ou un libellé contenant des chevrons ou des guillemets ne peut plus s\'insérer dans le code de la page',
     'Les apostrophes et guillemets droits deviennent typographiques à l\'enregistrement : même apparence, aucun risque',
