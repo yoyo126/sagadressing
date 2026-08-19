@@ -329,14 +329,14 @@
 
   function currentKey() {
     var k = new URLSearchParams(window.location.search).get('a');
-    return k ? k.toLowerCase() : 'nadia';
+    return k ? k.toLowerCase() : '';
   }
 
   /* Les apporteurs créés depuis la liste vivent dans `apporteurs_data` :
      sans cette lecture, leur fiche n'aurait rien à afficher. */
   var APPORTEURS = sagaFichesApporteurs();
 
-  var A = APPORTEURS[currentKey()] || APPORTEURS.nadia;
+  var A = APPORTEURS[currentKey()];
   /* Nom sous lequel les fiches clientes le désignent : c'est la clé de
      rapprochement entre un apporteur et les ventes qu'il a générées. */
   var NOM_REFERENCE = sagaNomApporteur(currentKey()) || (A && A.prenom) || '';

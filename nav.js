@@ -1696,7 +1696,7 @@ function sagaDemanderPaiement(options, auValider) {
    de l'enregistrer ou non. */
 function sagaApercuPdf(pdf, nomFichier, titre) {
   /* Certains appelants passent déjà un nom terminé par .pdf : sans cela
-     l'aperçu annonçait « Contrat_Fanny_v1.pdf.pdf ». */
+     l'aperçu annonçait « Contrat_v1.pdf.pdf ». */
   nomFichier = String(nomFichier || 'document').replace(/\.pdf$/i, '');
   var fond = document.createElement('div');
   fond.className = 'pdf-modal';

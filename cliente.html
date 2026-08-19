@@ -256,11 +256,11 @@
                 </div>
                 <div class="form-field">
                   <label class="form-label">Téléphone</label>
-                  <input class="form-input" id="fTelephone" value="06 12 34 56 78" readonly style="opacity:.7;" />
+                  <input class="form-input" id="fTelephone" value="" readonly style="opacity:.7;" />
                 </div>
                 <div class="form-field">
                   <label class="form-label">Email</label>
-                  <input class="form-input" id="fEmail" value="fanny.moreau@example.com" readonly style="opacity:.7;" />
+                  <input class="form-input" id="fEmail" value="" readonly style="opacity:.7;" />
                 </div>
                 <div class="form-field">
                   <label class="form-label">Fixation des prix</label>
@@ -322,8 +322,8 @@
                 <p>Et :<br/>
                 Nom / Prénom : <span class="field" data-field="nom">—</span><br/>
                 Adresse : <span class="field empty" data-field="adresse">…</span><br/>
-                Téléphone : <span class="field" data-field="telephone">06 12 34 56 78</span><br/>
-                Email : <span class="field" data-field="email">fanny.moreau@example.com</span><br/>
+                Téléphone : <span class="field" data-field="telephone">—</span><br/>
+                Email : <span class="field" data-field="email">—</span><br/>
                 Ci-après « le Déposant »</p>
 
                 <h3>2. Objet</h3>
@@ -599,7 +599,7 @@
   initTabs();
 
   // ================== FICHES CLIENTES ==================
-  // La fiche affichée dépend du paramètre ?c= dans l'adresse (défaut : fanny)
+  // La fiche affichée dépend du paramètre ?c= dans l'adresse
   /* Identité seulement : les ventes et les notes sont partagées avec le reste
      de l'application, cette fiche n'en garde plus de copie. Les noms suivent
      la liste des clientes. */
@@ -609,7 +609,7 @@
 
   function currentClientKey() {
     var k = new URLSearchParams(window.location.search).get('c');
-    return k ? k.toLowerCase() : 'fanny';
+    return k ? k.toLowerCase() : '';
   }
 
   /* Une cliente créée depuis la liste n'a pas encore de fiche détaillée :
