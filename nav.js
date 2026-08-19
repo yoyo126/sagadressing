@@ -128,9 +128,41 @@ function sagaLoad(key, fallback) {
   }
 }
 
+/* ============ Textes saisis rendus inoffensifs ============
+   Les tableaux de l'application sont construits en assemblant du HTML à la
+   main. Un nom de cliente contenant « < » ou une apostrophe droite s'y
+   glisserait donc comme balise ou comme fin d'attribut, et pourrait faire
+   exécuter n'importe quoi à la page — sans conséquence tant qu'on est seul sur
+   son navigateur, mais c'est exactement ce qui devient dangereux le jour où
+   plusieurs comptes partagent les mêmes données.
+
+   Plutôt que de compter sur un échappement rappelé à chaque affichage — il en
+   manquerait un tôt ou tard — les quatre caractères en cause sont remplacés
+   par leurs équivalents typographiques au moment de l'enregistrement. Ils sont
+   visuellement identiques, corrects en français (« l'atelier » devient
+   « l’atelier »), et inertes partout : HTML, attributs et PDF. */
+var SAGA_CARACTERES_SURS = { '<': '‹', '>': '›', '"': '”', "'": '’' };
+
+function sagaTexteSur(valeur) {
+  return String(valeur).replace(/[<>"']/g, function (c) { return SAGA_CARACTERES_SURS[c]; });
+}
+
+/* Parcourt une donnée enregistrée et neutralise toutes ses chaînes.
+   Les images (data:…base64) n'utilisent aucun de ces caractères. */
+function sagaAssainir(valeur) {
+  if (typeof valeur === 'string') return sagaTexteSur(valeur);
+  if (Array.isArray(valeur)) return valeur.map(sagaAssainir);
+  if (valeur && typeof valeur === 'object') {
+    var out = {};
+    Object.keys(valeur).forEach(function (k) { out[k] = sagaAssainir(valeur[k]); });
+    return out;
+  }
+  return valeur;
+}
+
 function sagaSave(key, value) {
   try {
-    localStorage.setItem(SAGA_PREFIX + key, JSON.stringify(value));
+    localStorage.setItem(SAGA_PREFIX + key, JSON.stringify(sagaAssainir(value)));
     return true;
   } catch (e) {
     // Quota dépassé : le plus souvent à cause des vignettes trop lourdes
@@ -138,6 +170,23 @@ function sagaSave(key, value) {
     return false;
   }
 }
+
+/* Les données saisies avant ce correctif n'ont jamais été neutralisées :
+   on les reprend une fois, puis plus jamais. */
+function sagaAssainirLexistant() {
+  if (localStorage.getItem(SAGA_PREFIX + 'assaini') === '1') return;
+  Object.keys(localStorage)
+    .filter(function (k) { return k.indexOf(SAGA_PREFIX) === 0; })
+    .forEach(function (k) {
+      var brut = localStorage.getItem(k);
+      if (!brut || brut.indexOf('<') === -1 && brut.indexOf("'") === -1) return;
+      try {
+        localStorage.setItem(k, JSON.stringify(sagaAssainir(JSON.parse(brut))));
+      } catch (e) { /* valeur illisible : laissée telle quelle */ }
+    });
+  localStorage.setItem(SAGA_PREFIX + 'assaini', '1');
+}
+sagaAssainirLexistant();
 
 function sagaReset() {
   Object.keys(localStorage)
@@ -1329,9 +1378,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.11.0';
+var SAGA_VERSION = '1.11.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.11.1', date: '2026-08-19', titre: 'Textes saisis rendus inoffensifs', points: [
+    'Un nom ou un libellé contenant des chevrons ou des guillemets ne peut plus s\'insérer dans le code de la page',
+    'Les apostrophes et guillemets droits deviennent typographiques à l\'enregistrement : même apparence, aucun risque',
+    'Les données déjà saisies sont reprises une fois au premier chargement'
+  ]},
   { version: '1.11.0', date: '2026-08-19', titre: 'Fin des données d\'exemple', points: [
     'Toutes les clientes, lives, apporteurs, notes, rendez-vous et ventes d\'exemple sont retirés du code',
     'Le jeu de démonstration et son bouton dans les Paramètres disparaissent : l\'application ne connaît plus que vos données',
