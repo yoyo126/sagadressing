@@ -23,6 +23,12 @@
   Require all denied
 </FilesMatch>
 
+# Les DOSSIERS cachés aussi : la règle ci-dessus ne vise que le nom du
+# fichier, si bien que /.ssh/authorized_keys passait au travers.
+<IfModule mod_rewrite.c>
+  RewriteRule (^|/)\. - [F,L]
+</IfModule>
+
 # --- En-têtes de sécurité -------------------------------------
 <IfModule mod_headers.c>
   # Le navigateur n'accepte plus que le HTTPS pour ce domaine, pendant un an
