@@ -1669,9 +1669,16 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.9.0';
+var SAGA_VERSION = '1.10.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.10.0', date: '2026-08-19', titre: 'Relevés PDF, clientes créées à la volée, codes en double', points: [
+    'Relevé PDF d\'une cliente depuis sa fiche : ses lives et ventes hors live, avec le détail des articles et le décompte',
+    'Export PDF de la liste des clientes, telle qu\'elle est filtrée à l\'écran',
+    'Une cliente peut être créée sans quitter l\'écran : pendant l\'import d\'un live comme au moment d\'attribuer un article',
+    'Le code de dressing accepte une à trois lettres : « C » et « CA » distinguent deux clientes',
+    'Deux clientes peuvent porter le même code ; c\'est la génération de la boutique qui le refuse, avec de quoi le corriger sur place'
+  ]},
   { version: '1.9.0', date: '2026-08-17', titre: 'Tout ce qui peut fonctionner sans serveur, fonctionne', points: [
     'Commissions d\'apporteur calculées depuis les ventes : elles apparaissent sur sa fiche, se règlent et s\'annulent',
     'Une seule liste d\'utilisateurs, partagée par les Paramètres et le reste du CRM',
