@@ -145,42 +145,11 @@ function sagaReset() {
     .forEach(function (k) { localStorage.removeItem(k); });
 }
 
-/* ============ Jeu de démonstration ============
-   Le CRM démarre vide : seules les données réellement saisies s'affichent,
-   ce qui permet de le tester comme un outil de travail et non comme une
-   maquette. Les exemples d'origine (clientes, lives, apporteurs, notes,
-   agenda) restent dans le code et se rechargent depuis Paramètres ; ils
-   disparaissent avec le reste au moment de la remise à zéro. */
-
-function sagaDemoActive() {
-  return localStorage.getItem(SAGA_PREFIX + 'demo') === '1';
-}
-
-function sagaDemoActiver(actif) {
-  if (actif) localStorage.setItem(SAGA_PREFIX + 'demo', '1');
-  else localStorage.removeItem(SAGA_PREFIX + 'demo');
-}
-
-/* Valeur de départ d'un jeu de données : les exemples en mode démonstration,
-   le vide le reste du temps. */
-function sagaDemo(exemples, vide) {
-  return sagaDemoActive() ? exemples : vide;
-}
-
 /* Les jeux de données de travail, par opposition aux réglages (logo, identité)
    et aux traces (journal, utilisateur courant). */
 var SAGA_CLES_DONNEES = ['lives', 'clientes', 'clients_data', 'apporteurs',
                          'apporteurs_data', 'ventes_directes', 'agenda', 'notes',
                          'paiements_apporteurs'];
-
-/* Les exemples ne sont pas recopiés dans le navigateur : ils servent de contenu
-   par défaut tant que rien n'a été enregistré. Sur une base déjà remplie, les
-   charger n'afficherait donc rien — d'où ce garde-fou. */
-function sagaBaseVide() {
-  return !SAGA_CLES_DONNEES.some(function (cle) {
-    return localStorage.getItem(SAGA_PREFIX + cle) !== null;
-  });
-}
 
 /* Rend un texte saisi inoffensif dans du HTML : sans cela, un nom contenant
    « & » ou un chevron casserait l'affichage. */
@@ -257,209 +226,21 @@ function sagaDownload(filename, content, mime) {
    liste : corriger la lettre d'un article suffit à basculer la vente sur la
    bonne cliente, partout dans l'application. */
 
-var SAGA_LIVES_DEFAUT = [
-  {
-    id: 'l-20260729', date: '2026-07-29', titre: 'Live du 29 juillet',
-    categorie: 'Sacs & accessoires', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-07-30' },
-    articles: [
-      { id: 'a1',  libelle: 'Sac cabas cuir camel',      lettre: 'M', montant: 240, type: 'vente' },
-      { id: 'a2',  libelle: 'Trench beige T38',          lettre: 'M', montant: 180, type: 'vente' },
-      { id: 'a3',  libelle: 'Lot 3 foulards soie',       lettre: 'M', montant: 95,  type: 'vente' },
-      { id: 'a4',  libelle: 'Escarpins vernis T37',      lettre: 'M', montant: 120, type: 'vente' },
-      { id: 'a5',  libelle: 'Robe portefeuille fleurie', lettre: 'M', montant: 845, type: 'vente' },
-      { id: 'a6',  libelle: 'Pochette brodée — giveaway',    lettre: 'M', montant: 6, type: 'giveaway' },
-      { id: 'a7',  libelle: 'Sac seau daim',             lettre: 'C', montant: 310, type: 'vente' },
-      { id: 'a8',  libelle: 'Blazer oversize noir',      lettre: 'C', montant: 150, type: 'vente' },
-      { id: 'a9',  libelle: 'Lot bijoux fantaisie',      lettre: 'C', montant: 75,  type: 'vente' },
-      { id: 'a10', libelle: 'Manteau laine chiné',       lettre: 'C', montant: 1125,type: 'vente' },
-      { id: 'a11', libelle: 'Ceinture cuir tressé',      lettre: 'B', montant: 65,  type: 'vente' },
-      { id: 'a12', libelle: 'Bottines chelsea T38',      lettre: 'B', montant: 140, type: 'vente' },
-      { id: 'a13', libelle: 'Sac banane matelassé',      lettre: 'B', montant: 1295,type: 'vente' },
-      { id: 'a14', libelle: 'Écharpe cachemire — giveaway',  lettre: 'B', montant: 4, type: 'giveaway' }
-    ],
-    paiements: { B: { date: '2026-08-01', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260727', date: '2026-07-27', titre: 'Live du 27 juillet',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-07-28' },
-    articles: [
-      { id: 'b1', libelle: 'Jean droit brut T40',   lettre: 'M', montant: 320, type: 'vente' },
-      { id: 'b2', libelle: 'Chemisier soie ivoire', lettre: 'M', montant: 540, type: 'vente' },
-      { id: 'b3', libelle: 'Cardigan maille torsadée', lettre: 'F', montant: 480, type: 'vente' },
-      { id: 'b4', libelle: 'Jupe plissée midi',     lettre: 'F', montant: 620, type: 'vente' }
-    ],
-    paiements: { M: { date: '2026-07-30', mode: 'Virement' }, F: { date: '2026-07-30', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260724', date: '2026-07-24', titre: 'Live du 24 juillet',
-    categorie: 'Promo 0 frais Whatnot', fraisPct: 18,
-    encaisse: { statut: 'Reçu', date: '2026-07-25' },
-    articles: [
-      { id: 'c1', libelle: 'Doudoune sans manches',  lettre: 'B', montant: 980,  type: 'vente' },
-      { id: 'c2', libelle: 'Lot 5 t-shirts basiques',lettre: 'B', montant: 1130, type: 'vente' },
-      { id: 'c3', libelle: 'Sac à dos toile',        lettre: 'C', montant: 760,  type: 'vente' },
-      { id: 'c4', libelle: 'Robe longue bohème',     lettre: 'F', montant: 890,  type: 'vente' },
-      { id: 'c5', libelle: 'Baskets rétro T39',      lettre: 'T', montant: 1450, type: 'vente' }
-    ],
-    paiements: { C: { date: '2026-07-28', mode: 'PayPal' }, F: { date: '2026-07-28', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260720', date: '2026-07-20', titre: 'Live du 20 juillet',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-07-21' },
-    articles: [
-      { id: 'd1', libelle: 'Veste en jean brodée', lettre: 'F', montant: 1500, type: 'vente' },
-      { id: 'd2', libelle: 'Lot accessoires été',  lettre: 'B', montant: 550,  type: 'vente' }
-    ],
-    paiements: { F: { date: '2026-07-24', mode: 'Virement' }, B: { date: '2026-07-24', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260717', date: '2026-07-17', titre: 'Live du 17 juillet',
-    categorie: "Robes d'été", fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-07-18' },
-    articles: [
-      { id: 'e1', libelle: 'Robe lin écrue',       lettre: 'M', montant: 870,  type: 'vente' },
-      { id: 'e2', libelle: 'Robe satin bordeaux',  lettre: 'C', montant: 1120, type: 'vente' },
-      { id: 'e3', libelle: 'Combinaison fluide',   lettre: 'B', montant: 880,  type: 'vente' }
-    ],
-    paiements: { M: { date: '2026-07-22', mode: 'Virement' }, C: { date: '2026-07-22', mode: 'Virement' }, B: { date: '2026-07-22', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260703', date: '2026-07-03', titre: 'Live du 3 juillet',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-07-04' },
-    articles: [
-      { id: 'g1', libelle: 'Manteau long camel',   lettre: 'M', montant: 640, type: 'vente' },
-      { id: 'g2', libelle: 'Lot 6 hauts été',      lettre: 'M', montant: 1000, type: 'vente' },
-      { id: 'g3', libelle: 'Sandales cuir T38',    lettre: 'C', montant: 480, type: 'vente' }
-    ],
-    paiements: {}
-  },
-  {
-    id: 'l-20260625', date: '2026-06-25', titre: 'Live du 25 juin',
-    categorie: "Robes d'été", fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-06-26' },
-    articles: [
-      { id: 'h1', libelle: 'Robe longue imprimée', lettre: 'C', montant: 890, type: 'vente' },
-      { id: 'h2', libelle: 'Kimono soie',          lettre: 'C', montant: 560, type: 'vente' },
-      { id: 'h3', libelle: 'Chapeau paille',       lettre: 'R', montant: 120, type: 'vente' }
-    ],
-    paiements: { C: { date: '2026-06-30', mode: 'Virement' }, R: { date: '2026-06-30', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260619', date: '2026-06-19', titre: 'Live du 19 juin',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-06-20' },
-    articles: [
-      { id: 'i1', libelle: 'Blouse brodée',        lettre: 'M', montant: 425, type: 'vente' },
-      { id: 'i2', libelle: 'Pantalon lin blanc',   lettre: 'M', montant: 680, type: 'vente' },
-      { id: 'i3', libelle: 'Sac cabas raphia',     lettre: 'P', montant: 340, type: 'vente' }
-    ],
-    paiements: { M: { date: '2026-06-24', mode: 'Virement' }, P: { date: '2026-06-24', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260612', date: '2026-06-12', titre: 'Live du 12 juin',
-    categorie: 'Sacs & accessoires', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-06-13' },
-    articles: [
-      { id: 'j1', libelle: 'Sac bandoulière cuir', lettre: 'B', montant: 980, type: 'vente' },
-      { id: 'j2', libelle: 'Lot ceintures',        lettre: 'B', montant: 700, type: 'vente' },
-      { id: 'j3', libelle: 'Lunettes vintage',     lettre: 'D', montant: 260, type: 'vente' }
-    ],
-    paiements: { B: { date: '2026-06-17', mode: 'Virement' }, D: { date: '2026-06-17', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260608', date: '2026-06-08', titre: 'Live du 8 juin',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-06-09' },
-    articles: [
-      { id: 'k1', libelle: 'Veste tailleur',       lettre: 'F', montant: 890, type: 'vente' },
-      { id: 'k2', libelle: 'Lot 3 jupes',          lettre: 'F', montant: 560, type: 'vente' }
-    ],
-    paiements: { F: { date: '2026-06-12', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260522', date: '2026-05-22', titre: 'Live du 22 mai',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-05-23' },
-    articles: [
-      { id: 'm1', libelle: 'Trench mi-saison',     lettre: 'M', montant: 480, type: 'vente' },
-      { id: 'm2', libelle: 'Lot accessoires',      lettre: 'M', montant: 300, type: 'vente' },
-      { id: 'm3', libelle: 'Bottines daim',        lettre: 'T', montant: 290, type: 'vente' }
-    ],
-    paiements: { M: { date: '2026-05-27', mode: 'Virement' }, T: { date: '2026-05-27', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260424', date: '2026-04-24', titre: 'Live du 24 avril',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-04-25' },
-    articles: [
-      { id: 'n1', libelle: 'Pull cachemire',       lettre: 'M', montant: 345, type: 'vente' },
-      { id: 'n2', libelle: 'Lot 2 robes hiver',    lettre: 'M', montant: 200, type: 'vente' }
-    ],
-    paiements: { M: { date: '2026-04-29', mode: 'Virement' } }
-  },
-  {
-    id: 'l-20260713', date: '2026-07-13', titre: 'Live du 13 juillet',
-    categorie: 'Mix saison', fraisPct: 0,
-    encaisse: { statut: 'Reçu', date: '2026-07-14' },
-    articles: [
-      { id: 'f1', libelle: 'Blouson cuir vintage', lettre: 'C', montant: 1400, type: 'vente' },
-      { id: 'f2', libelle: 'Lot 4 pulls hiver',    lettre: 'M', montant: 920,  type: 'vente' }
-    ],
-    paiements: { C: { date: '2026-07-17', mode: 'Virement' }, M: { date: '2026-07-17', mode: 'Virement' } }
-  }
-];
+function sagaAgenda() { return sagaLoad('agenda', []); }
 
-/* Agenda : mêmes événements pour toutes les pages qui l'affichent */
-var SAGA_AGENDA_DEFAUT = [
-  { id: 'e1', type: 'Live',   date: '2026-08-18', heure: '19:00', titre: 'Julie Renard (C)',      commentaire: 'Mix saison' },
-  { id: 'e2', type: 'Récup.', date: '2026-08-17', heure: '',      titre: 'Camille Bertin (B)',    commentaire: '12 caisses à récupérer, dépôt Rungis' },
-  { id: 'e3', type: 'Live',   date: '2026-08-20', heure: '20:30', titre: 'Marion Fabre (F)',      commentaire: 'Catégorie sacs & accessoires' },
-  { id: 'e4', type: 'Autre',  date: '2026-08-24', heure: '',      titre: 'Réception fournisseur', commentaire: 'Livraison housses + étiquettes' },
-  { id: 'e5', type: 'Récup.', date: '2026-08-27', heure: '14:00', titre: 'Nora Tissot (T)',       commentaire: 'Première collecte, 4 caisses estimées' },
-  { id: 'e6', type: 'Live',   date: '2026-09-02', heure: '20:00', titre: 'Fanny Moreau (M)',      commentaire: 'Fin de saison été' }
-];
-
-function sagaAgenda() { return sagaLoad('agenda', sagaDemo(SAGA_AGENDA_DEFAUT, [])); }
-
-function sagaLives() { return sagaLoad('lives', sagaDemo(SAGA_LIVES_DEFAUT, [])); }
+function sagaLives() { return sagaLoad('lives', []); }
 function sagaSaveLives(lives) { return sagaSave('lives', lives); }
 
 function sagaLive(id) {
   return sagaLives().filter(function (l) { return l.id === id; })[0] || null;
 }
 
-/* Correspondance lettre de dressing → cliente, connue de toutes les pages
-   même avant que la liste des clientes ait été ouverte une première fois. */
-var SAGA_DRESSINGS_DEFAUT = {
-  M: { prenom: 'Fanny',   nom: 'Fanny Moreau',    fiche: 'fanny',   commission: 30, apporteur: 'Nadia R.', apporteurPct: 8 },
-  C: { prenom: 'Julie',   nom: 'Julie Renard',    fiche: 'julie',   commission: 30, apporteur: '',         apporteurPct: 0 },
-  B: { prenom: 'Camille', nom: 'Camille Bertin',  fiche: 'camille', commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 },
-  F: { prenom: 'Marion',  nom: 'Marion Fabre',    fiche: 'marion',  commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
-  P: { prenom: 'Alix',    nom: 'Alix Perrin',     fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
-  T: { prenom: 'Nora',    nom: 'Nora Tissot',     fiche: '',        commission: 30, apporteur: 'Karim B.', apporteurPct: 6 },
-  D: { prenom: 'Sophie',  nom: 'Sophie Delaunay', fiche: '',        commission: 30, apporteur: '',         apporteurPct: 0 },
-  R: { prenom: 'Élise',   nom: 'Élise Rousseau',  fiche: '',        commission: 25, apporteur: 'Nadia R.', apporteurPct: 8 }
-};
-
 /* ============ Apporteurs d'affaires ============
    Une seule liste pour toute l'application : la page des apporteurs l'affiche,
    les formulaires clientes y prennent les noms proposés. Sans cela, les
    formulaires proposaient deux apporteurs d'exemple qui n'existaient pas. */
-var SAGA_APPORTEURS_DEFAUT = [
-  { key:'nadia', nom:'Nadia R.', initiales:'NR', pct:8, clientes:['Fanny (M)','Camille (B)','Élise (R)'],
-    verse:292, du:287, docsManquants:2, statut:'actif' },
-  { key:'karim', nom:'Karim B.', initiales:'KB', pct:6, clientes:['Marion (F)','Nora (T)'],
-    verse:87, du:90, docsManquants:3, statut:'actif' },
-  { key:'sonia', nom:'Sonia L.', initiales:'SL', pct:8, clientes:[],
-    verse:0, du:0, docsManquants:5, statut:'inactif' }
-];
-
 function sagaApporteurs() {
-  return sagaLoad('apporteurs', sagaDemo(SAGA_APPORTEURS_DEFAUT, []));
+  return sagaLoad('apporteurs', []);
 }
 
 /* Taux d'un apporteur, retrouvé par son nom */
@@ -480,53 +261,14 @@ function sagaRemplirApporteurs(select, valeur, avecTaux) {
   select.value = valeur || '';
 }
 
-/* Fiches clientes d'exemple. Partagées par toutes les pages : le tableau de
-   bord y lit les signatures en attente, la fiche cliente son contenu. */
-var SAGA_CLIENTS_DEFAUT = {
-  fanny: {
-    prenom: 'Fanny', nom: 'Fanny Moreau', lettre: 'M', statut: 'Active',
-    tel: '06 12 34 56 78', email: 'fanny.moreau@example.com',
-    adresse: '15 rue du Faubourg Saint-Antoine, 75011 Paris',
-    commission: 30, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'mars 2026',
-    pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
-  },
-  julie: {
-    prenom: 'Julie', nom: 'Julie Renard', lettre: 'C', statut: 'Active',
-    tel: '06 22 45 78 90', email: 'julie.renard@example.com',
-    adresse: '4 avenue Jean Jaurès, 93100 Montreuil',
-    commission: 30, apporteur: null, apporteurPct: 0, depuis: 'janvier 2026',
-    pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 29 juillet, ouvert 2 fois sans être signé.' }
-  },
-  camille: {
-    prenom: 'Camille', nom: 'Camille Bertin', lettre: 'B', statut: 'Active',
-    tel: '07 33 12 45 67', email: 'camille.bertin@example.com',
-    adresse: '27 rue de la République, 69002 Lyon',
-    commission: 25, apporteur: 'Nadia R.', apporteurPct: 8, depuis: 'février 2026',
-    pending: { type: 'restitution', texte: '<strong>Bon de restitution en attente de signature</strong> — envoyé le 30 juillet, pas encore ouvert.' }
-  },
-  marion: {
-    prenom: 'Marion', nom: 'Marion Fabre', lettre: 'F', statut: 'Active',
-    tel: '06 55 78 21 34', email: 'marion.fabre@example.com',
-    adresse: '9 place du Marché, 33000 Bordeaux',
-    commission: 30, apporteur: 'Karim B.', apporteurPct: 6, depuis: 'avril 2026',
-    pending: { type: 'contrat', texte: '<strong>Contrat en attente de signature</strong> — envoyé le 21 juillet, sans réponse depuis 11 jours (1 relance).' }
-  }
-};
-
-/* Fiches clientes réellement disponibles : celles saisies, ou les exemples
-   quand la démonstration est chargée. */
+/* Fiches clientes détaillées, telles qu'elles ont été saisies. */
 function sagaFiches() {
-  return sagaLoad('clients_data', sagaDemo(SAGA_CLIENTS_DEFAUT, {}));
+  return sagaLoad('clients_data', {});
 }
 
-/* Annuaire de secours des lettres de dressing : il ne sert qu'à la
-   démonstration. En usage réel, les lettres viennent des clientes saisies. */
-function sagaDressings() { return sagaDemo(SAGA_DRESSINGS_DEFAUT, {}); }
-
-/* Taux appliqués à une lettre de dressing.
-   Priorité à la fiche cliente saisie, puis à la liste, puis au défaut. */
+/* Taux appliqués à un code de dressing.
+   Priorité à la fiche cliente saisie, puis à son entrée de liste. */
 function sagaTauxDressing(lettre) {
-  var d = sagaDressings()[lettre] || {};
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
   var fiches = sagaFiches();
   var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
@@ -540,10 +282,10 @@ function sagaTauxDressing(lettre) {
   }
 
   return {
-    prenom: choisir(fiche && fiche.prenom, c && c.prenom, d.prenom, 'Dressing ' + lettre),
-    commission: choisir(fiche && fiche.commission, c && c.pct, d.commission, 30),
-    apporteur: fiche ? (fiche.apporteur || '') : (c ? (c.apporteur || '') : (d.apporteur || '')),
-    apporteurPct: fiche ? (fiche.apporteurPct || 0) : (d.apporteurPct || 0)
+    prenom: choisir(fiche && fiche.prenom, c && c.prenom, 'Dressing ' + lettre),
+    commission: choisir(fiche && fiche.commission, c && c.pct, 30),
+    apporteur: fiche ? (fiche.apporteur || '') : (c ? (c.apporteur || '') : ''),
+    apporteurPct: fiche ? (fiche.apporteurPct || 0) : 0
   };
 }
 
@@ -564,10 +306,6 @@ function sagaToutesClientes() {
     ajouter(fiches[k].lettre, fiches[k].prenom, fiches[k].nom, k);
   });
   sagaLoad('clientes', []).forEach(function (c) { ajouter(c.lettre, c.prenom, c.nom, c.key); });
-  var annuaire = sagaDressings();
-  Object.keys(annuaire).forEach(function (l) {
-    ajouter(l, annuaire[l].prenom, annuaire[l].nom, annuaire[l].fiche);
-  });
 
   return res.sort(function (a, b) { return a.prenom.localeCompare(b.prenom, 'fr'); });
 }
@@ -580,16 +318,13 @@ function sagaToutesClientes() {
 /* Contrairement à sagaToutesClientes(), qui regroupe par code, cette liste
    garde chaque cliente séparément : les doublons y restent visibles. */
 function sagaListeClientes() {
-  var res = [], vues = {}, codesVus = {};
+  var res = [], vues = {};
 
-  function ajouter(c, secours) {
+  function ajouter(c) {
     if (!c.lettre && !c.prenom) return;
     var id = c.key || ('code:' + c.lettre);
     if (vues[id]) return;
-    // L'annuaire de démonstration ne sert qu'à combler les codes sans cliente
-    if (secours && codesVus[c.lettre]) return;
     vues[id] = true;
-    codesVus[c.lettre] = true;
     c.id = id;
     res.push(c);
   }
@@ -604,13 +339,6 @@ function sagaListeClientes() {
     ajouter({ key: k, prenom: f.prenom, nom: f.nom || f.prenom, lettre: f.lettre,
               statut: f.statut === 'Inactive' ? 'inactive' : 'active', vignette: '' });
   });
-  var annuaire = sagaDressings();
-  Object.keys(annuaire).forEach(function (l) {
-    var d = annuaire[l];
-    ajouter({ key: d.fiche || '', prenom: d.prenom, nom: d.nom || d.prenom, lettre: l,
-              statut: 'active', vignette: '' }, true);
-  });
-
   return res.sort(function (a, b) {
     return String(a.prenom || '').localeCompare(String(b.prenom || ''), 'fr');
   });
@@ -825,13 +553,11 @@ function sagaFicheDressing(lettre) {
   var cle = Object.keys(fiches).filter(function (k) { return fiches[k].lettre === lettre; })[0];
   if (cle) return cle;
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
-  if (c && c.key) return c.key;
-  return (sagaDressings()[lettre] || {}).fiche || '';
+  return (c && c.key) || '';
 }
 
 /* Coordonnées complètes d'une cliente, pour les fiches et les documents */
 function sagaInfosCliente(lettre) {
-  var d = sagaDressings()[lettre] || {};
   var fiches = sagaFiches();
   var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
     .filter(function (f) { return f.lettre === lettre; })[0];
@@ -840,7 +566,7 @@ function sagaInfosCliente(lettre) {
   return {
     lettre: lettre,
     prenom: t.prenom,
-    nom: (fiche && fiche.nom) || (c && c.nom) || d.nom || t.prenom,
+    nom: (fiche && fiche.nom) || (c && c.nom) || t.prenom,
     adresse: (fiche && fiche.adresse) || (c && c.adresse) || '',
     tel: (fiche && fiche.tel) || (c && c.tel) || '',
     email: (fiche && fiche.email) || (c && c.email) || '',
@@ -1195,17 +921,8 @@ function sagaDecalageJours(iso) {
    Tout est désormais dérivé de `lives` + `ventes_directes`.
    ============================================================ */
 
-function sagaVentesDirectes() { return sagaLoad('ventes_directes', sagaDemo(SAGA_VENTES_DIRECTES_DEFAUT, [])); }
+function sagaVentesDirectes() { return sagaLoad('ventes_directes', []); }
 function sagaSaveVentesDirectes(v) { return sagaSave('ventes_directes', v); }
-
-var SAGA_VENTES_DIRECTES_DEFAUT = [
-  { id: 'vd1', date: '2026-07-28', lettre: 'F', libelle: 'Sac vendu en main propre',
-    montant: 260, frais: 0, mode: 'Remise en main propre', paye: 0 },
-  { id: 'vd2', date: '2026-07-22', lettre: 'M', libelle: 'Veste vendue sur Vinted',
-    montant: 245, frais: 5, mode: 'Autre plateforme (Vinted, Leboncoin…)', paye: 1, datePaiement: '2026-07-25' },
-  { id: 'vd3', date: '2026-07-18', lettre: 'B', libelle: 'Lot de foulards',
-    montant: 180, frais: 0, mode: 'Virement direct', paye: 1, datePaiement: '2026-07-20' }
-];
 
 /* Décompte d'une vente hors Whatnot : ni frais de plateforme, ni giveaway */
 function sagaDecompteDirect(v) {
@@ -1255,46 +972,8 @@ function sagaVentesDuDressing(lettre) {
   return res.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
 }
 
-/* Fiches détaillées des apporteurs d'exemple : dossier, commissions et
-   justificatifs. Partagées, pour que la liste et la fiche comptent la même
-   chose. */
-var SAGA_APPORTEURS_FICHES_DEFAUT = {
-  nadia: {
-    prenom: 'Nadia R.', nom: 'Nadia Roussel', initiales: 'NR', statut: 'Actif',
-    email: 'nadia.roussel@example.com', tel: '06 45 78 21 09',
-    statutJur: 'Auto-entrepreneur', siret: '892 411 675 00018',
-    pct: 8, depuis: 'mars 2026',
-    clientes: ['Fanny (M)', 'Camille (B)', 'Élise (R)'],
-    docs: [
-      { type: 'kbis',     nom: 'Kbis_Nadia_Roussel.pdf',       ajoute: '2026-03-12', expire: '' },
-      { type: 'identite', nom: 'CNI_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '2031-05-04' },
-      { type: 'rib',      nom: 'RIB_Nadia_Roussel.pdf',        ajoute: '2026-03-12', expire: '' },
-      { type: 'urssaf',   nom: 'Vigilance_URSSAF_T1_2026.pdf', ajoute: '2026-02-10', expire: '2026-08-10' }
-    ]
-  },
-  karim: {
-    prenom: 'Karim B.', nom: 'Karim Belkacem', initiales: 'KB', statut: 'Actif',
-    email: 'karim.belkacem@example.com', tel: '07 12 66 45 30',
-    statutJur: 'Société (SASU, EURL…)', siret: '904 552 118 00027',
-    pct: 6, depuis: 'avril 2026',
-    clientes: ['Marion (F)', 'Nora (T)'],
-    docs: [
-      { type: 'kbis',     nom: 'Kbis_KB_Conseil.pdf',   ajoute: '2026-04-02', expire: '' },
-      { type: 'rib',      nom: 'RIB_KB_Conseil.pdf',    ajoute: '2026-04-02', expire: '' }
-    ]
-  },
-  sonia: {
-    prenom: 'Sonia L.', nom: 'Sonia Lambert', initiales: 'SL', statut: 'Inactif',
-    email: 'sonia.lambert@example.com', tel: '06 33 90 74 12',
-    statutJur: 'Particulier non professionnel', siret: '',
-    pct: 8, depuis: 'janvier 2026',
-    clientes: [],
-    docs: []
-  }
-};
-
 function sagaFichesApporteurs() {
-  return sagaLoad('apporteurs_data', sagaDemo(SAGA_APPORTEURS_FICHES_DEFAUT, {}));
+  return sagaLoad('apporteurs_data', {});
 }
 
 /* Pièces exigées d'un apporteur d'affaires. Définies ici pour que la liste
@@ -1478,16 +1157,7 @@ function sagaAnnulerPaiement(vente) {
    générale : les deux vues lisent la même liste.
    ============================================================ */
 
-var SAGA_NOTES_DEFAUT = [
-  { id: 'n1', type: 'todo', lettre: 'M', texte: "Rendre à Fanny les 3 pièces d'hiver mises de côté.", date: '2026-08-10', done: false },
-  { id: 'n2', type: 'note', lettre: 'M', texte: 'Préfère les lives le mardi soir. Ne veut pas vendre les pièces Sézane sous 25 €.', date: '2026-07-18', done: false },
-  { id: 'n3', type: 'todo', lettre: 'C', texte: 'Relancer Julie pour la signature de son contrat.', date: '2026-08-12', done: false },
-  { id: 'n4', type: 'todo', lettre: '',  texte: 'Commander des housses et des étiquettes.', date: '2026-08-13', done: false },
-  { id: 'n5', type: 'todo', lettre: 'B', texte: 'Récupérer le dressing de Camille (12 caisses).', date: '2026-08-05', done: true },
-  { id: 'n6', type: 'note', lettre: '',  texte: 'Whatnot passe en promo 0 frais du 20 au 25 août.', date: '2026-08-11', done: false }
-];
-
-function sagaNotes() { return sagaLoad('notes', sagaDemo(SAGA_NOTES_DEFAUT, [])); }
+function sagaNotes() { return sagaLoad('notes', []); }
 function sagaSaveNotes(n) { return sagaSave('notes', n); }
 
 function sagaAjouterNote(type, texte, lettre) {
@@ -1606,23 +1276,13 @@ var SAGA_ROLES = {
 var SAGA_UTILISATEURS_DEFAUT = [
   { id: 1, prenom: 'Sarah', nom: 'Danino', email: 'sarah@sagadressing.fr', tel: '',
     role: 'admin', perms: null, last: '—', status: 'active', owner: true,
-    creele: '2026-01-12' },
-  { id: 2, prenom: 'Léa', nom: 'Martin', email: 'lea@sagadressing.fr', tel: '',
-    role: 'gestion', perms: null, last: 'Hier', status: 'active', owner: false,
-    creele: '2026-03-04' },
-  { id: 3, prenom: 'Thomas', nom: 'Bernard', email: 'thomas@sagadressing.fr', tel: '',
-    role: 'lecture', perms: null, last: '12 juillet', status: 'active', owner: false,
-    creele: '2026-05-20' },
-  { id: 4, prenom: 'Camille', nom: 'Dubois', email: 'camille@sagadressing.fr', tel: '',
-    role: 'gestion', perms: null, last: '—', status: 'invited', owner: false,
-    creele: '2026-07-28' }
+    creele: '' }
 ];
 
-/* Hors démonstration, seule la propriétaire subsiste : sans elle, plus
-   personne ne pourrait administrer le CRM. */
+/* Le CRM démarre avec la seule propriétaire : sans elle, plus personne ne
+   pourrait administrer l'application ni inviter les autres comptes. */
 function sagaUtilisateurs() {
-  return sagaLoad('utilisateurs',
-    sagaDemo(SAGA_UTILISATEURS_DEFAUT, SAGA_UTILISATEURS_DEFAUT.slice(0, 1)));
+  return sagaLoad('utilisateurs', SAGA_UTILISATEURS_DEFAUT);
 }
 function sagaSaveUtilisateurs(u) { return sagaSave('utilisateurs', u); }
 
@@ -1669,9 +1329,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.10.0';
+var SAGA_VERSION = '1.11.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.11.0', date: '2026-08-19', titre: 'Fin des données d\'exemple', points: [
+    'Toutes les clientes, lives, apporteurs, notes, rendez-vous et ventes d\'exemple sont retirés du code',
+    'Le jeu de démonstration et son bouton dans les Paramètres disparaissent : l\'application ne connaît plus que vos données',
+    'Un seul compte au départ, celui de la propriétaire ; les collègues fictifs sont supprimés',
+    'Les bandeaux « maquette — données fictives » sont retirés de toutes les pages'
+  ]},
   { version: '1.10.0', date: '2026-08-19', titre: 'Relevés PDF, clientes créées à la volée, codes en double', points: [
     'Relevé PDF d\'une cliente depuis sa fiche : ses lives et ventes hors live, avec le détail des articles et le décompte',
     'Export PDF de la liste des clientes, telle qu\'elle est filtrée à l\'écran',
@@ -2061,82 +1727,3 @@ function initTabs(root) {
     });
   });
 }
-
-/* ============ Anciennes données d'exemple ============
-   Avant que le CRM ne démarre à vide, les exemples étaient recopiés dans le
-   navigateur dès la première modification. Ils y sont restés, indiscernables
-   de vraies données. On les reconnaît à leurs identifiants d'origine, et on
-   propose de faire le ménage plutôt que de laisser chercher dans les réglages. */
-var SAGA_MARQUEURS_EXEMPLE = {
-  clientes: ['fanny', 'julie', 'camille', 'marion'],
-  lives: ['l-20260729', 'l-20260727', 'l-20260724'],
-  apporteurs: ['nadia', 'karim', 'sonia']
-};
-
-/* Vrai si les données enregistrées sont celles des exemples d'origine. */
-function sagaExemplesResiduels() {
-  if (sagaDemoActive()) return false;
-
-  var clientes = sagaLoad('clientes', null);
-  if (clientes && clientes.some(function (c) {
-    return SAGA_MARQUEURS_EXEMPLE.clientes.indexOf(c.key) !== -1;
-  })) return true;
-
-  var lives = sagaLoad('lives', null);
-  if (lives && lives.some(function (l) {
-    return SAGA_MARQUEURS_EXEMPLE.lives.indexOf(l.id) !== -1;
-  })) return true;
-
-  var apporteurs = sagaLoad('apporteurs', null);
-  if (apporteurs && apporteurs.some(function (a) {
-    return SAGA_MARQUEURS_EXEMPLE.apporteurs.indexOf(a.key) !== -1;
-  })) return true;
-
-  return false;
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-  if (!sagaExemplesResiduels()) return;
-  if (sessionStorage.getItem(SAGA_PREFIX + 'exemples_ignore')) return;
-
-  var barre = document.createElement('div');
-  barre.className = 'proto-badge';
-  /* Marqué pour survivre au nettoyage du bandeau « maquette », qui retire
-     sinon tout ce qui porte cette classe. */
-  barre.dataset.exemples = '1';
-  barre.style.cursor = 'default';
-  barre.innerHTML =
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
-      '<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/>' +
-      '<circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>' +
-    '<span style="flex:1;">Ce navigateur contient encore les données d\'exemple ' +
-      '(Fanny, Julie, Nadia R.…), enregistrées par une ancienne version.</span>' +
-    '<button class="btn btn-secondary btn-sm" data-nettoyer>Les retirer</button>' +
-    '<button class="btn btn-ghost btn-sm" data-ignorer>Plus tard</button>';
-
-  var contenu = document.querySelector('.content, .main, main') || document.body;
-  var apres = contenu.querySelector('header');
-  if (apres && apres.parentNode) apres.parentNode.insertBefore(barre, apres.nextSibling);
-  else contenu.insertBefore(barre, contenu.firstChild);
-
-  barre.querySelector('[data-ignorer]').onclick = function () {
-    sessionStorage.setItem(SAGA_PREFIX + 'exemples_ignore', '1');
-    barre.remove();
-  };
-  barre.querySelector('[data-nettoyer]').onclick = function () {
-    if (!confirm('Retirer les données d\'exemple ?\n\n'
-      + 'Tout ce que contient ce navigateur sera effacé, y compris ce que vous '
-      + 'auriez saisi vous-même. Le CRM repartira vide.')) return;
-    sagaReset();
-    location.reload();
-  };
-});
-
-/* Le bandeau « maquette — données fictives » ne vaut que pour le jeu de
-   démonstration. En usage réel il inquiéterait à tort : les chiffres affichés
-   sont alors ceux de la boutique. */
-document.addEventListener('DOMContentLoaded', function () {
-  if (sagaDemoActive()) return;
-  var badges = document.querySelectorAll('.proto-badge:not([data-exemples])');
-  for (var i = 0; i < badges.length; i++) badges[i].remove();
-});

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Clientes — Saga Dressing (maquette)</title>
+<title>Clientes — Saga Dressing</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -32,10 +32,6 @@
         </div>
       </header>
 
-      <div class="proto-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
-        Maquette design — données fictives, non connectée au CRM en production
-      </div>
 
       <!-- Formulaire nouvelle cliente -->
       <div class="panel" id="newForm" style="display:none;">
@@ -166,7 +162,7 @@
         </div>
       </div>
 
-      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+      <p class="footnote">Saga Dressing — CRM</p>
     </div>
   </div>
 
@@ -175,19 +171,7 @@
 <script>
   renderSagaSidebar('clientes');
 
-  // key = fiche détaillée existante (cliente.html?c=…) quand elle est disponible
-  var CLIENTES_DEFAUT = [
-    { key:'fanny',   prenom:'Fanny',   nom:'Fanny Moreau',    tel:'06 12 34 56 78', email:'fanny.moreau@example.com',   lettre:'M', apporteur:'Nadia R.', pct:30, ca:6420, commission:1926, reste:735, statut:'active' },
-    { key:'julie',   prenom:'Julie',   nom:'Julie Renard',    tel:'06 22 45 78 90', email:'julie.renard@example.com',   lettre:'C', apporteur:'',         pct:30, ca:5180, commission:1554, reste:620, statut:'active' },
-    { key:'camille', prenom:'Camille', nom:'Camille Bertin',  tel:'07 33 12 45 67', email:'camille.bertin@example.com', lettre:'B', apporteur:'Nadia R.', pct:25, ca:4960, commission:1241, reste:480, statut:'active' },
-    { key:'marion',  prenom:'Marion',  nom:'Marion Fabre',    tel:'06 55 78 21 34', email:'marion.fabre@example.com',   lettre:'F', apporteur:'Karim B.', pct:30, ca:3210, commission:963,  reste:310, statut:'active' },
-    { key:'',        prenom:'Alix',    nom:'Alix Perrin',     tel:'06 78 90 12 34', email:'alix.perrin@example.com',    lettre:'P', apporteur:'',         pct:30, ca:1840, commission:552,  reste:0,   statut:'active' },
-    { key:'',        prenom:'Nora',    nom:'Nora Tissot',     tel:'07 11 22 33 44', email:'nora.tissot@example.com',    lettre:'T', apporteur:'Karim B.', pct:30, ca:960,  commission:288,  reste:0,   statut:'active' },
-    { key:'',        prenom:'Sophie',  nom:'Sophie Delaunay', tel:'06 44 55 66 77', email:'sophie.delaunay@example.com',lettre:'D', apporteur:'',         pct:30, ca:2380, commission:714,  reste:0,   statut:'inactive' },
-    { key:'',        prenom:'Élise',   nom:'Élise Rousseau',  tel:'06 99 88 77 66', email:'elise.rousseau@example.com', lettre:'R', apporteur:'Nadia R.', pct:25, ca:1120, commission:280,  reste:0,   statut:'inactive' }
-  ];
-
-  var clientes = sagaLoad('clientes', sagaDemo(CLIENTES_DEFAUT, []));
+  var clientes = sagaLoad('clientes', []);
   var vignetteEnCours = '';
   var DOUBLONS = {};
 

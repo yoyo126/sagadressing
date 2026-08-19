@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Saga Dressing — CRM (maquette)</title>
+<title>Saga Dressing — CRM</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -31,10 +31,6 @@
         </div>
       </header>
 
-      <div class="proto-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
-        Maquette design — données fictives, non connectée au CRM en production
-      </div>
 
       <section class="kpi-grid" id="kpiGrid">
         <div class="kpi-card">
@@ -75,7 +71,7 @@
             <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           </div>
           <div class="kpi-value" data-field="lives">3 <small>prévus</small></div>
-          <div class="kpi-delta" data-field="livesMeta">prochain : mardi — Marion (F)</div>
+          <div class="kpi-delta" data-field="livesMeta">—</div>
           <div class="kpi-spark" data-field="livesSpark"></div>
         </div>
       </section>
@@ -106,7 +102,7 @@
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <input class="form-input" id="noteText" style="flex:1; min-width:200px;"
-                     placeholder="Ex. Relancer Julie pour son contrat" />
+                     placeholder="Ex. Relancer une cliente pour son contrat" />
               <select class="form-select" id="noteCliente" style="max-width:200px;"></select>
               <button class="btn btn-primary btn-sm" onclick="ajouterNote()">Ajouter</button>
             </div>
@@ -137,7 +133,7 @@
         </div>
       </section>
 
-      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+      <p class="footnote">Saga Dressing — CRM</p>
     </div>
   </div>
 

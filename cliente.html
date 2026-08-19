@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Fanny (M) — Saga Dressing (maquette)</title>
+<title>Fiche cliente — Saga Dressing</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -43,10 +43,6 @@
         </div>
       </div>
 
-      <div class="proto-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
-        Maquette design — données fictives, non connectée au CRM en production
-      </div>
 
       <div class="alert-bar" id="pendingSignAlert" style="display:none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -252,7 +248,7 @@
               <div class="form-grid" id="contratFormFields">
                 <div class="form-field">
                   <label class="form-label">Nom / Prénom</label>
-                  <input class="form-input" id="fNom" value="Fanny Moreau" readonly style="opacity:.7;" />
+                  <input class="form-input" id="fNom" value="" readonly style="opacity:.7;" />
                 </div>
                 <div class="form-field">
                   <label class="form-label">Adresse</label>
@@ -324,7 +320,7 @@
                 Représentée par Sarah Danino<br/>
                 Ci-après « le Dépositaire »</p>
                 <p>Et :<br/>
-                Nom / Prénom : <span class="field" data-field="nom">Fanny Moreau</span><br/>
+                Nom / Prénom : <span class="field" data-field="nom">—</span><br/>
                 Adresse : <span class="field empty" data-field="adresse">…</span><br/>
                 Téléphone : <span class="field" data-field="telephone">06 12 34 56 78</span><br/>
                 Email : <span class="field" data-field="email">fanny.moreau@example.com</span><br/>
@@ -450,7 +446,7 @@
 
                 <p>Entre <strong>SAGA DRESSING</strong>, SAS – 2, rue des Colverts, 77150 Lésigny – SIRET 102 429 833,
                 représentée par Sarah Danino, ci-après « le Dépositaire »,</p>
-                <p>Et <span class="field" data-rfield="nom">Fanny Moreau</span>,
+                <p>Et <span class="field" data-rfield="nom">—</span>,
                 ci-après « le Déposant ».</p>
 
                 <h3>1. Objet</h3>
@@ -591,7 +587,7 @@
         </div>
       </div>
 
-      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+      <p class="footnote">Saga Dressing — CRM</p>
     </div>
   </div>
 
@@ -606,7 +602,7 @@
   // La fiche affichée dépend du paramètre ?c= dans l'adresse (défaut : fanny)
   /* Identité seulement : les ventes et les notes sont partagées avec le reste
      de l'application, cette fiche n'en garde plus de copie. Les noms suivent
-     l'annuaire commun (SAGA_DRESSINGS_DEFAUT). */
+     la liste des clientes. */
 
   var CLIENTS = sagaFiches();
   function persistClients() { sagaSave('clients_data', CLIENTS); }
@@ -618,7 +614,7 @@
 
   /* Une cliente créée depuis la liste n'a pas encore de fiche détaillée :
      on la construit à partir de son entrée de liste, puis on l'enregistre.
-     Sans cela, sa fiche renvoyait sur l'exemple Fanny. */
+     Sans cela, sa fiche n'aurait rien à afficher. */
   function ficheDepuisListe(cle) {
     var entree = sagaLoad('clientes', []).filter(function (c) { return c.key === cle; })[0];
     if (!entree) return null;
@@ -663,7 +659,7 @@
   var APPORTEUR_PCT = CLIENT.apporteurPct;
 
   function renderClient() {
-    document.title = CLIENT.prenom + ' (' + CLIENT.lettre + ') — Saga Dressing (maquette)';
+    document.title = CLIENT.prenom + ' (' + CLIENT.lettre + ') — Saga Dressing';
     document.getElementById('cAvatar').textContent = CLIENT.lettre;
     // Le titre porte le nom complet ; le prénom seul ne suffit pas pour un document
     document.getElementById('cName').textContent = CLIENT.nom || CLIENT.prenom;

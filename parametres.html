@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Paramètres — Saga Dressing (maquette)</title>
+<title>Paramètres — Saga Dressing</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -18,10 +18,6 @@
         </div>
       </header>
 
-      <div class="proto-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
-        Maquette design — aucune connexion réelle, aucun compte réel
-      </div>
 
       <div class="panel">
         <div class="tabs" data-panel-group="param">
@@ -281,7 +277,7 @@
               <div class="form-field" style="flex-direction:row; gap:12px;">
                 <div style="flex:1;">
                   <label class="form-label" for="invPrenom">Prénom</label>
-                  <input class="form-input" id="invPrenom" placeholder="Ex. Camille" />
+                  <input class="form-input" id="invPrenom" placeholder="Prénom" />
                 </div>
                 <div style="flex:1;">
                   <label class="form-label" for="invNom">Nom</label>
@@ -588,16 +584,6 @@
               Tout ce que vous saisissez (clientes, ventes, paiements, vignettes, réglages de boutique)
               est conservé dans votre navigateur et survit aux changements de page. Rien n'est envoyé sur internet.
             </p>
-            <div class="info-card" style="max-width:720px; margin-bottom:16px;">
-              <div class="info-card-title">Jeu de démonstration <span class="chip neutral" id="demoChip">—</span></div>
-              <p class="card-note">
-                Les clientes, lives, apporteurs et rendez-vous d'exemple (Fanny, Julie, Nadia R.…)
-                servent à découvrir l'application. Retirez-les pour travailler sur vos vraies données ;
-                vous pourrez toujours les recharger ensuite.
-              </p>
-              <button class="btn btn-secondary btn-sm" style="margin-top:12px;" id="demoBtn" onclick="basculerDemo()">—</button>
-              <p class="card-note" id="demoNote" style="margin-top:10px;"></p>
-            </div>
             <p class="card-note" style="max-width:720px; margin-bottom:14px;">
               Pour repartir totalement de zéro : tout ce qui a été saisi est effacé, définitivement.
             </p>
@@ -621,7 +607,7 @@
         </div>
       </div>
 
-      <p class="footnote">Maquette design v1 — Saga Dressing CRM</p>
+      <p class="footnote">Saga Dressing — CRM</p>
     </div>
   </div>
 
@@ -866,8 +852,8 @@
     pdf.titre('Exemple de document');
     pdf.sousTitre('Aperçu de la mise en page utilisée pour tous les PDF générés');
     pdf.section('Cliente');
-    pdf.paragraphe('Fanny Moreau — dressing M', { gras: true, taille: 10.5 });
-    pdf.paragraphe('15 rue du Faubourg Saint-Antoine, 75011 Paris');
+    pdf.paragraphe('Prénom Nom — dressing X', { gras: true, taille: 10.5 });
+    pdf.paragraphe('Adresse de la cliente');
     pdf.section('Décompte');
     pdf.decompte([
       ['Ventes', '1 480 €'],
@@ -1372,46 +1358,6 @@
   /* Les exemples ne sont pas recopiés dans le navigateur : ils s'affichent tant
      que rien n'a été enregistré. Les charger par-dessus des données existantes
      ne montrerait donc rien — le bouton le dit plutôt que de faire semblant. */
-  function basculerDemo() {
-    if (sagaDemoActive()) {
-      var messages = sagaBaseVide()
-        ? 'Retirer le jeu de démonstration ?\n\nL\'application repartira vide.'
-        : 'Retirer le jeu de démonstration ?\n\n'
-          + 'Des données ont été enregistrées pendant la démonstration : elles ne se '
-          + 'distinguent plus des exemples, tout sera donc effacé.';
-      if (!confirm(messages)) return;
-      sagaReset();
-      sagaDemoActiver(false);
-    } else {
-      if (!sagaBaseVide()) return;
-      if (!confirm('Charger le jeu de démonstration ?\n\n'
-        + 'Clientes, lives, apporteurs et rendez-vous d\'exemple s\'afficheront '
-        + 'jusqu\'à ce que vous les retiriez.')) return;
-      sagaDemoActiver(true);
-    }
-    location.reload();
-  }
-
-  function majDemo() {
-    var actif = sagaDemoActive();
-    var vide = sagaBaseVide();
-    var chip = document.getElementById('demoChip');
-    var btn = document.getElementById('demoBtn');
-    var note = document.getElementById('demoNote');
-
-    chip.textContent = actif ? 'Chargé' : 'Retiré';
-    chip.className = actif ? 'chip warn' : 'chip good';
-    btn.textContent = actif ? 'Retirer le jeu de démonstration' : 'Charger le jeu de démonstration';
-    btn.disabled = !actif && !vide;
-    btn.style.opacity = btn.disabled ? '.5' : '';
-    btn.style.cursor = btn.disabled ? 'not-allowed' : '';
-    note.textContent = actif
-      ? 'La démonstration est affichée. Ce que vous saisissez maintenant se mélange aux exemples : à retirer avant de commencer pour de vrai.'
-      : (vide ? '' : 'Indisponible : des données ont déjà été saisies. Les exemples ne s\'affichent que sur une base vide.');
-  }
-
-  majDemo();
-
   switchMailMethod();
   refreshSenderPreview();
 </script>
