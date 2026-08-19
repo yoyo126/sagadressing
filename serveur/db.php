@@ -24,10 +24,22 @@ function saga_config()
     }
 
     $config = require $chemin;
-    if (!is_array($config) || $config['db_user'] === '' || $config['db_pass'] === '') {
+    if (!is_array($config)) {
+        $config = [];
+    }
+    // Les clés absentes valent la chaîne vide : un réglage oublié se signale
+    // par un message clair, pas par une alerte PHP au milieu de la page.
+    foreach (['db_host', 'db_nom', 'db_user', 'db_pass', 'site_nom'] as $cle) {
+        if (!isset($config[$cle])) {
+            $config[$cle] = '';
+        }
+    }
+    if ($config['db_host'] === '' || $config['db_nom'] === ''
+        || $config['db_user'] === '' || $config['db_pass'] === '') {
         saga_erreur_fatale(
             'Configuration incomplète',
-            'L\'utilisateur ou le mot de passe de la base manque dans <code>config.php</code>.'
+            'Une des quatre valeurs d\'accès à la base manque dans <code>config.php</code> : '
+            . 'hôte, nom de la base, utilisateur ou mot de passe.'
         );
     }
     return $config;
