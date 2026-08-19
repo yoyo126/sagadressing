@@ -32,10 +32,19 @@ jobs:
       - name: Préparer Pages
         uses: actions/configure-pages@v5
 
+      # Seule l'application part en ligne. Le dossier `serveur/` contient le
+      # code PHP et l'adresse de la base : publié tel quel sur Pages, il serait
+      # lisible par n'importe qui, en clair, puisque GitHub ne l'exécute pas.
+      - name: Isoler ce qui doit être publié
+        run: |
+          mkdir -p _site
+          cp -r *.html *.js *.css _site/
+          echo "Publié :" && ls _site
+
       - name: Empaqueter le site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - name: Mettre en ligne
         id: deploiement

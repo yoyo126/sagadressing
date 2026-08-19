@@ -12,12 +12,12 @@
    ============================================================ */
 
 return [
-    // Fournis par IONOS, déjà connus
-    'db_host' => 'db5021230781.hosting-data.io',
-    'db_nom'  => 'dbs16031522',
-
-    // À compléter — visibles dans la fiche de la base, chez IONOS
-    'db_user' => '',   // du type dbo1234567
+    /* Les quatre valeurs sont dans la fiche de la base, chez IONOS.
+       Rien n'est pré-rempli ici : ce fichier est versionné, et l'adresse
+       d'un serveur de base de données n'a pas à traîner dans un dépôt. */
+    'db_host' => '',   // du type dbXXXXXXXXXX.hosting-data.io
+    'db_nom'  => '',   // du type dbsXXXXXXXX
+    'db_user' => '',   // du type dboXXXXXXXX
     'db_pass' => '',
 
     /* Nom affiché dans les pages et les documents. */
