@@ -26,8 +26,42 @@
           <div class="tab-item" data-tab="tab-icloud">Agenda iCloud</div>
           <div class="tab-item" data-tab="tab-users">Utilisateurs</div>
           <div class="tab-item" data-tab="tab-email">Envoi des emails</div>
+          <div class="tab-item" data-tab="tab-donnees">Données</div>
           <div class="tab-item" data-tab="tab-journal">Journal d'activité</div>
           <div class="tab-item" data-tab="tab-versions">Versions</div>
+        </div>
+
+        <!-- ============ DONNÉES ============ -->
+        <div class="tab-panel" id="tab-donnees" data-panel-group="param" style="margin-top:20px;">
+          <div>
+            <div class="panel-head"><h2>Données</h2></div>
+            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
+              Clientes, ventes, paiements, vignettes et réglages de boutique : tout ce que vous
+              saisissez est conservé ici.
+            </p>
+            <p class="card-note" style="max-width:720px; margin-bottom:14px; display:none;"
+               data-serveur-seulement>
+              Ces données vivent sur le serveur : vous les retrouvez à l'identique sur votre
+              téléphone comme sur votre ordinateur, et vider le cache d'un navigateur n'efface rien.
+            </p>
+            <div class="info-card" style="max-width:720px; margin-bottom:16px; display:none;"
+                 data-serveur-seulement>
+              <div class="info-card-title">Sauvegarde</div>
+              <p class="card-note">
+                Le serveur enregistre chaque nuit une copie complète — état du CRM, comptes et
+                réglages — conservée trente jours. Ces copies restent sur le serveur : elles
+                protègent d'une fausse manœuvre, pas de la perte de l'hébergement lui-même.
+                Téléchargez-en une de temps en temps, et rangez-la ailleurs.
+              </p>
+              <a class="btn btn-secondary btn-sm" style="margin-top:12px;"
+                 href="sauvegarde.php?telecharger=1">Télécharger une sauvegarde maintenant</a>
+            </div>
+
+            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
+              Pour repartir totalement de zéro : tout ce qui a été saisi est effacé, définitivement.
+            </p>
+            <button class="btn btn-secondary btn-sm" onclick="resetDonnees()">Effacer toutes les données</button>
+          </div>
         </div>
 
         <!-- ============ JOURNAL D'ACTIVITÉ ============ -->
@@ -578,31 +612,6 @@
 
               <button class="btn btn-primary btn-sm" style="max-width:200px;" onclick="saveSender(this)">Enregistrer</button>
             </div>
-          </div>
-
-          <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
-            <div class="panel-head"><h2>Données</h2></div>
-            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
-              Tout ce que vous saisissez (clientes, ventes, paiements, vignettes, réglages de boutique)
-              est conservé dans votre navigateur et survit aux changements de page. Rien n'est envoyé sur internet.
-            </p>
-            <div class="info-card" style="max-width:720px; margin-bottom:16px; display:none;"
-                 data-serveur-seulement>
-              <div class="info-card-title">Sauvegarde</div>
-              <p class="card-note">
-                Le serveur enregistre chaque nuit une copie complète — état du CRM, comptes et
-                réglages — conservée trente jours. Ces copies restent sur le serveur : elles
-                protègent d'une fausse manœuvre, pas de la perte de l'hébergement lui-même.
-                Téléchargez-en une de temps en temps, et rangez-la ailleurs.
-              </p>
-              <a class="btn btn-secondary btn-sm" style="margin-top:12px;"
-                 href="sauvegarde.php?telecharger=1">Télécharger une sauvegarde maintenant</a>
-            </div>
-
-            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
-              Pour repartir totalement de zéro : tout ce qui a été saisi est effacé, définitivement.
-            </p>
-            <button class="btn btn-secondary btn-sm" onclick="resetDonnees()">Effacer toutes les données</button>
           </div>
 
           <div style="margin-top:26px; padding-top:20px; border-top:1px solid var(--line);">
