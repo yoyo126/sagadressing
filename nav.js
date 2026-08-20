@@ -1504,9 +1504,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.14.1';
+var SAGA_VERSION = '1.15.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.15.0', date: '2026-08-19', titre: 'Vrais comptes, et remise à zéro mise sous clé', points: [
+    'Des accès peuvent enfin être créés : la page des comptes gère les vraies connexions, avec leurs rôles',
+    'Chacun peut y changer son propre mot de passe, sans passer par quelqu\'un d\'autre',
+    'La remise à zéro compte ce qui sera perdu et exige d\'écrire « EFFACER TOUT » : une confirmation d\'un clic ne convient plus avec de vraies données',
+    'Elle est réservée aux administrateurs'
+  ]},
   { version: '1.14.1', date: '2026-08-19', titre: 'Les données ont leur onglet', points: [
     'Sauvegarde et remise à zéro étaient rangées au bas de l\'onglet « Envoi des emails », où personne ne pense à les chercher : elles ont désormais leur propre onglet « Données »',
     'Le texte annonçait encore que tout était conservé dans le navigateur — il dit maintenant que les données vivent sur le serveur'

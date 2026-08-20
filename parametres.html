@@ -57,10 +57,20 @@
                  href="sauvegarde.php?telecharger=1">Télécharger une sauvegarde maintenant</a>
             </div>
 
-            <p class="card-note" style="max-width:720px; margin-bottom:14px;">
-              Pour repartir totalement de zéro : tout ce qui a été saisi est effacé, définitivement.
-            </p>
-            <button class="btn btn-secondary btn-sm" onclick="resetDonnees()">Effacer toutes les données</button>
+            <div style="max-width:720px; margin-top:22px; padding:16px 18px; border-radius:12px;
+                        border:1px solid var(--critical); background:var(--surface-alt);">
+              <div class="info-card-title" style="color:var(--critical);">Effacer toutes les données</div>
+              <p class="card-note">
+                Clientes, lives, ventes, paiements, rendez-vous et notes disparaissent, définitivement.
+                Il n'y a pas de retour en arrière depuis cet écran.
+              </p>
+              <p class="card-note" data-serveur-seulement style="display:none;">
+                Avant d'en arriver là : <strong>téléchargez une sauvegarde</strong> ci-dessus. Elle
+                permet de tout remettre en place, ce que ce bouton ne fait pas.
+              </p>
+              <button class="btn btn-ghost btn-sm" style="margin-top:12px; color:var(--critical);"
+                      onclick="resetDonnees()">Effacer toutes les données…</button>
+            </div>
           </div>
         </div>
 
@@ -294,7 +304,16 @@
 
         <!-- ============ UTILISATEURS ============ -->
         <div class="tab-panel" id="tab-users" data-panel-group="param" style="margin-top:20px;">
-          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Pas encore branché.</strong> Les comptes se créent et s'organisent, mais personne ne se connecte encore : sans serveur, chaque appareil garde ses propres données. Les rôles définis ici seront appliqués dès que les comptes seront raccordés.</span></div>
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Cette liste n'est pas celle des accès.</strong> Elle sert à organiser les rôles ; les comptes qui peuvent réellement se connecter se gèrent à part.</span></div>
+
+          <div class="info-card" style="margin-bottom:18px; display:none;" data-serveur-seulement>
+            <div class="info-card-title">Accès au CRM</div>
+            <p class="card-note">
+              Créer un accès, changer un rôle, remplacer un mot de passe oublié : tout se passe
+              sur la page des comptes. Chacun peut y changer le sien.
+            </p>
+            <a class="btn btn-secondary btn-sm" style="margin-top:12px;" href="comptes.php">Gérer les accès</a>
+          </div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Comptes</h2>
             <div style="display:flex; align-items:center; gap:12px;">
@@ -1410,13 +1429,92 @@
     document.getElementById(id).addEventListener('input', refreshSenderPreview);
   });
 
+  /* Remise à zéro. Une simple confirmation ne suffit plus depuis que le CRM
+     contient de vraies données : on demande d'écrire la phrase, ce qui exclut
+     le clic machinal, et on rappelle ce qui sera perdu, compté. */
   function resetDonnees() {
-    if (!confirm('Effacer toutes les données ?\n\n'
-      + 'Clientes, ventes, paiements, vignettes et réglages de boutique seront perdus.\n'
-      + 'L\'application repartira entièrement vide.')) return;
-    sagaReset();
-    alert('Données effacées. L\'application repart de zéro.');
-    sagaRecharger();
+    var moi = window.SAGA_UTILISATEUR_SERVEUR;
+    if (moi && moi.role !== 'admin') {
+      alert('Seul un compte administrateur peut effacer les données.');
+      return;
+    }
+
+    var quoi = [];
+    function compte(n, mot, pluriel) {
+      if (n) quoi.push(n + ' ' + (n > 1 ? (pluriel || mot + 's') : mot));
+    }
+    compte(sagaListeClientes().length, 'cliente');
+    compte(sagaLives().length, 'live');
+    compte(sagaLives().reduce(function (s, l) { return s + l.articles.length; }, 0), 'article');
+    compte(sagaVentesDirectes().length, 'vente hors live', 'ventes hors live');
+    compte(sagaApporteurs().length, 'apporteur');
+    compte(sagaAgenda().length, 'rendez-vous', 'rendez-vous');
+    compte(sagaNotes().length, 'note');
+
+    var ca = 0;
+    sagaLives().forEach(function (l) {
+      l.articles.forEach(function (a) { if (a.type !== 'giveaway') ca += a.montant; });
+    });
+    sagaVentesDirectes().forEach(function (v) { ca += v.montant; });
+
+    var fond = document.createElement('div');
+    fond.className = 'modale';
+    fond.innerHTML =
+      '<div class="modale-boite" style="width:min(520px,100%);">' +
+        '<div class="modale-tete"><strong>Effacer toutes les données</strong>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+        '<div class="modale-corps">' +
+          (quoi.length
+            ? '<p class="card-note" style="margin:0 0 12px;">Seront définitivement perdus : <strong>' +
+              quoi.join(', ') + '</strong>' +
+              (ca > 0 ? ', soit <strong>' + Math.round(ca).toLocaleString('fr-FR') +
+                        ' €</strong> d\'historique de ventes' : '') + '.</p>'
+            : '<p class="card-note" style="margin:0 0 12px;">Le CRM est déjà vide : ' +
+              'il n\'y a rien à effacer.</p>') +
+          '<p class="card-note" style="margin-bottom:14px;">' +
+            'Cette action ne peut pas être annulée depuis le CRM. Seule une sauvegarde ' +
+            'téléchargée permettrait de revenir en arrière.</p>' +
+          '<div class="form-field">' +
+            '<label class="form-label" for="resetPhrase">Écrivez <strong>EFFACER TOUT</strong> pour confirmer</label>' +
+            '<input class="form-input" id="resetPhrase" autocomplete="off" placeholder="EFFACER TOUT" />' +
+          '</div>' +
+          '<div style="display:flex; gap:10px; margin-top:18px;">' +
+            '<button class="btn btn-ghost btn-sm" style="color:var(--critical);" data-effacer disabled>' +
+              'Effacer définitivement</button>' +
+            '<button class="btn btn-secondary btn-sm" data-fermer>Annuler</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(fond);
+    document.body.classList.add('modale-ouverte');
+
+    function fermer() {
+      fond.remove();
+      document.body.classList.remove('modale-ouverte');
+      document.removeEventListener('keydown', auClavier);
+    }
+    function auClavier(e) { if (e.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', auClavier);
+    fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+    fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+
+    var champ = fond.querySelector('#resetPhrase');
+    var bouton = fond.querySelector('[data-effacer]');
+    champ.addEventListener('input', function () {
+      bouton.disabled = champ.value.trim().toUpperCase() !== 'EFFACER TOUT';
+    });
+
+    bouton.onclick = function () {
+      if (bouton.disabled) return;
+      fermer();
+      sagaReset();
+      sagaTracer('Remise à zéro', 'toutes les données');
+      alert('Données effacées. Le CRM repart de zéro.');
+      sagaRecharger();
+    };
+
+    setTimeout(function () { champ.focus(); }, 0);
   }
 
   /* Les exemples ne sont pas recopiés dans le navigateur : ils s'affichent tant
