@@ -44,15 +44,25 @@ FICHIERS_APP = ['style.css', 'nav.js', 'saga-pdf.js']
 PRELUDE = "<?php require __DIR__ . '/entete.php'; ?>\n"
 
 
+def rediriger_liens(texte):
+    """Réécrit les liens entre pages, de .html vers .php.
+
+    À appliquer aussi aux fichiers JavaScript : nav.js construit le menu
+    latéral, et ses liens sont restés en .html — les pages existaient bien,
+    mais sous un autre nom, et tout le menu tombait sur « Not Found »."""
+    for nom in PAGES:
+        texte = re.sub(r'\b' + nom + r'\.html\b', nom + '.php', texte)
+    # La connexion est celle du serveur
+    texte = re.sub(r'\blogin\.html\b', 'login.php', texte)
+    texte = re.sub(r'\bindex\.html\b', 'index.php', texte)
+    return texte
+
+
 def convertir(html):
     """Transforme une page de l'application en page servie par PHP."""
 
     # 1. Les liens entre pages pointent désormais vers les .php
-    for nom in PAGES:
-        html = re.sub(r'\b' + nom + r'\.html\b', nom + '.php', html)
-    # La connexion est celle du serveur
-    html = re.sub(r'\blogin\.html\b', 'login.php', html)
-    html = re.sub(r'\bindex\.html\b', 'index.php', html)
+    html = rediriger_liens(html)
 
     # 2. L'état du CRM est écrit dans la page, avant tout script
     if '</head>' not in html:
@@ -98,7 +108,10 @@ def construire():
         produits.append(f)
 
     for f in FICHIERS_APP:
-        shutil.copy2(os.path.join(RACINE, f), os.path.join(SORTIE, f))
+        contenu = io.open(os.path.join(RACINE, f), encoding='utf-8').read()
+        if f.endswith('.js'):
+            contenu = rediriger_liens(contenu)
+        io.open(os.path.join(SORTIE, f), 'w', encoding='utf-8').write(contenu)
         produits.append(f)
 
     print('Construit dans %s :' % os.path.relpath(SORTIE, RACINE))
