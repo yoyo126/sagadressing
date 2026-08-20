@@ -583,6 +583,16 @@
               <button class="btn btn-ghost btn-sm" onclick="annulerEdition()">Annuler</button>
               <span class="card-note" id="iSaved" style="display:none; color:var(--good);">✓ Enregistré</span>
             </div>
+
+            <div style="margin-top:26px; padding-top:18px; border-top:1px solid var(--line);">
+              <p class="card-note" style="margin:0 0 10px; max-width:620px;">
+                Une cliente qui ne dépose plus se met en <strong>Inactive</strong> ci-dessus :
+                sa fiche et son historique restent consultables. La suppression, elle, est
+                définitive — à réserver aux fiches créées par erreur.
+              </p>
+              <button class="btn btn-ghost btn-sm" style="color:var(--critical);"
+                      onclick="supprimerCliente()">Supprimer cette fiche</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1176,6 +1186,37 @@
 
     sagaApercuPdf(pdf, 'Releve_' + CLIENT.prenom + '_' + TODAY_ISO,
       'Relevé des ventes — ' + (CLIENT.nom || CLIENT.prenom));
+  }
+
+  /* Suppression définitive de la fiche. Les ventes sont enregistrées par code
+     de dressing, pas par fiche : elles ne disparaissent pas avec elle, et le
+     dire avant vaut mieux que de le découvrir après. */
+  function supprimerCliente() {
+    var nom = CLIENT.nom || CLIENT.prenom;
+    var ventes = sagaVentesDuDressing(CLIENT.lettre);
+
+    var message = 'Supprimer définitivement la fiche de ' + nom + ' ?';
+    if (ventes.length) {
+      var total = ventes.reduce(function (s, v) { return s + v.ventes; }, 0);
+      var impayees = ventes.filter(function (v) { return !v.paye; }).length;
+      message += '\n\nAttention : ' + ventes.length + ' vente(s) pour '
+        + fmtEUR(total) + ' sont enregistrées sous le code « ' + CLIENT.lettre + ' ».'
+        + (impayees ? '\nDont ' + impayees + ' non encore réglée(s).' : '')
+        + '\n\nElles ne seront pas supprimées : elles resteront rattachées à ce code, '
+        + 'sans fiche pour le nommer. Pour conserver l\'historique lisible, préférez '
+        + 'passer la cliente en « Inactive ».';
+    } else {
+      message += '\n\nAucune vente n\'est enregistrée sous ce code : rien d\'autre ne sera perdu.';
+    }
+    message += '\n\nCette action est irréversible.';
+
+    if (!confirm(message)) return;
+
+    var r = sagaSupprimerCliente(currentClientKey());
+    if (r && r.notesRetirees) {
+      alert(nom + ' a été supprimée, ainsi que ' + r.notesRetirees + ' note(s) la concernant.');
+    }
+    window.location.href = 'clientes.html';
   }
 
   var MONTHS_FR_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];

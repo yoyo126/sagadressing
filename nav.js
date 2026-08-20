@@ -496,6 +496,43 @@ function sagaChangerCodeCliente(cle, nouveauCode) {
   return ancien;
 }
 
+/* Suppression d'une cliente : sa fiche et son entrée de liste disparaissent,
+   ainsi que les notes qui lui étaient rattachées si son code n'est plus porté
+   par personne. Les ventes, elles, restent attachées au code du dressing —
+   c'est leur source, pas la fiche — et l'appelant doit en avertir. */
+function sagaSupprimerCliente(cle) {
+  if (!cle) return null;
+
+  var store = sagaLoad('clientes', []);
+  var entree = store.filter(function (c) { return c.key === cle; })[0] || null;
+
+  var fiches = sagaFiches();
+  var fiche = fiches[cle] || null;
+  var code = (entree && entree.lettre) || (fiche && fiche.lettre) || '';
+  var nom = (entree && (entree.nom || entree.prenom))
+         || (fiche && (fiche.nom || fiche.prenom)) || cle;
+
+  sagaSave('clientes', store.filter(function (c) { return c.key !== cle; }));
+
+  if (fiche) {
+    delete fiches[cle];
+    sagaSave('clients_data', fiches);
+  }
+
+  /* Les notes suivent le code, pas la fiche : on ne les retire que si plus
+     aucune cliente ne porte ce code, sinon elles appartiennent à l'autre. */
+  var notesRetirees = 0;
+  if (code && !sagaClientesDuCode(code).length) {
+    var notes = sagaNotes();
+    var restantes = notes.filter(function (n) { return n.lettre !== code; });
+    notesRetirees = notes.length - restantes.length;
+    if (notesRetirees) sagaSaveNotes(restantes);
+  }
+
+  sagaTracer('Suppression cliente', nom + (code ? ' (' + code + ')' : ''));
+  return { nom: nom, code: code, notesRetirees: notesRetirees };
+}
+
 /* Formulaire minimal de création, ouvrable au milieu d'un autre écran :
    attribuer un article à une cliente encore inconnue ne doit pas obliger à
    quitter le live en cours. Rappelle sagaCreerCliente() puis auCreer(entree). */
@@ -1380,9 +1417,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.12.0';
+var SAGA_VERSION = '1.12.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.12.1', date: '2026-08-19', titre: 'Supprimer une cliente', points: [
+    'Une fiche cliente peut être supprimée depuis son onglet Infos — il fallait jusqu\'ici la laisser en place',
+    'L\'avertissement dit combien de ventes sont enregistrées sous son code et rappelle qu\'elles ne disparaissent pas avec la fiche',
+    'Les notes qui la concernaient sont retirées avec elle, si son code n\'est plus porté par personne'
+  ]},
   { version: '1.12.0', date: '2026-08-19', titre: 'Giveaways : plafond supprimé', points: [
     'Les frais de port des giveaways sont désormais déduits en totalité, sans plafond de 10 €',
     'Ils restent répartis entre les clientes d\'un même live au prorata de leurs ventes',
