@@ -202,12 +202,6 @@ function sagaReset() {
     .forEach(function (k) { localStorage.removeItem(k); });
 }
 
-/* Les jeux de données de travail, par opposition aux réglages (logo, identité)
-   et aux traces (journal, utilisateur courant). */
-var SAGA_CLES_DONNEES = ['lives', 'clientes', 'clients_data', 'apporteurs',
-                         'apporteurs_data', 'ventes_directes', 'agenda', 'notes',
-                         'paiements_apporteurs'];
-
 /* Rend un texte saisi inoffensif dans du HTML : sans cela, un nom contenant
    « & » ou un chevron casserait l'affichage. */
 function sagaEchapper(texte) {
@@ -325,11 +319,47 @@ function sagaFiches() {
 
 /* Taux appliqués à un code de dressing.
    Priorité à la fiche cliente saisie, puis à son entrée de liste. */
+/* ============ Dressings retirés ============
+   Supprimer une cliente qui a déjà vendu ne supprime pas ses ventes : elles
+   sont rattachées au code du dressing. Sans mémoire de son taux, le calcul
+   retombait sur les 30 % par défaut et réécrivait l'histoire — une cliente à
+   25 % voyait sa commission passer de 100 à 120 € après coup.
+
+   On garde donc, à part, ce qu'il faut pour que les montants d'hier restent
+   ceux d'hier : nom, taux, apporteur. Ces entrées ne sont pas des clientes —
+   elles n'apparaissent nulle part dans les listes — seulement de quoi lire
+   correctement un historique. */
+function sagaDressingsRetires() { return sagaLoad('dressings_retires', {}); }
+
+function sagaArchiverDressing(code, infos) {
+  if (!code) return;
+  var registre = sagaDressingsRetires();
+  registre[code] = {
+    prenom: infos.prenom || ('Dressing ' + code),
+    nom: infos.nom || infos.prenom || '',
+    commission: infos.commission,
+    apporteur: infos.apporteur || '',
+    apporteurPct: infos.apporteurPct || 0,
+    retireLe: sagaAujourdhui()
+  };
+  sagaSave('dressings_retires', registre);
+}
+
+/* Le code redevient celui d'une cliente vivante : l'archive n'a plus lieu d'être */
+function sagaOublierDressingRetire(code) {
+  var registre = sagaDressingsRetires();
+  if (!code || !registre[code]) return;
+  delete registre[code];
+  sagaSave('dressings_retires', registre);
+}
+
 function sagaTauxDressing(lettre) {
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
   var fiches = sagaFiches();
   var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
     .filter(function (f) { return f.lettre === lettre; })[0];
+  // Cliente supprimée : ses taux d'alors, pour ne pas rejouer ses ventes autrement
+  var r = sagaDressingsRetires()[lettre];
 
   function choisir() {
     for (var i = 0; i < arguments.length; i++) {
@@ -338,11 +368,13 @@ function sagaTauxDressing(lettre) {
     return arguments[arguments.length - 1];
   }
 
+  var source = fiche || c || r || null;
   return {
-    prenom: choisir(fiche && fiche.prenom, c && c.prenom, 'Dressing ' + lettre),
-    commission: choisir(fiche && fiche.commission, c && c.pct, 30),
-    apporteur: fiche ? (fiche.apporteur || '') : (c ? (c.apporteur || '') : ''),
-    apporteurPct: fiche ? (fiche.apporteurPct || 0) : 0
+    prenom: choisir(fiche && fiche.prenom, c && c.prenom, r && r.prenom, 'Dressing ' + lettre),
+    commission: choisir(fiche && fiche.commission, c && c.pct, r && r.commission, 30),
+    apporteur: source ? (source.apporteur || '') : '',
+    apporteurPct: (fiche && fiche.apporteurPct) || (r && r.apporteurPct) || 0,
+    retire: !fiche && !c && !!r
   };
 }
 
@@ -466,6 +498,8 @@ function sagaCreerCliente(champs) {
   };
   store.push(entree);
   sagaSave('clientes', store);
+  // Le code reprend du service : l'archive du dressing retiré n'a plus d'objet
+  sagaOublierDressingRetire(code);
 
   var fiches = sagaFiches();
   fiches[cle] = {
@@ -508,8 +542,9 @@ function sagaChangerCodeCliente(cle, nouveauCode) {
    ainsi que les notes qui lui étaient rattachées si son code n'est plus porté
    par personne. Les ventes, elles, restent attachées au code du dressing —
    c'est leur source, pas la fiche — et l'appelant doit en avertir. */
-function sagaSupprimerCliente(cle) {
+function sagaSupprimerCliente(cle, options) {
   if (!cle) return null;
+  options = options || {};
 
   var store = sagaLoad('clientes', []);
   var entree = store.filter(function (c) { return c.key === cle; })[0] || null;
@@ -537,8 +572,41 @@ function sagaSupprimerCliente(cle) {
     if (notesRetirees) sagaSaveNotes(restantes);
   }
 
-  sagaTracer('Suppression cliente', nom + (code ? ' (' + code + ')' : ''));
-  return { nom: nom, code: code, notesRetirees: notesRetirees };
+  /* Les ventes sont rattachées au code, pas à la fiche. Deux issues, et
+     l'appelant tranche : les emporter avec la fiche, ou les conserver — et
+     dans ce cas mémoriser le taux, sinon leurs montants changeraient. */
+  var ventesRetirees = 0;
+  if (options.supprimerVentes && code) {
+    var lives = sagaLives();
+    lives.forEach(function (live) {
+      var avant = live.articles.length;
+      live.articles = live.articles.filter(function (a) { return a.lettre !== code; });
+      ventesRetirees += avant - live.articles.length;
+      if (live.paiements) delete live.paiements[code];
+    });
+    // Un live vidé de tous ses articles n'a plus de raison d'être
+    sagaSaveLives(lives.filter(function (live) { return live.articles.length > 0; }));
+
+    var directes = sagaVentesDirectes();
+    var restantes = directes.filter(function (v) { return v.lettre !== code; });
+    ventesRetirees += directes.length - restantes.length;
+    if (restantes.length !== directes.length) sagaSaveVentesDirectes(restantes);
+
+    sagaOublierDressingRetire(code);
+  } else if (code && sagaVentesDuDressing(code).length) {
+    sagaArchiverDressing(code, {
+      prenom: (entree && entree.prenom) || (fiche && fiche.prenom) || '',
+      nom: nom,
+      commission: (fiche && fiche.commission) || (entree && entree.pct) || 30,
+      apporteur: (fiche && fiche.apporteur) || (entree && entree.apporteur) || '',
+      apporteurPct: (fiche && fiche.apporteurPct) || 0
+    });
+  }
+
+  sagaTracer('Suppression cliente', nom + (code ? ' (' + code + ')' : ''),
+             options.supprimerVentes ? ventesRetirees + ' vente(s) supprimée(s)'
+                                     : 'ventes conservées');
+  return { nom: nom, code: code, notesRetirees: notesRetirees, ventesRetirees: ventesRetirees };
 }
 
 /* Formulaire minimal de création, ouvrable au milieu d'un autre écran :
@@ -656,11 +724,12 @@ function sagaInfosCliente(lettre) {
   var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
     .filter(function (f) { return f.lettre === lettre; })[0];
   var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
+  var r = sagaDressingsRetires()[lettre];
   var t = sagaTauxDressing(lettre);
   return {
     lettre: lettre,
     prenom: t.prenom,
-    nom: (fiche && fiche.nom) || (c && c.nom) || t.prenom,
+    nom: (fiche && fiche.nom) || (c && c.nom) || (r && r.nom) || t.prenom,
     adresse: (fiche && fiche.adresse) || (c && c.adresse) || '',
     tel: (fiche && fiche.tel) || (c && c.tel) || '',
     email: (fiche && fiche.email) || (c && c.email) || '',
@@ -1425,9 +1494,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.12.2';
+var SAGA_VERSION = '1.13.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.13.0', date: '2026-08-19', titre: 'Supprimer une cliente sans réécrire le passé', points: [
+    'Supprimer une cliente qui avait vendu ramenait sa commission au taux par défaut : ses lives passés changeaient de montant. Son taux est désormais mémorisé, les chiffres d\'hier restent ceux d\'hier',
+    'La suppression demande ce qu\'il faut faire des ventes : les conserver — l\'historique reste juste et lisible — ou les supprimer avec la fiche',
+    'Le décompte annoncé distingue les lives, les ventes hors live et les articles'
+  ]},
   { version: '1.12.2', date: '2026-08-19', titre: 'Rien ne se perd en changeant de page', points: [
     'Supprimer une cliente ou un live, importer un live, réinitialiser : ces actions attendent désormais que l\'enregistrement soit parvenu au serveur avant de changer de page',
     'Si l\'enregistrement échoue, la page reste ouverte et le dit, au lieu de partir en laissant la modification derrière elle'

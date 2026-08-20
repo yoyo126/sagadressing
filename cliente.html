@@ -1188,33 +1188,121 @@
       'Relevé des ventes — ' + (CLIENT.nom || CLIENT.prenom));
   }
 
-  /* Suppression définitive de la fiche. Les ventes sont enregistrées par code
-     de dressing, pas par fiche : elles ne disparaissent pas avec elle, et le
-     dire avant vaut mieux que de le découvrir après. */
+  /* Suppression définitive de la fiche.
+     Les ventes sont enregistrées par code de dressing, pas par fiche : elles
+     ne disparaissent pas avec elle. Quand il y en a, on ne tranche pas à la
+     place de l'utilisatrice — on lui pose la question. */
   function supprimerCliente() {
     var nom = CLIENT.nom || CLIENT.prenom;
     var ventes = sagaVentesDuDressing(CLIENT.lettre);
 
-    var message = 'Supprimer définitivement la fiche de ' + nom + ' ?';
-    if (ventes.length) {
-      var total = ventes.reduce(function (s, v) { return s + v.ventes; }, 0);
-      var impayees = ventes.filter(function (v) { return !v.paye; }).length;
-      message += '\n\nAttention : ' + ventes.length + ' vente(s) pour '
-        + fmtEUR(total) + ' sont enregistrées sous le code « ' + CLIENT.lettre + ' ».'
-        + (impayees ? '\nDont ' + impayees + ' non encore réglée(s).' : '')
-        + '\n\nElles ne seront pas supprimées : elles resteront rattachées à ce code, '
-        + 'sans fiche pour le nommer. Pour conserver l\'historique lisible, préférez '
-        + 'passer la cliente en « Inactive ».';
-    } else {
-      message += '\n\nAucune vente n\'est enregistrée sous ce code : rien d\'autre ne sera perdu.';
+    if (!ventes.length) {
+      if (!confirm('Supprimer définitivement la fiche de ' + nom + ' ?\n\n'
+        + 'Aucune vente n\'est enregistrée sous ce code : rien d\'autre ne sera perdu.\n\n'
+        + 'Cette action est irréversible.')) return;
+      terminerSuppression({});
+      return;
     }
-    message += '\n\nCette action est irréversible.';
 
-    if (!confirm(message)) return;
+    var total = ventes.reduce(function (s, v) { return s + v.ventes; }, 0);
+    var impayees = ventes.filter(function (v) { return !v.paye; });
+    var duImpaye = impayees.reduce(function (s, v) { return s + v.net; }, 0);
 
-    var r = sagaSupprimerCliente(currentClientKey());
+    /* Chaque ligne est un live ou une vente hors live, pas un article : dire
+       « 1 vente » pour un live de vingt pièces induirait en erreur, sur une
+       action qui ne se rattrape pas. */
+    var nbLives = ventes.filter(function (v) { return v.origine === 'live'; }).length;
+    var nbDirectes = ventes.length - nbLives;
+    var nbArticles = ventes.reduce(function (s, v) { return s + (v.nbArticles || 0); }, 0);
+
+    function pluriel(n, mot, motPluriel) {
+      return n + ' ' + (n > 1 ? (motPluriel || mot + 's') : mot);
+    }
+    var quoi = [];
+    if (nbLives) quoi.push(pluriel(nbLives, 'live'));
+    if (nbDirectes) quoi.push(pluriel(nbDirectes, 'vente hors live', 'ventes hors live'));
+
+    var fond = document.createElement('div');
+    fond.className = 'modale';
+    fond.innerHTML =
+      '<div class="modale-boite" style="width:min(560px,100%);">' +
+        '<div class="modale-tete"><strong>Supprimer ' + sagaEchapper(nom) + '</strong>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+        '<div class="modale-corps">' +
+          '<p class="card-note" style="margin:0 0 14px;">' +
+            '<strong>' + quoi.join(' et ') + '</strong>, soit ' +
+            pluriel(nbArticles, 'article') + ' pour <strong>' + fmtEUR(total) + '</strong>, ' +
+            'sont enregistrés sous le code « ' + sagaEchapper(CLIENT.lettre) + ' »' +
+            (impayees.length
+              ? ', dont <strong>' + pluriel(impayees.length, 'non réglé') + '</strong> pour ' +
+                fmtEUR(duImpaye) + ' restant à reverser'
+              : '') + '. Que faut-il en faire ?</p>' +
+
+          '<div class="info-card" style="margin-bottom:12px;">' +
+            '<div class="info-card-title">Conserver les ventes</div>' +
+            '<p class="card-note">L\'historique et les montants restent intacts : le taux de ' +
+              CLIENT.commission + ' % de ' + sagaEchapper(CLIENT.prenom) + ' est mémorisé pour ' +
+              'que ses lives passés continuent d\'être calculés comme ils l\'ont été. ' +
+              'Son nom reste lisible sur les lives concernés.</p>' +
+            '<button class="btn btn-secondary btn-sm" style="margin-top:10px;" data-conserver>' +
+              'Supprimer la fiche, garder les ventes</button>' +
+          '</div>' +
+
+          '<div class="info-card">' +
+            '<div class="info-card-title">Tout supprimer</div>' +
+            '<p class="card-note">Ses ' + pluriel(nbArticles, 'article') + ' sont retirés des ' +
+              'lives, et un live qui n\'aurait plus aucun article disparaît. Les chiffres ' +
+              'd\'affaires et les rapports s\'en trouvent modifiés. À réserver à une fiche ' +
+              'créée par erreur.</p>' +
+            '<button class="btn btn-ghost btn-sm" style="margin-top:10px; color:var(--critical);" ' +
+              'data-tout>Tout supprimer</button>' +
+          '</div>' +
+
+          '<p class="card-note" style="margin-top:14px;">' +
+            'Vous pouvez aussi <strong>annuler</strong> et passer ' + sagaEchapper(CLIENT.prenom) +
+            ' en « Inactive » : elle disparaît des listes, sa fiche reste consultable.</p>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(fond);
+    document.body.classList.add('modale-ouverte');
+
+    function fermer() {
+      fond.remove();
+      document.body.classList.remove('modale-ouverte');
+      document.removeEventListener('keydown', auClavier);
+    }
+    function auClavier(e) { if (e.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', auClavier);
+    fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+    fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+
+    fond.querySelector('[data-conserver]').onclick = function () {
+      fermer();
+      terminerSuppression({ supprimerVentes: false });
+    };
+
+    fond.querySelector('[data-tout]').onclick = function () {
+      if (!confirm('Supprimer ' + nom + ' ET ' + pluriel(nbArticles, 'article') + ' ?\n\n'
+        + fmtEUR(total) + ' de chiffre d\'affaires disparaîtront des lives et des rapports.\n\n'
+        + 'Cette action est irréversible.')) return;
+      fermer();
+      terminerSuppression({ supprimerVentes: true });
+    };
+  }
+
+  function terminerSuppression(options) {
+    var nom = CLIENT.nom || CLIENT.prenom;
+    var r = sagaSupprimerCliente(currentClientKey(), options);
+    var details = [];
+    if (r && r.ventesRetirees) {
+      details.push(r.ventesRetirees + ' article' + (r.ventesRetirees > 1 ? 's' : ''));
+    }
     if (r && r.notesRetirees) {
-      alert(nom + ' a été supprimée, ainsi que ' + r.notesRetirees + ' note(s) la concernant.');
+      details.push(r.notesRetirees + ' note' + (r.notesRetirees > 1 ? 's' : ''));
+    }
+    if (details.length) {
+      alert(nom + ' a été supprimée, ainsi que ' + details.join(' et ') + '.');
     }
     sagaNaviguer('clientes.html');
   }
