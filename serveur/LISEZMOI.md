@@ -69,9 +69,43 @@ endroits. Plutôt que de tout réécrire en attente réseau :
    se recharge alors sur l'état du serveur plutôt que d'écraser celui d'un
    autre poste.
 
+## Reprendre les données de l'ancien CRM
+
+```bash
+python3 serveur/convertir.py export.sql etat.json
+```
+
+`export.sql` est l'export complet de l'ancienne base, fait depuis phpMyAdmin
+(structure et données, les neuf tables — le bouton « Sauvegarder mes données »
+de l'ancien CRM, lui, n'en exporte que cinq). Le script ne touche jamais à
+l'ancienne base : il lit le fichier.
+
+Il affiche un compte rendu, et surtout **recalcule les 95 anciens lives avec le
+moteur du nouveau CRM pour les comparer aux montants enregistrés à l'époque**.
+L'écart attendu est nul.
+
+Le fichier produit s'installe ensuite par `importer.php`, sur le serveur.
+
+### Ce que la conversion doit réconcilier
+
+- **Un live n'a pas le même sens.** Ancien : un live appartient à une cliente,
+  et une « session » regroupe la soirée. Nouveau : le live est la soirée, et
+  chaque article porte le code de son dressing. Les sessions deviennent donc
+  les lives, et les anciens lives leurs articles.
+- **Les codes de dressing devaient être uniques.** L'ancien les portait par
+  live : deux clientes pouvaient utiliser « C » sans se gêner, tant qu'elles
+  n'étaient pas dans la même soirée — vérifié, ce n'est jamais arrivé. Chaque
+  cliente garde son code habituel quand il est libre, sinon elle en reçoit un
+  de deux lettres, listé dans le compte rendu.
+- **Le taux de commission est figé sur les lives repris** (`tauxParCode`). Une
+  cliente passée de 30 à 20 % verrait sinon ses anciens lives recalculés au
+  nouveau taux : 406 € d'écart sur un seul cas réel.
+- **Les lignes de type « remboursement »** n'entraient dans aucun calcul de
+  l'ancien CRM. Les reprendre comme ventes aurait changé l'historique : elles
+  deviennent des notes, et le compte rendu les signale.
+
 ## Ce qui manque encore
 
-- Le convertisseur des données de l'ancien CRM
 - La sauvegarde automatique de la base (Tâches cron d'IONOS)
 - La gestion des comptes dans les Paramètres, encore adossée à une liste
   locale et non aux vrais comptes de la table `utilisateurs`

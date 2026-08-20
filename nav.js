@@ -759,13 +759,22 @@ function sagaDecompte(live, lettre) {
   var giveaways = arts.filter(function (a) { return a.type === 'giveaway'; })
                       .reduce(function (s, a) { return s + a.montant; }, 0);
   var t = sagaTauxDressing(lettre);
+
+  /* Taux figé sur le live, s'il en porte un.
+     Les lives repris de l'ancien CRM gardent le taux avec lequel ils ont été
+     réglés à l'époque : une cliente passée de 30 à 20 % verrait sinon ses
+     anciens lives recalculés au nouveau taux, et l'historique cesserait de
+     correspondre à ce qui lui a été versé. */
+  var pctSaga = (live.tauxParCode && live.tauxParCode[lettre] !== undefined)
+    ? live.tauxParCode[lettre] : t.commission;
+
   // Une vente hors Whatnot ne supporte pas les frais de la plateforme
   var soumisFrais = arts.filter(function (a) { return a.type === 'vente'; })
                         .reduce(function (s, a) { return s + a.montant; }, 0);
   var horsLive = arts.filter(function (a) { return a.type === 'horslive'; })
                      .reduce(function (s, a) { return s + a.montant; }, 0);
   var base = sagaCentimes(soumisFrais * (1 - (live.fraisPct || 0) / 100) + horsLive);
-  var commSaga = sagaCentimes(base * t.commission / 100);
+  var commSaga = sagaCentimes(base * pctSaga / 100);
   var commApporteur = t.apporteur ? sagaCentimes(base * t.apporteurPct / 100) : 0;
 
   /* Giveaways : le montant remonté par Whatnot correspond aux frais de port
@@ -776,6 +785,7 @@ function sagaDecompte(live, lettre) {
   var paiement = (live.paiements || {})[lettre] || null;
   return {
     lettre: lettre, prenom: t.prenom, articles: arts,
+    pctSaga: pctSaga, tauxFige: pctSaga !== t.commission,
     ventes: sagaCentimes(ventes), giveaways: sagaCentimes(giveaways), base: base,
     portGiveaway: sagaCentimes(portGiveaway),
     commSaga: commSaga, commApporteur: commApporteur, apporteur: t.apporteur,
