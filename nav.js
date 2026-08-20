@@ -1504,9 +1504,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.13.0';
+var SAGA_VERSION = '1.13.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.13.1', date: '2026-08-19', titre: 'Les réglages d\'envoi sont enfin enregistrés', points: [
+    'Le bouton « Enregistrer » des emails ne faisait que changer son propre libellé : les réglages sont désormais réellement conservés',
+    'Les mots de passe de boîte et clés d\'API ne se saisissent plus ici — ils seraient lisibles par tous les comptes ; leur place est dans la configuration du serveur',
+    'Le bouton de test annonçait un envoi qui n\'avait jamais lieu ; il dit maintenant que l\'envoi n\'est pas raccordé'
+  ]},
   { version: '1.13.0', date: '2026-08-19', titre: 'Supprimer une cliente sans réécrire le passé', points: [
     'Supprimer une cliente qui avait vendu ramenait sa commission au taux par défaut : ses lives passés changeaient de montant. Son taux est désormais mémorisé, les chiffres d\'hier restent ceux d\'hier',
     'La suppression demande ce qu\'il faut faire des ventes : les conserver — l\'historique reste juste et lisible — ou les supprimer avec la fiche',

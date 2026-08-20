@@ -437,7 +437,7 @@
 
         <!-- ============ ENVOI DES EMAILS ============ -->
         <div class="tab-panel" id="tab-email" data-panel-group="param" style="margin-top:20px;">
-          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Pas encore branché.</strong> Aucun email ne part pour l'instant : le CRM est un site sans serveur, il ne peut pas expédier de courrier. Les réglages ci-dessous sont conservés et serviront le jour où l'envoi sera raccordé.</span></div>
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>L'envoi n'est pas encore raccordé.</strong> Aucun email ne part pour l'instant — rien, dans le CRM, ne sait encore expédier de courrier. Les réglages ci-dessous sont bien enregistrés et attendent ce raccordement. Les mots de passe et clés d'API, eux, ne sont jamais conservés ici : ils vivront dans la configuration du serveur, hors de portée des comptes.</span></div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Envoi des emails</h2>
           </div>
@@ -497,7 +497,8 @@
               <div id="serviceFields">
                 <div class="form-field">
                   <label class="form-label" for="apiKey">Clé API du service</label>
-                  <input class="form-input" type="password" id="apiKey" placeholder="••••••••••••••••" />
+                  <input class="form-input" type="password" id="apiKey" placeholder="à déposer sur le serveur" disabled />
+                  <span class="card-note">Une clé saisie ici serait enregistrée avec le reste des données, donc lisible par tous les comptes. Elle se dépose dans le fichier de configuration du serveur.</span>
                   <span class="card-note">Compte à créer chez Brevo (gratuit jusqu'à 300 emails/jour) ou Postmark, puis coller la clé ici.</span>
                 </div>
               </div>
@@ -523,13 +524,14 @@
                 </div>
                 <div class="form-field">
                   <label class="form-label" for="smtpPass">Mot de passe de cette boîte</label>
-                  <input class="form-input" type="password" id="smtpPass" placeholder="••••••••••" />
+                  <input class="form-input" type="password" id="smtpPass" placeholder="à déposer sur le serveur" disabled />
+                  <span class="card-note">Même raison : il vivra dans la configuration du serveur, jamais dans les données du CRM.</span>
                   <span class="card-note">Stocké chiffré. Celui de la boîte technique, jamais celui de votre messagerie personnelle.</span>
                 </div>
               </div>
 
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <button class="btn btn-primary btn-sm" onclick="saveMail()">Enregistrer</button>
+                <button class="btn btn-primary btn-sm" onclick="saveMail(this)">Enregistrer</button>
                 <button class="btn btn-secondary btn-sm" onclick="testMail()">Envoyer un email de test</button>
                 <span class="card-note" id="mailTestResult" style="display:none;"></span>
               </div>
@@ -1315,18 +1317,56 @@
         h.titre + '</div><p class="card-note">' + h.texte + '</p>';
   }
 
-  function saveMail() {
+  /* Réglages d'envoi. Tout est conservé sauf les secrets : une clé d'API ou un
+     mot de passe de boîte se retrouverait dans les données partagées, donc
+     lisible par n'importe quel compte du CRM. Ils vivent côté serveur. */
+  var CHAMPS_MAIL = ['mailMethod', 'mailFrom', 'mailName', 'mailReply',
+                     'smtpHost', 'smtpPort', 'smtpSec', 'smtpUser'];
+  var CHAMPS_EXPEDITEUR = ['ysSenderName', 'ysReplyTo'];
+
+  function chargerReglagesMail() {
+    var c = sagaLoad('mail_config', null);
+    if (c) {
+      CHAMPS_MAIL.concat(CHAMPS_EXPEDITEUR).forEach(function (id) {
+        if (c[id] !== undefined && document.getElementById(id)) {
+          document.getElementById(id).value = c[id];
+        }
+      });
+    }
+    majPastilleMail(!!c);
+  }
+
+  function majPastilleMail(configure) {
     var chip = document.getElementById('mailChip');
-    chip.textContent = 'Configuré';
-    chip.className = 'chip good';
+    chip.textContent = configure ? 'Réglé, en attente du raccordement' : 'À configurer';
+    chip.className = configure ? 'chip neutral' : 'chip warn';
+  }
+
+  function enregistrerReglagesMail() {
+    var c = sagaLoad('mail_config', {});
+    CHAMPS_MAIL.concat(CHAMPS_EXPEDITEUR).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) c[id] = el.value;
+    });
+    return sagaSave('mail_config', c);
+  }
+
+  function saveMail(btn) {
+    if (enregistrerReglagesMail() === false) return;
+    majPastilleMail(true);
+    sagaTracer('Réglages d\'envoi', 'emails techniques');
+    if (btn) {
+      btn.textContent = 'Enregistré ✓';
+      setTimeout(function () { btn.textContent = 'Enregistrer'; }, 1800);
+    }
   }
 
   function testMail() {
     var res = document.getElementById('mailTestResult');
     res.style.display = 'inline';
-    res.style.color = 'var(--good)';
-    res.textContent = '✓ Email de test envoyé à ' + document.getElementById('mailReply').value;
-    setTimeout(function () { res.style.display = 'none'; }, 4000);
+    res.style.color = 'var(--ink-muted)';
+    res.textContent = 'Impossible pour l\'instant : l\'envoi n\'est pas raccordé.';
+    setTimeout(function () { res.style.display = 'none'; }, 5000);
   }
 
   // Aperçu de ce que voit la cliente quand elle reçoit un contrat
@@ -1338,6 +1378,8 @@
 
   function saveSender(btn) {
     refreshSenderPreview();
+    if (enregistrerReglagesMail() === false) return;
+    sagaTracer('Réglages d\'envoi', 'expéditeur des contrats');
     btn.textContent = 'Enregistré ✓';
     setTimeout(function () { btn.textContent = 'Enregistrer'; }, 1800);
   }
@@ -1358,6 +1400,7 @@
   /* Les exemples ne sont pas recopiés dans le navigateur : ils s'affichent tant
      que rien n'a été enregistré. Les charger par-dessus des données existantes
      ne montrerait donc rien — le bouton le dit plutôt que de faire semblant. */
+  chargerReglagesMail();
   switchMailMethod();
   refreshSenderPreview();
 </script>
