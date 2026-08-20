@@ -1504,9 +1504,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.13.1';
+var SAGA_VERSION = '1.14.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.14.0', date: '2026-08-19', titre: 'Sauvegarde automatique', points: [
+    'Le serveur enregistre chaque nuit une copie complète — état du CRM, comptes et réglages — conservée trente jours',
+    'Les copies sont écrites dans un dossier que le web ne sert pas : une sauvegarde téléchargeable par n\'importe qui serait pire que pas de sauvegarde',
+    'Un bouton dans Paramètres → Données permet d\'en télécharger une à tout moment, pour la ranger hors du serveur'
+  ]},
   { version: '1.13.1', date: '2026-08-19', titre: 'Les réglages d\'envoi sont enfin enregistrés', points: [
     'Le bouton « Enregistrer » des emails ne faisait que changer son propre libellé : les réglages sont désormais réellement conservés',
     'Les mots de passe de boîte et clés d\'API ne se saisissent plus ici — ils seraient lisibles par tous les comptes ; leur place est dans la configuration du serveur',

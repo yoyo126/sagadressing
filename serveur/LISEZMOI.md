@@ -104,8 +104,33 @@ Le fichier produit s'installe ensuite par `importer.php`, sur le serveur.
   l'ancien CRM. Les reprendre comme ventes aurait changé l'historique : elles
   deviennent des notes, et le compte rendu les signale.
 
+## Sauvegarde
+
+`sauvegarde.php` écrit une copie complète — état du CRM, comptes, réglages —
+dans `sauvegardes/`, un dossier que le serveur web ne sert pas. Les fichiers
+sont compressés, conservés trente jours, et chaque passage laisse une ligne
+dans `sauvegardes/journal.txt`.
+
+Trois façons de l'appeler :
+
+| Comment | Ce qu'il faut |
+|---|---|
+| Ligne de commande, par la tâche cron | rien : un script lancé ainsi ne vient que du serveur |
+| Adresse `sauvegarde.php?cle=…` | la clé `cle_sauvegarde` de `config.php` |
+| Bouton dans Paramètres → Données | être connectée en administrateur |
+
+L'historique des versions n'est pas sauvegardé : c'en est déjà un, et il
+doublerait le volume.
+
+Une sauvegarde qui dort sur le serveur qu'elle protège ne protège que des
+fausses manœuvres. Télécharger une copie de temps en temps, et la ranger
+ailleurs, reste nécessaire — d'où le bouton dans les Paramètres.
+
 ## Ce qui manque encore
 
-- La sauvegarde automatique de la base (Tâches cron d'IONOS)
 - La gestion des comptes dans les Paramètres, encore adossée à une liste
   locale et non aux vrais comptes de la table `utilisateurs`
+- L'envoi d'emails : rien, dans le CRM, ne sait expédier de courrier. Les
+  réglages existent et sont conservés, mais aucun message ne part. Ses deux
+  premiers usages — inviter un compte, réinitialiser un mot de passe — sont
+  ceux de la gestion des comptes : les deux chantiers vont ensemble.

@@ -37,7 +37,7 @@ PAGES = ['dashboard', 'clientes', 'cliente', 'lives', 'live',
 FICHIERS_SERVEUR = ['.htaccess', 'db.php', 'lib_auth.php', 'entete.php',
                     'api.php', 'login.php', 'logout.php', 'server-sync.js',
                     'schema.sql', 'verifier.php', 'config.example.php',
-                    'importer.php']
+                    'importer.php', 'sauvegarde.php']
 
 # Fichiers de l'application à déposer tels quels
 FICHIERS_APP = ['style.css', 'nav.js', 'saga-pdf.js']

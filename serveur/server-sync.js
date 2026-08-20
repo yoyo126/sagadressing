@@ -288,6 +288,12 @@
     }
   }
 
+  /* Certains blocs n'ont de sens qu'avec un serveur — la sauvegarde, par
+     exemple. Ils sont masqués dans la version sans serveur, et révélés ici. */
+  document.querySelectorAll('[data-serveur-seulement]').forEach(function (el) {
+    el.style.display = '';
+  });
+
   window.sagaVersionEtat = function () { return etatVersion; };
   window.sagaEnvoyerMaintenant = envoyerMaintenant;
 })();

@@ -22,4 +22,10 @@ return [
 
     /* Nom affiché dans les pages et les documents. */
     'site_nom' => 'Saga Dressing',
+
+    /* Clé de la sauvegarde automatique. Elle n'est utile que si la tâche
+       planifiée appelle une adresse plutôt qu'un script : sans elle, la
+       sauvegarde serait déclenchable par n'importe qui. Prenez une suite
+       de caractères au hasard, longue, et gardez-la pour vous. */
+    'cle_sauvegarde' => '',
 ];
