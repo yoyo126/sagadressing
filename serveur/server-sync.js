@@ -13,6 +13,11 @@
      · le serveur refuse un enregistrement parti d'une version périmée, ce qui
        signale qu'un autre poste a modifié entre-temps.
 
+   Une action qui change de page aussitôt après avoir enregistré — supprimer,
+   importer un live — doit attendre que l'envoi soit parvenu au serveur : sans
+   cela, la page suivante recharge un état où la modification n'existe pas.
+   C'est le rôle de sagaNaviguer() et sagaRecharger(), redéfinies ici.
+
    Ce fichier se charge juste après nav.js, dont il enveloppe les fonctions.
    ============================================================ */
 
@@ -29,9 +34,8 @@
   var etatVersion = 0;
   var jeton = '';
   var minuteur = null;
-  var envoiEnCours = false;
-  var envoiDemande = false;
-  var enAttente = false;      // vrai tant qu'une modification n'est pas partie
+  var enAttente = false;        // vrai tant qu'une modification n'est pas partie
+  var file = Promise.resolve(); // les envois se suivent, jamais en parallèle
 
   /* ---------- Contexte fourni par la page ---------- */
   function lireBalise(id) {
@@ -107,18 +111,18 @@
     bandeau.textContent = texte;
     bandeau.dataset.genre = genre || 'info';
     bandeau.style.display = 'block';
-    if (genre !== 'erreur') {
-      clearTimeout(afficher._t);
+    clearTimeout(afficher._t);
+    if (genre === 'ok') {
       afficher._t = setTimeout(function () { bandeau.style.display = 'none'; }, 2200);
     }
   }
 
-  /* ---------- Envoi ---------- */
-  function envoyer() {
-    if (envoiEnCours) { envoiDemande = true; return; }
-    envoiEnCours = true;
+  /* ---------- Un envoi ----------
+     Renvoie une promesse tenue avec true si le serveur a bien enregistré. */
+  function envoiUnique() {
+    if (!enAttente) return Promise.resolve(true);
 
-    fetch('api.php?action=ecrire', {
+    return fetch('api.php?action=ecrire', {
       method: 'POST',
       credentials: 'same-origin',
       headers: {
@@ -139,14 +143,11 @@
       });
     })
     .then(function (r) {
-      envoiEnCours = false;
-
       if (r.code === 200) {
         etatVersion = r.corps.version;
         enAttente = false;
         afficher('Enregistré', 'ok');
-        if (envoiDemande) { envoiDemande = false; envoyer(); }
-        return;
+        return true;
       }
 
       if (r.code === 409) {
@@ -155,34 +156,48 @@
            sa dernière saisie en connaissance de cause. */
         etatVersion = r.corps.version;
         afficher('Modifié sur un autre appareil — rechargement…', 'erreur');
-        setTimeout(function () { location.reload(); }, 2500);
-        return;
+        setTimeout(function () { window.location.reload(); }, 2500);
+        return false;
       }
 
       if (r.code === 401) {
         afficher('Session expirée — reconnexion…', 'erreur');
-        setTimeout(function () { location.href = 'login.php'; }, 1500);
-        return;
+        setTimeout(function () { window.location.href = 'login.php'; }, 1500);
+        return false;
       }
 
       if (!r.corps) {
         afficher('Le serveur a répondu une erreur (code ' + r.code + ')', 'erreur');
-        return;
+        return false;
       }
       afficher(r.corps.message || 'Enregistrement refusé', 'erreur');
+      return false;
     })
     .catch(function () {
-      envoiEnCours = false;
       /* Réseau coupé : la saisie n'est pas perdue, elle est dans le navigateur.
          On le dit clairement plutôt que de laisser croire que c'est enregistré. */
       afficher('Hors ligne — vos modifications ne sont pas encore enregistrées', 'erreur');
+      return false;
     });
+  }
+
+  /* Les envois s'enchaînent : deux ne partent jamais en même temps, sans quoi
+     le second se ferait refuser pour version périmée par le premier. */
+  function envoyer() {
+    file = file.then(envoiUnique, envoiUnique);
+    return file;
   }
 
   function programmerEnvoi() {
     enAttente = true;
     clearTimeout(minuteur);
     minuteur = setTimeout(envoyer, DELAI_ENVOI);
+  }
+
+  /* Envoi immédiat de ce qui attend, sans patienter le délai habituel. */
+  function envoyerMaintenant() {
+    clearTimeout(minuteur);
+    return envoyer();
   }
 
   /* ---------- On enveloppe l'enregistrement local ---------- */
@@ -199,17 +214,38 @@
     programmerEnvoi();
   };
 
-  /* Une fermeture d'onglet ne doit pas emporter une saisie non envoyée. */
-  window.addEventListener('beforeunload', function (e) {
-    if (enAttente) {
-      clearTimeout(minuteur);
-      // Envoi de dernière chance, qui survit à la fermeture de la page
-      try {
-        navigator.sendBeacon('api.php?action=ecrire&beacon=1',
-          new Blob([JSON.stringify({ version: etatVersion, etat: etatComplet(), jeton: jeton })],
-                   { type: 'application/json' }));
-      } catch (err) { /* rien à faire de plus */ }
-    }
+  /* ---------- Changer de page sans rien perdre ----------
+     Sans serveur, ces deux fonctions partaient sur-le-champ. Ici, elles
+     attendent que l'enregistrement soit arrivé : la page suivante relit
+     l'état depuis le serveur, et partir trop tôt revenait à annuler ce que
+     l'on venait de faire. En cas d'échec, on ne bouge pas — mieux vaut
+     rester sur une page où la saisie existe encore. */
+  function partir(vers) {
+    if (!enAttente) { vers(); return; }
+    afficher('Enregistrement…', 'info');
+    envoyerMaintenant().then(function (ok) {
+      if (ok) { vers(); return; }
+      afficher('Non enregistré : la page reste ouverte pour ne rien perdre.', 'erreur');
+    });
+  }
+
+  window.sagaNaviguer = function (url) {
+    partir(function () { window.location.href = url; });
+  };
+
+  window.sagaRecharger = function () {
+    partir(function () { window.location.reload(); });
+  };
+
+  /* Fermeture de l'onglet : envoi de dernière chance, qui survit à la page. */
+  window.addEventListener('beforeunload', function () {
+    if (!enAttente) return;
+    clearTimeout(minuteur);
+    try {
+      navigator.sendBeacon('api.php?action=ecrire',
+        new Blob([JSON.stringify({ version: etatVersion, etat: etatComplet(), jeton: jeton })],
+                 { type: 'application/json' }));
+    } catch (err) { /* rien de plus à tenter */ }
   });
 
   /* ---------- Identité réelle et déconnexion ----------
@@ -219,7 +255,7 @@
      l'application vivait dans un seul navigateur. */
   var rendreMenu = window.renderSagaSidebar;
   if (typeof rendreMenu === 'function') {
-    window.renderSagaSidebar = function (cle) {
+    window.renderSagaSidebar = function () {
       var r = rendreMenu.apply(this, arguments);
       corrigerMenu();
       return r;
@@ -233,9 +269,8 @@
     var pied = document.querySelector('.sidebar-foot');
     if (!pied) return;
 
-    var nomComplet = (moi.prenom + ' ' + moi.nom).trim() || moi.email;
     var nom = pied.querySelector('.user-name');
-    if (nom) nom.textContent = nomComplet;
+    if (nom) nom.textContent = (moi.prenom + ' ' + moi.nom).trim() || moi.email;
 
     var avatar = pied.querySelector('.user-avatar');
     if (avatar) {
@@ -254,4 +289,5 @@
   }
 
   window.sagaVersionEtat = function () { return etatVersion; };
+  window.sagaEnvoyerMaintenant = envoyerMaintenant;
 })();

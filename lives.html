@@ -477,7 +477,7 @@
 
     sagaTracer('Import Whatnot', live.titre,
       ANALYSE.ventes.length + ' ventes · ' + eurPrecis(ANALYSE.totalVentes));
-    window.location.href = 'live.html?l=' + encodeURIComponent(live.id);
+    sagaNaviguer('live.html?l=' + encodeURIComponent(live.id));
   }
 
   document.getElementById('statusToggle').addEventListener('click', (e) => {

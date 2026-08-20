@@ -730,7 +730,7 @@
     var restants = LIVES.filter(function (l) { return l.id !== LIVE.id; });
     sagaSaveLives(restants);
     sagaTracer('Suppression live', LIVE.titre, sagaDateFR(LIVE.date));
-    window.location.href = 'lives.html';
+    sagaNaviguer('lives.html');
   }
 
   /* ============ Rendu ============ */

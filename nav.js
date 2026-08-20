@@ -188,6 +188,14 @@ function sagaAssainirLexistant() {
 }
 sagaAssainirLexistant();
 
+/* ============ Changer de page après un enregistrement ============
+   Sans serveur, il n'y a rien à attendre : on part. Avec un serveur,
+   server-sync.js redéfinit ces deux fonctions pour laisser à
+   l'enregistrement le temps d'arriver — sans quoi la page suivante
+   relit un état où la modification n'existe pas encore. */
+function sagaNaviguer(url) { window.location.href = url; }
+function sagaRecharger() { window.location.reload(); }
+
 function sagaReset() {
   Object.keys(localStorage)
     .filter(function (k) { return k.indexOf(SAGA_PREFIX) === 0; })
@@ -1417,9 +1425,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.12.1';
+var SAGA_VERSION = '1.12.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.12.2', date: '2026-08-19', titre: 'Rien ne se perd en changeant de page', points: [
+    'Supprimer une cliente ou un live, importer un live, réinitialiser : ces actions attendent désormais que l\'enregistrement soit parvenu au serveur avant de changer de page',
+    'Si l\'enregistrement échoue, la page reste ouverte et le dit, au lieu de partir en laissant la modification derrière elle'
+  ]},
   { version: '1.12.1', date: '2026-08-19', titre: 'Supprimer une cliente', points: [
     'Une fiche cliente peut être supprimée depuis son onglet Infos — il fallait jusqu\'ici la laisser en place',
     'L\'avertissement dit combien de ventes sont enregistrées sous son code et rappelle qu\'elles ne disparaissent pas avec la fiche',
