@@ -306,14 +306,6 @@
         <div class="tab-panel" id="tab-users" data-panel-group="param" style="margin-top:20px;">
           <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Cette liste n'est pas celle des accès.</strong> Elle sert à organiser les rôles ; les comptes qui peuvent réellement se connecter se gèrent à part.</span></div>
 
-          <div class="info-card" style="margin-bottom:18px; display:none;" data-serveur-seulement>
-            <div class="info-card-title">Accès au CRM</div>
-            <p class="card-note">
-              Créer un accès, changer un rôle, remplacer un mot de passe oublié : tout se passe
-              sur la page des comptes. Chacun peut y changer le sien.
-            </p>
-            <a class="btn btn-secondary btn-sm" style="margin-top:12px;" href="comptes.php">Gérer les accès</a>
-          </div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Comptes</h2>
             <div style="display:flex; align-items:center; gap:12px;">
@@ -765,7 +757,13 @@
   }
 
   function renderUsers() {
-    document.getElementById('usersBody').innerHTML = users.map(function (u) {
+    /* Côté serveur, cet onglet montre les vrais comptes : le tableau de la
+       maquette n'y est pas. On s'arrête là plutôt que d'interrompre le reste
+       du démarrage de la page. */
+    var corps = document.getElementById('usersBody');
+    if (!corps) return;
+
+    corps.innerHTML = users.map(function (u) {
       var statusChip = u.status === 'invited'
         ? '<span class="chip warn">Invitation envoyée</span>'
         : '<span class="chip good">Actif</span>';
@@ -794,7 +792,8 @@
 
     var actives = users.filter(function (u) { return u.status === 'active'; }).length;
     var invited = users.length - actives;
-    document.getElementById('userCount').textContent =
+    var compteur = document.getElementById('userCount');
+    if (compteur) compteur.textContent =
       actives + ' actif' + (actives > 1 ? 's' : '') + (invited ? ' · ' + invited + ' en attente' : '');
   }
 

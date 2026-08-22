@@ -37,7 +37,8 @@ PAGES = ['dashboard', 'clientes', 'cliente', 'lives', 'live',
 FICHIERS_SERVEUR = ['.htaccess', 'db.php', 'lib_auth.php', 'entete.php',
                     'api.php', 'login.php', 'logout.php', 'server-sync.js',
                     'schema.sql', 'verifier.php', 'config.example.php',
-                    'importer.php', 'sauvegarde.php', 'comptes.php']
+                    'importer.php', 'sauvegarde.php',
+                    'comptes_actions.php', 'comptes_bloc.php']
 
 # Fichiers de l'application à déposer tels quels
 FICHIERS_APP = ['style.css', 'nav.js', 'saga-pdf.js']
@@ -59,6 +60,38 @@ def rediriger_liens(texte):
     return texte
 
 
+def remplacer_onglet_utilisateurs(html):
+    """Substitue la gestion réelle des accès à la liste de la maquette.
+
+    La maquette organise des rôles sans connexion derrière ; sur le serveur,
+    c'est la table `utilisateurs` qui fait foi. Plutôt que deux endroits — une
+    page à part, et un onglet qui n'en est pas une —, l'onglet devient le seul.
+    """
+    if 'id="tab-users"' not in html:
+        return html
+
+    debut = html.index('<div class="tab-panel" id="tab-users"')
+    ouverture = html.index('>', debut) + 1
+
+    # Fin du panneau : on suit l'imbrication des <div> jusqu'à sa fermeture
+    profondeur, i = 1, ouverture
+    while profondeur > 0:
+        suivant_ouvre = html.find('<div', i)
+        suivant_ferme = html.find('</div>', i)
+        if suivant_ferme == -1:
+            raise ValueError('panneau tab-users non refermé')
+        if suivant_ouvre != -1 and suivant_ouvre < suivant_ferme:
+            profondeur += 1
+            i = suivant_ouvre + 4
+        else:
+            profondeur -= 1
+            i = suivant_ferme + 6
+
+    return (html[:ouverture]
+            + "\n<?php require __DIR__ . '/comptes_bloc.php'; ?>\n"
+            + html[i - 6:])
+
+
 def convertir(html):
     """Transforme une page de l'application en page servie par PHP."""
 
@@ -70,7 +103,10 @@ def convertir(html):
         raise ValueError('page sans </head>')
     html = html.replace('</head>', "<?= saga_script_etat() ?>\n</head>", 1)
 
-    # 3. La synchronisation se greffe juste après nav.js
+    # 3. L'onglet Utilisateurs montre les vrais accès, pas la liste de la maquette
+    html = remplacer_onglet_utilisateurs(html)
+
+    # 4. La synchronisation se greffe juste après nav.js
     if '<script src="nav.js"></script>' not in html:
         raise ValueError('page sans nav.js')
     html = html.replace(

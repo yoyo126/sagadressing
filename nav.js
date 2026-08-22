@@ -1504,9 +1504,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.15.0';
+var SAGA_VERSION = '1.15.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.15.1', date: '2026-08-19', titre: 'Les accès sont là où on les cherche', points: [
+    'La gestion des accès rejoint l\'onglet « Utilisateurs » des Paramètres, à la place de la liste de démonstration — il n\'y a plus deux endroits pour une seule chose',
+    'Après une création ou une modification, la page revient sur le bon onglet, et un rafraîchissement ne rejoue plus l\'action'
+  ]},
   { version: '1.15.0', date: '2026-08-19', titre: 'Vrais comptes, et remise à zéro mise sous clé', points: [
     'Des accès peuvent enfin être créés : la page des comptes gère les vraies connexions, avec leurs rôles',
     'Chacun peut y changer son propre mot de passe, sans passer par quelqu\'un d\'autre',

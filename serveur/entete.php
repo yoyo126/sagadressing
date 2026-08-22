@@ -13,9 +13,15 @@
    ============================================================ */
 
 require_once __DIR__ . '/lib_auth.php';
+require_once __DIR__ . '/comptes_actions.php';
 saga_exiger_connexion();
 
 $SAGA_UTILISATEUR = saga_utilisateur();
+
+/* Les formulaires de comptes sont traités ici, avant que la page ne
+   s'écrive : c'est ce qui permet de rediriger ensuite, et donc qu'un
+   rafraîchissement ne rejoue pas l'action. */
+saga_traiter_comptes();
 
 function saga_etat_initial()
 {
