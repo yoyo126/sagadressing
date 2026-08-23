@@ -184,8 +184,13 @@
             </p>
           </div>
           <div class="panel">
-            <div class="panel-head"><h2>Encaissement Whatnot</h2></div>
+            <div class="panel-head">
+              <h2>Virement Whatnot</h2>
+              <span class="chip" id="encaisseChip">—</span>
+            </div>
             <div class="info-list" id="encaisseList"></div>
+            <p class="card-note" id="encaisseNote" style="margin-top:12px;"></p>
+            <div style="display:flex; gap:10px; margin-top:12px;" id="encaisseActions"></div>
           </div>
         </div>
       </div>
@@ -249,17 +254,128 @@
     meta.push(LIVE.fraisPct
       ? 'frais Whatnot ' + LIVE.fraisPct + ' %'
       : 'montants nets des frais Whatnot');
-    meta.push(LIVE.encaisse && LIVE.encaisse.date
-      ? 'reçu le ' + sagaDateLongue(LIVE.encaisse.date)
-      : 'encaissement en attente');
+    var enc = sagaEncaissement(LIVE);
+    meta.push(enc.recu
+      ? 'virement de ' + sagaEUR(enc.montant === null ? enc.attendu : enc.montant)
+        + ' reçu le ' + sagaDateLongue(enc.date)
+      : sagaEUR(enc.attendu) + ' à recevoir de Whatnot');
     document.getElementById('liveMeta').textContent = meta.join(' · ');
 
-    document.getElementById('encaisseList').innerHTML =
-      '<div class="info-row"><span class="k">Statut</span><span class="v"><span class="chip good">' +
-        ((LIVE.encaisse && LIVE.encaisse.statut) || 'En attente') + '</span></span></div>' +
-      '<div class="info-row"><span class="k">Date</span><span class="v">' +
-        sagaDateLongue(LIVE.encaisse && LIVE.encaisse.date) + '</span></div>' +
-      '<div class="info-row"><span class="k">Montant</span><span class="v tabular">' + sagaEUR(t.ventes) + '</span></div>';
+    renderEncaissement();
+  }
+
+  /* ============ Virement reçu de Whatnot ============
+     Ce que Whatnot verse pour ce live, à ne pas confondre avec ce qui est
+     ensuite reversé aux clientes. Le montant attendu est le chiffre
+     d'affaires encaissé ; le montant reçu se saisit tel qu'il figure sur le
+     relevé bancaire, et l'écart éventuel est montré, pas corrigé. */
+  function renderEncaissement() {
+    var e = sagaEncaissement(LIVE);
+    var chip = document.getElementById('encaisseChip');
+    chip.textContent = e.recu ? 'Reçu' : 'En attente';
+    chip.className = e.recu ? 'chip good' : 'chip warn';
+
+    var lignes =
+      '<div class="info-row"><span class="k">Attendu</span>' +
+        '<span class="v tabular">' + sagaEUR(e.attendu) + '</span></div>';
+
+    if (e.recu) {
+      lignes +=
+        '<div class="info-row"><span class="k">Reçu</span><span class="v tabular"><strong>' +
+          sagaEUR(e.montant === null ? e.attendu : e.montant) + '</strong></span></div>' +
+        '<div class="info-row"><span class="k">Date</span><span class="v">' +
+          (e.date ? sagaDateLongue(e.date) : '—') + '</span></div>' +
+        (e.reference
+          ? '<div class="info-row"><span class="k">Référence</span><span class="v">' +
+            sagaEchapper(e.reference) + '</span></div>'
+          : '');
+    }
+
+    document.getElementById('encaisseList').innerHTML = lignes;
+
+    var note = document.getElementById('encaisseNote');
+    if (!e.recu) {
+      note.textContent = 'Montant que Whatnot doit verser pour ce live, une fois les frais de '
+        + 'port des giveaways retenus.';
+      note.style.color = '';
+    } else if (Math.abs(e.ecart) >= 0.01) {
+      note.innerHTML = '<strong style="color:var(--warn);">Écart de ' + sagaEUR(Math.abs(e.ecart))
+        + '</strong> entre le virement et le montant attendu — '
+        + (e.ecart > 0 ? 'reçu davantage' : 'reçu moins') + '. À rapprocher du relevé Whatnot.';
+    } else {
+      note.textContent = 'Le virement correspond au montant attendu.';
+      note.style.color = '';
+    }
+
+    document.getElementById('encaisseActions').innerHTML = e.recu
+      ? '<button class="btn btn-ghost btn-sm" onclick="annulerEncaissement()">Annuler le virement</button>'
+      : '<button class="btn btn-secondary btn-sm" onclick="ouvrirEncaissement()">Marquer le virement reçu</button>';
+  }
+
+  function ouvrirEncaissement() {
+    var e = sagaEncaissement(LIVE);
+    var fond = document.createElement('div');
+    fond.className = 'modale';
+    fond.innerHTML =
+      '<div class="modale-boite" style="width:min(440px,100%);">' +
+        '<div class="modale-tete"><strong>Virement reçu de Whatnot</strong>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+        '<div class="modale-corps">' +
+          '<p class="card-note" style="margin-bottom:14px;">' + sagaEchapper(LIVE.titre) +
+            ' — montant attendu <strong>' + sagaEUR(e.attendu) + '</strong>.</p>' +
+          '<div class="form-field"><label class="form-label" for="encDate">Date du virement</label>' +
+            '<input class="form-input" type="date" id="encDate" value="' + sagaAujourdhui() + '" /></div>' +
+          '<div class="form-field" style="margin-top:12px;">' +
+            '<label class="form-label" for="encMontant">Montant reçu (€)</label>' +
+            '<input class="form-input" type="number" step="0.01" id="encMontant" value="' +
+              e.attendu.toFixed(2) + '" />' +
+            '<span class="card-note">Saisissez ce qui figure sur le relevé : un écart avec le ' +
+              'montant attendu sera signalé, jamais masqué.</span></div>' +
+          '<div class="form-field" style="margin-top:12px;">' +
+            '<label class="form-label" for="encRef">Référence (facultatif)</label>' +
+            '<input class="form-input" id="encRef" placeholder="Ex. libellé du virement" /></div>' +
+          '<div style="display:flex; gap:10px; margin-top:18px;">' +
+            '<button class="btn btn-primary btn-sm" data-valider>Enregistrer</button>' +
+            '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(fond);
+    document.body.classList.add('modale-ouverte');
+    sagaInitCalendriers(fond);
+
+    function fermer() {
+      fond.remove();
+      document.body.classList.remove('modale-ouverte');
+      document.removeEventListener('keydown', auClavier);
+    }
+    function auClavier(ev) { if (ev.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', auClavier);
+    fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+    fond.addEventListener('mousedown', function (ev) { if (ev.target === fond) fermer(); });
+
+    fond.querySelector('[data-valider]').onclick = function () {
+      var date = fond.querySelector('#encDate').value;
+      var montant = parseFloat(fond.querySelector('#encMontant').value);
+      if (!date) { fond.querySelector('#encDate').focus(); return; }
+      if (isNaN(montant)) { fond.querySelector('#encMontant').focus(); return; }
+      sagaMarquerEncaisse(LIVE, {
+        date: date, montant: montant,
+        reference: fond.querySelector('#encRef').value
+      });
+      persist();
+      fermer();
+      renderTout();
+    };
+  }
+
+  function annulerEncaissement() {
+    if (!confirm('Annuler l\'enregistrement de ce virement ?\n\n'
+      + 'Le live repassera « en attente » de Whatnot.')) return;
+    sagaAnnulerEncaisse(LIVE);
+    persist();
+    renderTout();
   }
 
   /* ============ Bandeau de filtre par cliente ============ */

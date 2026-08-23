@@ -1072,6 +1072,70 @@ function sagaTotauxLive(live) {
   return t;
 }
 
+/* ============ Virements reçus de Whatnot ============
+   Deux flux d'argent à ne pas confondre : ce que Whatnot vous verse pour un
+   live, et ce que vous reversez ensuite à chaque cliente. Le second était
+   suivi, le premier non — impossible de savoir ce qui restait à encaisser.
+
+   Le montant attendu est le chiffre d'affaires encaissé du live, soit les
+   ventes moins les frais de port des giveaways que Whatnot retient. Le
+   montant reçu est saisi tel qu'il apparaît sur le relevé bancaire : s'ils
+   diffèrent, l'écart est affiché plutôt que corrigé en silence. */
+
+function sagaEncaissement(live) {
+  var e = live.encaisse || {};
+  var attendu = sagaTotauxLive(live).ca;
+  var recu = (e.statut === 'Reçu');
+  var montant = recu && e.montant !== undefined && e.montant !== null
+    ? sagaCentimes(Number(e.montant)) : null;
+  return {
+    recu: recu,
+    date: e.date || '',
+    reference: e.reference || '',
+    attendu: attendu,
+    montant: montant,
+    // Différence entre le virement reçu et ce que le live laissait attendre
+    ecart: (recu && montant !== null) ? sagaCentimes(montant - attendu) : 0
+  };
+}
+
+function sagaMarquerEncaisse(live, infos) {
+  live.encaisse = {
+    statut: 'Reçu',
+    date: infos.date || sagaAujourdhui(),
+    montant: sagaCentimes(Number(infos.montant) || 0),
+    reference: (infos.reference || '').trim()
+  };
+  sagaTracer('Virement Whatnot reçu', live.titre,
+             sagaEUR(live.encaisse.montant) + ' le ' + sagaDateFR(live.encaisse.date));
+  return live.encaisse;
+}
+
+function sagaAnnulerEncaisse(live) {
+  live.encaisse = { statut: 'En attente', date: '', montant: null, reference: '' };
+  sagaTracer('Virement Whatnot annulé', live.titre);
+  return live.encaisse;
+}
+
+/* Ce que Whatnot doit encore, tous lives confondus. */
+function sagaTotauxEncaissement(lives) {
+  var t = { attendu: 0, recu: 0, reste: 0, livesEnAttente: 0, livesRecus: 0, ecart: 0 };
+  (lives || sagaLives()).forEach(function (live) {
+    var e = sagaEncaissement(live);
+    t.attendu += e.attendu;
+    if (e.recu) {
+      t.recu += (e.montant === null ? e.attendu : e.montant);
+      t.ecart += e.ecart;
+      t.livesRecus++;
+    } else {
+      t.reste += e.attendu;
+      t.livesEnAttente++;
+    }
+  });
+  ['attendu', 'recu', 'reste', 'ecart'].forEach(function (k) { t[k] = sagaCentimes(t[k]); });
+  return t;
+}
+
 /* ============ Date du jour ============
    Le CRM travaille sur la date réelle du poste : toutes les pages
    partagent cette référence, il n'y a plus de date figée en dur. */
@@ -1522,9 +1586,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.17.0';
+var SAGA_VERSION = '1.18.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.18.0', date: '2026-08-19', titre: 'Suivi des virements reçus de Whatnot', points: [
+    'Chaque live permet d\'enregistrer le virement reçu : date, montant et référence du relevé',
+    'La page des lives annonce ce qui reste à recevoir de Whatnot, ce qui a déjà été encaissé, et ce qui reste à reverser aux clientes — trois montants qu\'il ne faut pas confondre',
+    'Un virement qui ne correspond pas au montant attendu est signalé, jamais corrigé en silence',
+    'Les virements déjà enregistrés dans l\'ancien CRM sont repris avec leur montant'
+  ]},
   { version: '1.17.0', date: '2026-08-19', titre: 'Le chiffre d\'affaires est celui que Whatnot verse', points: [
     'Whatnot retient les frais de port des giveaways avant de verser : le chiffre d\'affaires les a désormais déjà déduits, partout — écrans, tableaux et PDF',
     'Les montants retrouvent ceux de l\'ancien CRM, cliente par cliente : 37 651,86 € au total',

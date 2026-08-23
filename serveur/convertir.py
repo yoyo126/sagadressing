@@ -425,14 +425,34 @@ def convertir(T):
         if not articles:
             continue
 
-        recu = (session.get('whatnot_recu_date') if session else membres[0].get('whatnot_recu_date'))
+        # Le virement reçu de Whatnot. La session le porte quand elle existe ;
+        # sinon on additionne celui de chaque ancien live du groupe, puisqu'ils
+        # correspondaient chacun à une part du même versement.
+        if session and session.get('whatnot_recu_date') and nb(session.get('whatnot_recu_montant')) > 0:
+            recu = session.get('whatnot_recu_date')
+            recu_montant = nb(session.get('whatnot_recu_montant'))
+        elif session and session.get('whatnot_recu_date'):
+            # Session marquée reçue mais sans montant : ce sont ses lives qui
+            # le portent — c'est le cas de la session 16, à 844,24 €.
+            recu = session.get('whatnot_recu_date')
+            recu_montant = sum(nb(m.get('whatnot_recu_montant')) for m in membres)
+        else:
+            dates_recues = [m.get('whatnot_recu_date') for m in membres if m.get('whatnot_recu_date')]
+            recu = sorted(dates_recues)[0] if dates_recues else None
+            recu_montant = sum(nb(m.get('whatnot_recu_montant')) for m in membres)
+
         lives.append({
             'id': 'l-' + (date or 'sans-date').replace('-', '') + '-' + str(ident),
             'date': date,
             'titre': texte_sur(titre),
             'categorie': '',
             'fraisPct': fraisPct,
-            'encaisse': {'statut': 'Reçu' if recu else 'En attente', 'date': (recu or '')[:10]},
+            'encaisse': {
+                'statut': 'Reçu' if recu else 'En attente',
+                'date': (recu or '')[:10],
+                'montant': centimes(recu_montant) if recu else None,
+                'reference': ''
+            },
             'articles': articles,
             'paiements': paiements,
             'tauxParCode': taux_par_code
