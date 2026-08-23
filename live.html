@@ -313,61 +313,7 @@
   }
 
   function ouvrirEncaissement() {
-    var e = sagaEncaissement(LIVE);
-    var fond = document.createElement('div');
-    fond.className = 'modale';
-    fond.innerHTML =
-      '<div class="modale-boite" style="width:min(440px,100%);">' +
-        '<div class="modale-tete"><strong>Virement reçu de Whatnot</strong>' +
-          '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
-        '<div class="modale-corps">' +
-          '<p class="card-note" style="margin-bottom:14px;">' + sagaEchapper(LIVE.titre) +
-            ' — montant attendu <strong>' + sagaEUR(e.attendu) + '</strong>.</p>' +
-          '<div class="form-field"><label class="form-label" for="encDate">Date du virement</label>' +
-            '<input class="form-input" type="date" id="encDate" value="' + sagaAujourdhui() + '" /></div>' +
-          '<div class="form-field" style="margin-top:12px;">' +
-            '<label class="form-label" for="encMontant">Montant reçu (€)</label>' +
-            '<input class="form-input" type="number" step="0.01" id="encMontant" value="' +
-              e.attendu.toFixed(2) + '" />' +
-            '<span class="card-note">Saisissez ce qui figure sur le relevé : un écart avec le ' +
-              'montant attendu sera signalé, jamais masqué.</span></div>' +
-          '<div class="form-field" style="margin-top:12px;">' +
-            '<label class="form-label" for="encRef">Référence (facultatif)</label>' +
-            '<input class="form-input" id="encRef" placeholder="Ex. libellé du virement" /></div>' +
-          '<div style="display:flex; gap:10px; margin-top:18px;">' +
-            '<button class="btn btn-primary btn-sm" data-valider>Enregistrer</button>' +
-            '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(fond);
-    document.body.classList.add('modale-ouverte');
-    sagaInitCalendriers(fond);
-
-    function fermer() {
-      fond.remove();
-      document.body.classList.remove('modale-ouverte');
-      document.removeEventListener('keydown', auClavier);
-    }
-    function auClavier(ev) { if (ev.key === 'Escape') fermer(); }
-    document.addEventListener('keydown', auClavier);
-    fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
-    fond.addEventListener('mousedown', function (ev) { if (ev.target === fond) fermer(); });
-
-    fond.querySelector('[data-valider]').onclick = function () {
-      var date = fond.querySelector('#encDate').value;
-      var montant = parseFloat(fond.querySelector('#encMontant').value);
-      if (!date) { fond.querySelector('#encDate').focus(); return; }
-      if (isNaN(montant)) { fond.querySelector('#encMontant').focus(); return; }
-      sagaMarquerEncaisse(LIVE, {
-        date: date, montant: montant,
-        reference: fond.querySelector('#encRef').value
-      });
-      persist();
-      fermer();
-      renderTout();
-    };
+    sagaModaleVirement(LIVE, function () { persist(); renderTout(); });
   }
 
   function annulerEncaissement() {

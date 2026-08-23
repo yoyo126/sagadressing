@@ -64,19 +64,14 @@
 
       <section class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi-card">
-          <div class="kpi-top"><span class="kpi-label">À recevoir de Whatnot</span></div>
+          <div class="kpi-top"><span class="kpi-label">Reste à percevoir de Whatnot</span></div>
           <div class="kpi-value tabular" id="encReste" style="color:var(--brand-strong)">—</div>
           <div class="kpi-delta" id="encResteSub">—</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-top"><span class="kpi-label">Déjà encaissé</span></div>
+          <div class="kpi-top"><span class="kpi-label">Déjà perçu</span></div>
           <div class="kpi-value tabular" id="encRecu">—</div>
           <div class="kpi-delta" id="encRecuSub">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-top"><span class="kpi-label">Reste à reverser aux clientes</span></div>
-          <div class="kpi-value tabular" id="encAReverser">—</div>
-          <div class="kpi-delta" id="encAReverserSub">—</div>
         </div>
       </section>
 
@@ -128,14 +123,41 @@
   function celluleEncaissement(live) {
     var e = sagaEncaissement(live);
     if (!e.recu) {
-      return '<span class="chip warn">' + sagaEUR(e.attendu) + ' attendus</span>';
+      /* Le geste se fait depuis la liste : ouvrir chaque live pour cocher un
+         virement reçu serait une corvée pour un pointage de fin de semaine. */
+      return '<span class="chip warn">' + sagaEUR(e.attendu) + ' attendus</span>' +
+        '<div style="margin-top:5px;"><button class="btn btn-secondary btn-sm" ' +
+          'onclick="event.stopPropagation(); marquerVirement(\'' + live.id + '\')">' +
+          'J\'ai reçu</button></div>';
     }
     var montant = e.montant === null ? e.attendu : e.montant;
     return '<span class="chip good">' + sagaEUR(montant) + '</span>'
       + '<div class="muted" style="font-size:.78rem; margin-top:3px;">le ' + sagaDateFR(e.date)
       + (Math.abs(e.ecart) >= 0.01
           ? ' · <span style="color:var(--warn);">écart ' + sagaEUR(e.ecart) + '</span>'
-          : '') + '</div>';
+          : '') + '</div>'
+      + '<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm" ' +
+          'onclick="event.stopPropagation(); annulerVirement(\'' + live.id + '\')">' +
+          'Annuler</button></div>';
+  }
+
+  function marquerVirement(id) {
+    var live = LIVES.filter(function (l) { return l.id === id; })[0];
+    if (!live) return;
+    sagaModaleVirement(live, function () {
+      sagaSaveLives(LIVES);
+      renderLives();
+    });
+  }
+
+  function annulerVirement(id) {
+    var live = LIVES.filter(function (l) { return l.id === id; })[0];
+    if (!live) return;
+    if (!confirm('Annuler l\'enregistrement de ce virement ?\n\n« ' + live.titre
+      + ' » repassera en attente de Whatnot.')) return;
+    sagaAnnulerEncaisse(live);
+    sagaSaveLives(LIVES);
+    renderLives();
   }
 
   function statutLive(t) {
@@ -198,7 +220,6 @@
      qui n'est pas encore arrivé. */
   function renderEncaissements(lives) {
     var e = sagaTotauxEncaissement(lives);
-    var reverse = lives.reduce(function (s, l) { return s + sagaTotauxLive(l).reste; }, 0);
 
     document.getElementById('encReste').textContent = sagaEUR(e.reste);
     document.getElementById('encResteSub').textContent = e.livesEnAttente
@@ -207,14 +228,10 @@
 
     document.getElementById('encRecu').textContent = sagaEUR(e.recu);
     document.getElementById('encRecuSub').textContent = e.livesRecus
-      ? e.livesRecus + ' virement' + (e.livesRecus > 1 ? 's' : '') + ' reçu'
+      ? e.livesRecus + ' virement' + (e.livesRecus > 1 ? 's' : '') + ' enregistré'
         + (e.livesRecus > 1 ? 's' : '')
         + (Math.abs(e.ecart) >= 0.01 ? ' · écart cumulé ' + sagaEUR(e.ecart) : '')
       : 'aucun virement enregistré';
-
-    document.getElementById('encAReverser').textContent = sagaEUR(sagaCentimes(reverse));
-    document.getElementById('encAReverserSub').textContent =
-      'sur les lives affichés';
   }
 
   /* Récapitulatif de tous les lives, enregistré en PDF :

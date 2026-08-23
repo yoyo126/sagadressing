@@ -67,6 +67,15 @@
 
         <div class="kpi-card">
           <div class="kpi-top">
+            <span class="kpi-label">Reste à percevoir de Whatnot <span class="kpi-hors-periode">toutes périodes</span></span>
+            <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v13"/><polyline points="7,11 12,16 17,11"/><path d="M4 20h16"/></svg></div>
+          </div>
+          <div class="kpi-value tabular" data-field="whatnot" style="color:var(--brand-strong)">—</div>
+          <div class="kpi-delta" data-field="whatnotMeta">—</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
             <span class="kpi-label">Prochains lives</span>
             <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           </div>
@@ -75,15 +84,6 @@
           <div class="kpi-spark" data-field="livesSpark"></div>
         </div>
       </section>
-
-      <div class="panel" id="argentPanel">
-        <div class="panel-head">
-          <h2>Où est l'argent</h2>
-          <span class="panel-link" style="color:var(--ink-faint);">toutes périodes</span>
-        </div>
-        <div class="argent-grid" id="argentGrid"></div>
-        <p class="card-note" id="argentNote" style="margin-top:14px;"></p>
-      </div>
 
       <section class="content-grid">
         <div class="side-col">
@@ -267,7 +267,15 @@
     var prochains = sagaAgenda().filter(function (e) {
       return e.type === 'Live' && e.date >= sagaAujourdhui();
     }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    renderArgent();
+    /* Ce que Whatnot doit encore, toutes périodes : le détail live par live
+       est sur la page des lives, avec le bouton pour pointer un virement. */
+    var enc = sagaTotauxEncaissement();
+    document.querySelector('[data-field="whatnot"]').textContent = sagaEUR(enc.reste);
+    document.querySelector('[data-field="whatnotMeta"]').textContent = enc.livesEnAttente
+      ? enc.livesEnAttente + ' live' + (enc.livesEnAttente > 1 ? 's' : '') + ' non encaissé'
+        + (enc.livesEnAttente > 1 ? 's' : '')
+      : 'tous les virements sont arrivés';
+
     document.querySelector('[data-field="lives"]').innerHTML = prochains.length + ' <small>prévus</small>';
     document.querySelector('[data-field="livesMeta"]').textContent = prochains.length
       ? 'prochain : ' + sagaDateFR(prochains[0].date) + ' — ' + prochains[0].titre
@@ -395,68 +403,6 @@
     btn.classList.add("active");
     applyPeriod(btn.dataset.period);
   });
-
-  /* ============ Où est l'argent ============
-     Trois circuits, dans l'ordre où l'argent passe : ce que Whatnot verse,
-     ce qui repart vers les clientes et les apporteurs, ce qui reste. Les
-     confondre, c'est croire disposer d'un argent qui n'est pas arrivé, ou
-     compter comme sien ce qui est dû à quelqu'un d'autre. */
-  function renderArgent() {
-    var f = sagaSituationFinanciere();
-
-    function bloc(titre, lignes, accent) {
-      return '<div class="argent-bloc' + (accent ? ' accent' : '') + '">' +
-        '<div class="argent-titre">' + titre + '</div>' +
-        lignes.map(function (l) {
-          if (!l || l.length === 0) return '';
-          return '<div class="argent-ligne' + (l[2] ? ' fort' : '') + '">' +
-            '<span>' + l[0] + '</span><span class="tabular">' + l[1] + '</span></div>';
-        }).join('') + '</div>';
-    }
-
-    document.getElementById('argentGrid').innerHTML =
-      bloc('Ce que Whatnot verse', [
-        ['Attendu, tous lives', sagaEUR(f.attenduWhatnot)],
-        ['Déjà reçu', sagaEUR(f.recuWhatnot)],
-        ['Reste à recevoir', sagaEUR(f.resteWhatnot), true]
-      ], f.resteWhatnot > 0) +
-
-      bloc('Ce qui revient aux clientes', [
-        ['Dû au total', sagaEUR(f.duClientes)],
-        ['Déjà reversé', sagaEUR(f.verseClientes)],
-        ['Reste à reverser', sagaEUR(f.resteClientes), true]
-      ], f.resteClientes > 0) +
-
-      bloc('Ce qui revient à Saga', [
-        ['Commission sur les ventes', sagaEUR(f.commissionSaga)],
-        f.commissionApporteurs > 0 ? ['dont dû aux apporteurs', sagaEUR(f.commissionApporteurs)] : null,
-        f.resteApporteurs > 0 ? ['Reste à verser aux apporteurs', sagaEUR(f.resteApporteurs), true] : null
-      ], f.resteApporteurs > 0) +
-
-      bloc('En caisse', [
-        ['Reçu de Whatnot', sagaEUR(f.recuWhatnot)],
-        ['− déjà redistribué', sagaEUR(sagaCentimes(f.verseClientes + f.verseApporteurs))],
-        ['Solde', sagaEUR(f.enCaisse), true]
-      ]);
-
-    var note = document.getElementById('argentNote');
-    var parts = [];
-    if (f.livesEnAttente) {
-      parts.push('<strong>' + sagaEUR(f.resteWhatnot) + '</strong> attendus de Whatnot sur '
-        + f.livesEnAttente + ' live' + (f.livesEnAttente > 1 ? 's' : '') + '.');
-    }
-    if (f.clientesDues) {
-      parts.push('<strong>' + sagaEUR(f.resteClientes) + '</strong> à reverser à '
-        + f.clientesDues + ' cliente' + (f.clientesDues > 1 ? 's' : '') + '.');
-    }
-    if (Math.abs(f.ecartWhatnot) >= 0.01) {
-      parts.push('<span style="color:var(--warn);">Écart cumulé de '
-        + sagaEUR(f.ecartWhatnot) + '</span> entre les virements reçus et les montants attendus.');
-    }
-    parts.push('Le solde en caisse comprend votre commission et ce qui n\'a pas encore été '
-      + 'reversé : il n\'est pas entièrement à vous.');
-    note.innerHTML = parts.join(' ');
-  }
 
   /* ============ Notes et choses à faire ============
      Même liste que sur les fiches clientes : ce qui est ajouté ici

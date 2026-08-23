@@ -1117,6 +1117,69 @@ function sagaAnnulerEncaisse(live) {
   return live.encaisse;
 }
 
+/* Fenêtre d'enregistrement d'un virement. Partagée entre la page d'un live et
+   la liste des lives : le geste doit être possible d'un endroit comme de
+   l'autre, sans avoir à ouvrir chaque live un par un. */
+function sagaModaleVirement(live, auValider) {
+  var e = sagaEncaissement(live);
+
+  var fond = document.createElement('div');
+  fond.className = 'modale';
+  fond.innerHTML =
+    '<div class="modale-boite" style="width:min(440px,100%);">' +
+      '<div class="modale-tete"><strong>Virement reçu de Whatnot</strong>' +
+        '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+      '<div class="modale-corps">' +
+        '<p class="card-note" style="margin-bottom:14px;">' + sagaEchapper(live.titre) +
+          ' — montant attendu <strong>' + sagaEUR(e.attendu) + '</strong>.</p>' +
+        '<div class="form-field"><label class="form-label" for="sagaVirDate">Date du virement</label>' +
+          '<input class="form-input" type="date" id="sagaVirDate" value="' + sagaAujourdhui() + '" /></div>' +
+        '<div class="form-field" style="margin-top:12px;">' +
+          '<label class="form-label" for="sagaVirMontant">Montant reçu (€)</label>' +
+          '<input class="form-input" type="number" step="0.01" id="sagaVirMontant" value="' +
+            e.attendu.toFixed(2) + '" />' +
+          '<span class="card-note">Saisissez ce qui figure sur le relevé : un écart avec le ' +
+            'montant attendu sera signalé, jamais masqué.</span></div>' +
+        '<div class="form-field" style="margin-top:12px;">' +
+          '<label class="form-label" for="sagaVirRef">Référence (facultatif)</label>' +
+          '<input class="form-input" id="sagaVirRef" placeholder="Ex. libellé du virement" /></div>' +
+        '<div style="display:flex; gap:10px; margin-top:18px;">' +
+          '<button class="btn btn-primary btn-sm" data-valider>Enregistrer</button>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(fond);
+  document.body.classList.add('modale-ouverte');
+  sagaInitCalendriers(fond);
+
+  function fermer() {
+    fond.remove();
+    document.body.classList.remove('modale-ouverte');
+    document.removeEventListener('keydown', auClavier);
+  }
+  function auClavier(ev) { if (ev.key === 'Escape') fermer(); }
+  document.addEventListener('keydown', auClavier);
+  fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+  fond.addEventListener('mousedown', function (ev) { if (ev.target === fond) fermer(); });
+
+  fond.querySelector('[data-valider]').onclick = function () {
+    var date = fond.querySelector('#sagaVirDate').value;
+    var montant = parseFloat(fond.querySelector('#sagaVirMontant').value);
+    if (!date) { fond.querySelector('#sagaVirDate').focus(); return; }
+    if (isNaN(montant)) { fond.querySelector('#sagaVirMontant').focus(); return; }
+    sagaMarquerEncaisse(live, {
+      date: date, montant: montant,
+      reference: fond.querySelector('#sagaVirRef').value
+    });
+    fermer();
+    if (auValider) auValider(live);
+  };
+
+  setTimeout(function () { fond.querySelector('#sagaVirMontant').focus(); }, 0);
+}
+
 /* Ce que Whatnot doit encore, tous lives confondus. */
 function sagaTotauxEncaissement(lives) {
   var t = { attendu: 0, recu: 0, reste: 0, livesEnAttente: 0, livesRecus: 0, ecart: 0 };
@@ -1133,85 +1196,6 @@ function sagaTotauxEncaissement(lives) {
     }
   });
   ['attendu', 'recu', 'reste', 'ecart'].forEach(function (k) { t[k] = sagaCentimes(t[k]); });
-  return t;
-}
-
-/* ============ Où est l'argent ============
-   Le tableau de bord montrait le chiffre d'affaires et le reste à reverser,
-   sans dire d'où venait l'argent ni où il allait. Trois circuits coexistent
-   et se confondent facilement :
-
-     · ce que Whatnot doit verser, et ce qu'il a déjà versé ;
-     · ce qui revient aux clientes, versé ou non ;
-     · ce qui reste à Saga — sa commission — et ce qu'elle doit aux apporteurs.
-
-   Cette fonction les calcule en une fois, toutes périodes confondues, pour
-   que les chiffres affichés viennent tous de la même source. */
-function sagaSituationFinanciere() {
-  var lives = sagaLives();
-  var enc = sagaTotauxEncaissement(lives);
-
-  var t = {
-    // Entrées
-    attenduWhatnot: enc.attendu,
-    recuWhatnot: enc.recu,
-    resteWhatnot: enc.reste,
-    ecartWhatnot: enc.ecart,
-    livesEnAttente: enc.livesEnAttente,
-
-    // Sorties vers les clientes
-    duClientes: 0, verseClientes: 0, resteClientes: 0, clientesDues: 0,
-
-    // Ce qui revient à Saga
-    commissionSaga: 0,
-
-    // Apporteurs
-    commissionApporteurs: 0, verseApporteurs: 0, resteApporteurs: 0,
-
-    ca: 0, giveaways: 0
-  };
-
-  lives.forEach(function (live) {
-    var l = sagaTotauxLive(live);
-    t.ca += l.ca;
-    t.giveaways += l.portGiveaway;
-    t.commissionSaga += l.commSaga;
-    t.duClientes += l.net;
-    t.resteClientes += l.reste;
-  });
-
-  sagaVentesDirectes().forEach(function (v) {
-    var d = sagaDecompteDirect(v);
-    t.ca += d.ventes;
-    t.commissionSaga += d.commSaga;
-    t.duClientes += d.net;
-    if (!v.paye) t.resteClientes += d.net;
-  });
-
-  t.verseClientes = t.duClientes - t.resteClientes;
-
-  // Nombre de clientes à qui il reste quelque chose
-  var vues = {};
-  sagaListeClientes().forEach(function (c) {
-    if (vues[c.lettre]) return;
-    vues[c.lettre] = true;
-    if (sagaTotauxDressing(c.lettre).reste > 0) t.clientesDues++;
-  });
-
-  sagaApporteurs().forEach(function (a) {
-    var ta = sagaTotauxApporteur(a.nom);
-    t.commissionApporteurs += ta.total;
-    t.verseApporteurs += ta.verse;
-    t.resteApporteurs += ta.du;
-  });
-
-  /* Ce qui est entré et n'est pas encore ressorti : la commission acquise,
-     plus ce qui est encaissé mais pas encore reversé. */
-  t.enCaisse = t.recuWhatnot - t.verseClientes - t.verseApporteurs;
-
-  Object.keys(t).forEach(function (k) {
-    if (typeof t[k] === 'number') t[k] = sagaCentimes(t[k]);
-  });
   return t;
 }
 
@@ -1665,9 +1649,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.18.1';
+var SAGA_VERSION = '1.18.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.18.2', date: '2026-08-19', titre: 'Pointer les virements depuis la liste des lives', points: [
+    'Un bouton « J\'ai reçu » sur chaque ligne de la liste des lives : plus besoin d\'ouvrir chaque live pour pointer un virement',
+    'Le tableau de bord porte une seule case, « Reste à percevoir de Whatnot », à la place du panneau détaillé'
+  ]},
   { version: '1.18.1', date: '2026-08-19', titre: 'Le tableau de bord montre tout l\'argent', points: [
     'Un panneau « Où est l\'argent » suit les trois circuits d\'un coup : ce que Whatnot doit et a versé, ce qui revient aux clientes, ce qui revient à Saga',
     'Un solde en caisse indique ce qui est entré sans être encore ressorti — en rappelant qu\'il n\'est pas entièrement à vous',
