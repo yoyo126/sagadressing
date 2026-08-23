@@ -154,7 +154,7 @@
       sagaLettresDuLive(live).forEach(function (lettre) {
         var d = sagaDecompte(live, lettre);
         res.push({ date: live.date, source: 'live', lettre: lettre, nom: sagaInfosCliente(lettre).nom,
-                   ventes: d.ventes, saga: d.commSaga, net: d.net, paye: d.paye });
+                   ventes: d.ca, saga: d.commSaga, net: d.net, paye: d.paye });
       });
     });
     // Ventes hors live — même source que partout ailleurs

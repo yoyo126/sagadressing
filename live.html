@@ -89,7 +89,7 @@
       <div class="panel" id="panelRepartition">
         <div class="panel-head">
           <h2>Répartition par cliente</h2>
-          <span class="panel-link" style="color:var(--ink-faint);">base = ventes − frais Whatnot</span>
+          <span class="panel-link" style="color:var(--ink-faint);">CA encaissé = ventes − giveaways</span>
         </div>
         <div class="table-scroll">
         <table>
@@ -98,7 +98,7 @@
               <th>Cliente</th>
               <th class="num">Ventes</th>
               <th class="num">Giveaways</th>
-              <th class="num">Base</th>
+              <th class="num">CA encaissé</th>
               <th class="num">Comm. Saga</th>
               <th class="num">Comm. apporteur</th>
               <th class="num">Net reversé</th>
@@ -299,15 +299,15 @@
     if (filtreValide()) {
       var d = sagaDecompte(LIVE, FILTRE);
       row.innerHTML =
-        stat('Ventes de ' + d.prenom, sagaEUR(d.ventes)) +
+        stat('CA encaissé de ' + d.prenom, sagaEUR(d.ca)) +
         stat('Commission Saga', sagaEUR(d.commSaga)) +
-        stat('Giveaways', sagaEUR(d.portGiveaway)) +
+        stat('Giveaways déduits', sagaEUR(d.portGiveaway)) +
         stat('Net à reverser', sagaEUR(d.net), true);
       return;
     }
     var t = sagaTotauxLive(LIVE);
     row.innerHTML =
-      stat('Ventes totales', sagaEUR(t.ventes)) +
+      stat('CA encaissé', sagaEUR(t.ca)) +
       stat('Commission Saga', sagaEUR(t.commSaga)) +
       stat('Commission apporteurs', sagaEUR(t.commApporteur)) +
       stat('Reste à reverser', sagaEUR(t.reste), true);
@@ -341,7 +341,7 @@
         '</div></td>' +
         '<td class="num tabular">' + sagaEUR(d.ventes) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.portGiveaway) + '</td>' +
-        '<td class="num tabular">' + sagaEUR(d.base) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(d.ca) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.commSaga) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.commApporteur) + '</td>' +
         '<td class="num tabular"><strong>' + sagaEUR(d.net) + '</strong></td>' +
@@ -357,7 +357,7 @@
     foot.innerHTML = '<tr><td><strong>Total</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.ventes) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.portGiveaway) + '</strong></td>' +
-      '<td class="num tabular"><strong>' + sagaEUR(t.base) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.ca) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.commSaga) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.commApporteur) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.net) + '</strong></td><td></td><td></td></tr>';
@@ -616,16 +616,21 @@
     });
   }
 
+  /* Le décompte se lit dans l'ordre où l'argent circule : Whatnot retient les
+     frais de port des giveaways avant de verser, la commission se prélève
+     ensuite sur ce qui a été encaissé. */
   function lignesDecompte(d) {
-    var l = [
-      ['Ventes', sagaEUR(d.ventes)],
-      ['Base après frais Whatnot (' + (LIVE.fraisPct || 0) + ' %)', sagaEUR(d.base)]
-    ];
-    l.push(['− Commission Saga', sagaEUR(d.commSaga)]);
-    if (d.apporteur) l.push(['− Commission apporteur (' + d.apporteur + ')', sagaEUR(d.commApporteur)]);
+    var l = [];
     if (d.portGiveaway > 0) {
+      l.push(['Ventes', sagaEUR(d.ventes)]);
       l.push(['− Frais de port des giveaways', sagaEUR(d.portGiveaway)]);
     }
+    l.push(['Chiffre d\'affaires encaissé', sagaEUR(d.ca)]);
+    if ((LIVE.fraisPct || 0) > 0) {
+      l.push(['Base après frais Whatnot (' + LIVE.fraisPct + ' %)', sagaEUR(d.base)]);
+    }
+    l.push(['− Commission Saga', sagaEUR(d.commSaga)]);
+    if (d.apporteur) l.push(['− Commission apporteur (' + d.apporteur + ')', sagaEUR(d.commApporteur)]);
     l.push(['Net à reverser', sagaEUR(d.net)]);
     return l;
   }
@@ -669,7 +674,7 @@
     pdf.section('Répartition par cliente');
     pdf.tableau([
       { titre: 'Cliente',        cle: 'cliente', largeur: 26 },
-      { titre: 'Ventes',         cle: 'ventes',  largeur: 14, aligne: 'droite' },
+      { titre: 'CA encaissé',    cle: 'ventes',  largeur: 14, aligne: 'droite' },
       { titre: 'Giveaways',      cle: 'give',    largeur: 13, aligne: 'droite' },
       { titre: 'Comm. Saga',     cle: 'saga',    largeur: 14, aligne: 'droite' },
       { titre: 'Comm. apport.',  cle: 'app',     largeur: 14, aligne: 'droite' },
@@ -678,12 +683,12 @@
     ], lettres.map(function (l) {
       var d = sagaDecompte(LIVE, l);
       return {
-        cliente: d.prenom + ' (' + l + ')', ventes: sagaEUR(d.ventes), give: sagaEUR(d.giveaways),
+        cliente: d.prenom + ' (' + l + ')', ventes: sagaEUR(d.ca), give: sagaEUR(d.portGiveaway),
         saga: sagaEUR(d.commSaga), app: sagaEUR(d.commApporteur), net: sagaEUR(d.net),
         statut: d.paye ? 'Payé ' + sagaDateFR(d.paiement.date) : 'En attente'
       };
     }), {
-      cliente: 'Total', ventes: sagaEUR(t.ventes), give: sagaEUR(t.giveaways),
+      cliente: 'Total', ventes: sagaEUR(t.ca), give: sagaEUR(t.portGiveaway),
       saga: sagaEUR(t.commSaga), app: sagaEUR(t.commApporteur), net: sagaEUR(t.net)
     });
 

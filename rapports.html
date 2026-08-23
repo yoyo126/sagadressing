@@ -150,7 +150,7 @@
           cliente: d.prenom, nom: sagaInfosCliente(lettre).nom, lettre: lettre,
           /* Le port des giveaways est plafonné par le contrat : c'est le
              montant déduit qui doit figurer au rapport, pas celui engagé. */
-          source: 'live', ventes: d.ventes, giveaways: d.portGiveaway,
+          source: 'live', ventes: d.ca, giveaways: d.portGiveaway,
           saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
           paye: d.paye, datePaiement: d.paye ? d.paiement.date : ''
         });
@@ -164,7 +164,7 @@
       res.push({
         date: v.date, liveId: '', session: v.libelle,
         cliente: i.prenom, nom: i.nom, lettre: v.lettre,
-        source: 'direct', ventes: d.ventes, giveaways: 0,
+        source: 'direct', ventes: d.ventes, giveaways: 0,   // pas de giveaway hors Whatnot
         saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
         paye: !!v.paye, datePaiement: v.datePaiement || ''
       });
@@ -340,7 +340,7 @@
       { titre: 'Date',     cle: 'date',    largeur: 12, discret: true },
       { titre: 'Session',  cle: 'session', largeur: 25 },
       { titre: 'Cliente',  cle: 'cliente', largeur: 21 },
-      { titre: 'Ventes',   cle: 'ventes',  largeur: 13, aligne: 'droite' },
+      { titre: 'CA encaissé', cle: 'ventes', largeur: 13, aligne: 'droite' },
       { titre: 'Comm.',    cle: 'saga',    largeur: 13, aligne: 'droite' },
       { titre: 'Net',      cle: 'net',     largeur: 16, aligne: 'droite' }
     ], rows.map(function (v) {
@@ -524,7 +524,7 @@
         '<span class="panel-link" style="color:var(--ink-faint);">' + rows.length + ' ligne(s)</span></div>' +
       '<div class="table-scroll"><table><thead><tr>' +
         '<th>Date</th><th>Session</th><th>Cliente</th>' +
-        '<th class="num">Ventes</th><th class="num">Comm. Saga</th><th class="num">Net</th><th>Règlement</th>' +
+        '<th class="num">CA encaissé</th><th class="num">Comm. Saga</th><th class="num">Net</th><th>Règlement</th>' +
       '</tr></thead><tbody>' +
       rows.map(function (v) {
         var lien = v.liveId ? 'live.html?l=' + v.liveId + '&c=' + v.lettre : '';
@@ -610,7 +610,7 @@
         '<div class="calc-row total"><span>Net reversé aux clientes</span><span class="tabular">' + fmtEUR(t.net) + '</span></div>' +
       '</div>' +
       '<div class="table-scroll"><table><thead><tr>' +
-        '<th>Date</th><th>Session</th><th>Cliente</th><th class="num">Ventes</th><th class="num">Net</th><th>Règlement</th>' +
+        '<th>Date</th><th>Session</th><th>Cliente</th><th class="num">CA encaissé</th><th class="num">Net</th><th>Règlement</th>' +
       '</tr></thead><tbody>' +
       lignes.map(function (v) {
         return '<tr>' +

@@ -782,9 +782,15 @@ function sagaDecompte(live, lettre) {
      Ces frais sont déduits en totalité du net de la cliente. */
   var portGiveaway = giveaways;
 
+  /* Whatnot déduit les frais de port des giveaways avant de verser : le
+     chiffre d'affaires est donc ce qui reste une fois ces frais retirés.
+     C'est le montant réellement encaissé, et celui que l'ancien CRM
+     affichait. `ventes` reste le brut, pour le détail. */
+  var ca = sagaCentimes(ventes - portGiveaway);
+
   var paiement = (live.paiements || {})[lettre] || null;
   return {
-    lettre: lettre, prenom: t.prenom, articles: arts,
+    lettre: lettre, prenom: t.prenom, articles: arts, ca: ca,
     pctSaga: pctSaga, tauxFige: pctSaga !== t.commission,
     ventes: sagaCentimes(ventes), giveaways: sagaCentimes(giveaways), base: base,
     portGiveaway: sagaCentimes(portGiveaway),
@@ -1052,16 +1058,16 @@ function sagaLettresDuLive(live) {
 }
 
 function sagaTotauxLive(live) {
-  var t = { ventes: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, portGiveaway: 0, net: 0, reste: 0, clientes: 0 };
+  var t = { ventes: 0, ca: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, portGiveaway: 0, net: 0, reste: 0, clientes: 0 };
   sagaLettresDuLive(live).forEach(function (lettre) {
     var d = sagaDecompte(live, lettre);
     t.clientes++;
-    t.ventes += d.ventes; t.giveaways += d.giveaways; t.base += d.base;
+    t.ventes += d.ventes; t.ca += d.ca; t.giveaways += d.giveaways; t.base += d.base;
     t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
     t.portGiveaway += d.portGiveaway;
     if (!d.paye) t.reste += d.net;
   });
-  ['ventes','giveaways','base','commSaga','commApporteur','portGiveaway','net','reste']
+  ['ventes','ca','giveaways','base','commSaga','commApporteur','portGiveaway','net','reste']
     .forEach(function (k) { t[k] = sagaCentimes(t[k]); });
   return t;
 }
@@ -1123,7 +1129,7 @@ function sagaVentesDuDressing(lettre) {
     var d = sagaDecompte(live, lettre);
     res.push({
       origine: 'live', liveId: live.id, date: live.date, label: live.titre,
-      lettre: lettre, ventes: d.ventes, giveaways: d.giveaways,
+      lettre: lettre, ventes: d.ventes, ca: d.ca, giveaways: d.giveaways,
       portGiveaway: d.portGiveaway,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: 0,
       net: d.net, paye: d.paye ? 1 : 0,
@@ -1136,7 +1142,7 @@ function sagaVentesDuDressing(lettre) {
     var d = sagaDecompteDirect(v);
     res.push({
       origine: 'direct', venteId: v.id, date: v.date, label: v.libelle,
-      lettre: lettre, ventes: d.ventes, giveaways: 0, portGiveaway: 0,
+      lettre: lettre, ventes: d.ventes, ca: d.ventes, giveaways: 0, portGiveaway: 0,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: d.frais,
       net: d.net, paye: v.paye ? 1 : 0,
       datePaiement: v.datePaiement || '', modePaiement: v.paye ? 'Virement' : '',
@@ -1204,7 +1210,7 @@ function sagaDocsManquants(cle) {
 function sagaTotauxDressing(lettre) {
   var t = { ca: 0, commission: 0, net: 0, reste: 0, nbVentes: 0 };
   sagaVentesDuDressing(lettre).forEach(function (v) {
-    t.ca += v.ventes;
+    t.ca += v.ca;
     t.commission += v.commission;
     t.net += v.net;
     t.nbVentes++;
@@ -1516,9 +1522,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.16.1';
+var SAGA_VERSION = '1.17.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.17.0', date: '2026-08-19', titre: 'Le chiffre d\'affaires est celui que Whatnot verse', points: [
+    'Whatnot retient les frais de port des giveaways avant de verser : le chiffre d\'affaires les a désormais déjà déduits, partout — écrans, tableaux et PDF',
+    'Les montants retrouvent ceux de l\'ancien CRM, cliente par cliente : 37 651,86 € au total',
+    'Sur un live, la ligne se lit de gauche à droite : ventes, moins giveaways, égale CA encaissé, moins commissions, égale net à reverser',
+    'Le taux de commission affiché est celui du contrat, et non plus un rapport recalculé qui l\'aurait légèrement faussé'
+  ]},
   { version: '1.16.1', date: '2026-08-19', titre: 'Le chiffre d\'affaires dit ce qu\'il compte', points: [
     'L\'ancien CRM affichait le net versé par Whatnot, giveaways déjà retirés ; le nouveau affiche les ventes et déduit les giveaways plus bas. Mêmes données, deux définitions — les montants à reverser, eux, sont identiques',
     'Le chiffre d\'affaires indique désormais le montant des giveaways déduits, pour que le rapprochement avec l\'ancien CRM soit immédiat'

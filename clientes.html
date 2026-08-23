@@ -309,14 +309,18 @@
     document.getElementById('kActives').textContent = actives;
     document.getElementById('kActivesSub').textContent = 'sur ' + clientes.length + ' dressings au total';
     document.getElementById('kCA').textContent = fmtEUR(totalCA);
-    /* Ventes brutes : les frais de port des giveaways sont déduits ensuite,
-       cliente par cliente. L'ancien CRM affichait le net déjà diminué. */
+    /* Montant réellement versé par Whatnot : les frais de port des giveaways
+       en sont déjà retirés, comme dans l'ancien CRM. */
     document.getElementById('kCASub').textContent = totalGive > 0
-      ? 'ventes, avant ' + fmtEUR(totalGive) + ' de giveaways'
+      ? 'après ' + fmtEUR(totalGive) + ' de giveaways déduits'
       : 'toutes clientes confondues';
     document.getElementById('kCommission').textContent = fmtEUR(totalCom);
+    /* Part de la commission dans les ventes brutes : le chiffre d'affaires
+       affiché étant net des giveaways, le rapport à celui-ci surestimerait
+       légèrement le taux. */
+    var totalVentes = totalCA + totalGive;
     document.getElementById('kCommissionSub').textContent =
-      totalCA > 0 ? Math.round(totalCom / totalCA * 100) + ' % du chiffre d\'affaires' : '—';
+      totalVentes > 0 ? Math.round(totalCom / totalVentes * 100) + ' % des ventes' : '—';
     document.getElementById('kReste').textContent = fmtEUR(totalReste);
     document.getElementById('kResteSub').textContent =
       nbReste ? 'réparti sur ' + nbReste + ' cliente' + (nbReste > 1 ? 's' : '') : 'tout est à jour';

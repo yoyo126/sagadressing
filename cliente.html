@@ -185,7 +185,7 @@
 
           <div class="table-scroll">
           <table>
-            <thead><tr><th>Date</th><th>Session</th><th class="num">Ventes</th><th class="num">Commission</th><th class="num">Net reversé</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Session</th><th class="num">CA encaissé</th><th class="num">Commission</th><th class="num">Net reversé</th><th>Statut</th><th></th></tr></thead>
             <tbody id="livesTableBody">
             </tbody>
           </table>
@@ -739,12 +739,12 @@
 
       var lienLive = l.origine === 'live' ? 'live.html?l=' + l.liveId + '&c=' + CLIENT.lettre : '';
       return '<tr' + (lienLive ? ' data-href="' + lienLive + '"' : '') +
-        ' data-date="' + l.date + '" data-ventes="' + l.ventes + '" data-giveaways="' + l.portGiveaway +
+        ' data-date="' + l.date + '" data-ventes="' + l.ca + '" data-giveaways="' + l.portGiveaway +
         '" data-commission="' + l.commission +
         '" data-net="' + l.net + '" data-paye="' + l.paye + '">' +
         '<td>' + fmtDateShortFR(l.date) + '</td>' +
         '<td class="muted">' + label + '</td>' +
-        '<td class="num tabular">' + fmtEUR(l.ventes) + '</td>' +
+        '<td class="num tabular">' + fmtEUR(l.ca) + '</td>' +
         '<td class="num tabular">' + fmtEUR(l.commission) + '</td>' +
         '<td class="num tabular">' + fmtEUR(l.net) + '</td>' +
         '<td>' + statut + '</td>' +
@@ -797,8 +797,12 @@
     var contact = [sagaTelephone(CLIENT.tel), CLIENT.email].filter(Boolean).join('  ·  ');
     if (contact) pdf.paragraphe(contact);
 
-    var lignes = [['Ventes', fmtEUR(l.ventes)],
-                  ['− Commission Saga (' + CLIENT.commission + ' %)', fmtEUR(l.commission)]];
+    var lignes = [['Ventes', fmtEUR(l.ventes)]];
+    if (l.portGiveaway > 0) {
+      lignes.push(['− Frais de port des giveaways', fmtEUR(l.portGiveaway)]);
+      lignes.push(['Chiffre d\'affaires encaissé', fmtEUR(l.ca)]);
+    }
+    lignes.push(['− Commission Saga (' + CLIENT.commission + ' %)', fmtEUR(l.commission)]);
     if (l.apporteurMontant > 0) lignes.push(['− Commission apporteur (' + CLIENT.apporteur + ')', fmtEUR(l.apporteurMontant)]);
     if (l.frais > 0) lignes.push(["− Frais d'envoi", fmtEUR(l.frais)]);
     lignes.push(['Net à reverser', fmtEUR(l.net)]);
@@ -1115,12 +1119,14 @@
     }
 
     var totaux = lignes.reduce(function (t, l) {
-      t.ventes += l.ventes; t.commission += l.commission;
+      t.ventes += l.ventes; t.ca += l.ca; t.commission += l.commission;
+      t.giveaways += l.portGiveaway || 0;
       t.apporteur += l.apporteurMontant || 0; t.frais += l.frais || 0;
       t.net += l.net;
       if (l.paye) t.regle += l.net; else t.reste += l.net;
       return t;
-    }, { ventes: 0, commission: 0, apporteur: 0, frais: 0, net: 0, regle: 0, reste: 0 });
+    }, { ventes: 0, ca: 0, giveaways: 0, commission: 0, apporteur: 0, frais: 0,
+         net: 0, regle: 0, reste: 0 });
 
     var pdf = sagaNouveauPdf('Relevé ' + (CLIENT.nom || CLIENT.prenom));
     pdf.titre('Relevé des ventes');
@@ -1147,16 +1153,21 @@
       return {
         date: fmtDateShortFR(l.date),
         label: l.label + (l.origine === 'direct' ? ' (hors live)' : ''),
-        ventes: fmtEUR(l.ventes), com: fmtEUR(l.commission), net: fmtEUR(l.net),
+        ventes: fmtEUR(l.ca), com: fmtEUR(l.commission), net: fmtEUR(l.net),
         statut: l.paye ? 'Réglé' + (l.datePaiement ? ' ' + fmtDateShortFR(l.datePaiement) : '') : 'En attente'
       };
     }), {
       date: '', label: 'Total',
-      ventes: fmtEUR(totaux.ventes), com: fmtEUR(totaux.commission), net: fmtEUR(totaux.net)
+      ventes: fmtEUR(totaux.ca), com: fmtEUR(totaux.commission), net: fmtEUR(totaux.net)
     });
 
-    var decompte = [['Chiffre d\'affaires', fmtEUR(totaux.ventes)],
-                    ['− Commission Saga', fmtEUR(totaux.commission)]];
+    var decompte = [];
+    if (totaux.giveaways > 0) {
+      decompte.push(['Ventes', fmtEUR(totaux.ventes)]);
+      decompte.push(['− Frais de port des giveaways', fmtEUR(totaux.giveaways)]);
+    }
+    decompte.push(['Chiffre d\'affaires encaissé', fmtEUR(totaux.ca)]);
+    decompte.push(['− Commission Saga', fmtEUR(totaux.commission)]);
     if (totaux.apporteur > 0) decompte.push(['− Commission apporteur (' + CLIENT.apporteur + ')', fmtEUR(totaux.apporteur)]);
     if (totaux.frais > 0) decompte.push(['− Frais d\'envoi', fmtEUR(totaux.frais)]);
     decompte.push(['− Déjà reversé', fmtEUR(totaux.regle)]);
@@ -1372,16 +1383,19 @@
 
     document.getElementById('recapPeriodLabel').textContent = range.label;
     document.getElementById('recapCA').textContent = fmtEUR(ca);
-    /* Le chiffre d'affaires est celui des ventes, avant déduction des frais de
-       port des giveaways. L'ancien CRM affichait au contraire le net versé par
-       Whatnot, giveaways déjà retirés : sans ce rappel, les deux chiffres
-       semblent se contredire alors qu'ils disent la même chose. */
+    /* Le chiffre d'affaires est le montant réellement versé par Whatnot :
+       les frais de port des giveaways en sont déjà retirés. On rappelle leur
+       montant, sans quoi ils deviendraient invisibles. */
     document.getElementById('recapCASub').textContent =
       count + (count > 1 ? ' ventes' : ' vente') + ' sur la période'
-      + (giveaways > 0 ? ' · ' + fmtEUR(giveaways) + ' de giveaways déduits plus bas' : '');
+      + (giveaways > 0 ? ' · ' + fmtEUR(giveaways) + ' de giveaways déjà déduits' : '');
     document.getElementById('recapCommission').textContent = fmtEUR(commission);
+    /* Le taux annoncé est celui du contrat, pas un rapport recalculé : la
+       commission se prélève sur les ventes, le chiffre d'affaires affiché est
+       déjà net des giveaways. Diviser l'un par l'autre donnerait un taux
+       légèrement faux. */
     document.getElementById('recapCommissionSub').textContent = ca > 0
-      ? Math.round(commission / ca * 100) + ' % du chiffre d\'affaires'
+      ? CLIENT.commission + ' % des ventes'
       : '—';
     document.getElementById('recapVerse').textContent = fmtEUR(verse);
     document.getElementById('recapVerseSub').textContent = (count - unpaidCount) + ' réglée(s)';

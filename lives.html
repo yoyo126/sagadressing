@@ -145,7 +145,7 @@
         '<td><strong>' + x.live.titre + '</strong>' +
           '<div class="muted" style="font-size:.75rem;">' + x.live.categorie + '</div></td>' +
         '<td class="num tabular">' + t.clientes + '</td>' +
-        '<td class="num tabular">' + sagaEUR(t.ventes) + '</td>' +
+        '<td class="num tabular">' + sagaEUR(t.ca) + '</td>' +
         '<td class="num tabular">' + sagaEUR(t.commSaga) + '</td>' +
         '<td class="num tabular">' + (t.reste > 0
             ? '<strong style="color:var(--brand-strong)">' + sagaEUR(t.reste) + '</strong>'
@@ -167,11 +167,11 @@
     var g = { ventes: 0, commSaga: 0, commApporteur: 0, net: 0, reste: 0 };
     var lignes = lives.map(function (l) {
       var t = sagaTotauxLive(l);
-      g.ventes += t.ventes; g.commSaga += t.commSaga;
+      g.ventes += t.ca; g.commSaga += t.commSaga;
       g.commApporteur += t.commApporteur; g.net += t.net; g.reste += t.reste;
       return {
         live: l.titre, date: sagaDateFR(l.date), clientes: String(t.clientes),
-        ventes: sagaEUR(t.ventes), saga: sagaEUR(t.commSaga),
+        ventes: sagaEUR(t.ca), saga: sagaEUR(t.commSaga),
         net: sagaEUR(t.net), reste: t.reste > 0 ? sagaEUR(t.reste) : '—'
       };
     });
@@ -202,7 +202,7 @@
         var d = sagaDecompte(l, lettre);
         var e = parCliente[lettre] ||
           (parCliente[lettre] = { nom: sagaInfosCliente(lettre).nom, lives: 0, ventes: 0, saga: 0, net: 0, reste: 0 });
-        e.lives++; e.ventes += d.ventes; e.saga += d.commSaga; e.net += d.net;
+        e.lives++; e.ventes += d.ca; e.saga += d.commSaga; e.net += d.net;
         if (!d.paye) e.reste += d.net;
       });
     });
@@ -211,7 +211,7 @@
     pdf.tableau([
       { titre: 'Cliente',     cle: 'cliente', largeur: 32 },
       { titre: 'Lives',       cle: 'lives',   largeur: 11, aligne: 'droite' },
-      { titre: 'Ventes',      cle: 'ventes',  largeur: 15, aligne: 'droite' },
+      { titre: 'CA encaissé', cle: 'ventes',  largeur: 15, aligne: 'droite' },
       { titre: 'Comm. Saga',  cle: 'saga',    largeur: 15, aligne: 'droite' },
       { titre: 'Net reversé', cle: 'net',     largeur: 14, aligne: 'droite' },
       { titre: 'Reste dû',    cle: 'reste',   largeur: 13, aligne: 'droite' }
@@ -382,7 +382,7 @@
     html += '<div class="info-card" style="margin-top:14px;">'
       + '<div class="info-card-title">À qui appartient chaque lettre ?</div>'
       + '<div class="table-scroll" style="margin-top:12px;"><table>'
-      + '<thead><tr><th>Lettre</th><th class="num">Ventes</th><th class="num">Total net</th><th>Dressing</th></tr></thead><tbody>';
+      + '<thead><tr><th>Lettre</th><th class="num">CA encaissé</th><th class="num">Total net</th><th>Dressing</th></tr></thead><tbody>';
 
     a.parLettre.filter(function (g) { return g.lettre; }).forEach(function (g) {
       html += '<tr><td><strong>' + sagaEchapper(g.lettre) + '</strong></td>'
