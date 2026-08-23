@@ -998,3 +998,50 @@ body.modale-ouverte { overflow: hidden; }
 @media (max-width: 900px) {
   .calendar-mini .day { max-height: 46px; }
 }
+
+
+/* ============ Où est l'argent (tableau de bord) ============
+   Quatre blocs de même largeur, qui se replient l'un sous l'autre sur
+   petit écran. Chaque bloc suit le même gabarit : des lignes libellé /
+   montant, la dernière en évidence puisque c'est celle qui appelle une
+   décision. */
+.argent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+  gap: 14px;
+}
+.argent-bloc {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--surface-alt);
+}
+.argent-bloc.accent { border-color: var(--brand); }
+.argent-titre {
+  font-size: .74rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+.argent-ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: .88rem;
+  color: var(--ink-muted);
+  padding: 3px 0;
+}
+/* Le libellé se replie ; le montant, jamais — coupé en deux, il devient
+   illisible et se confond avec celui de la ligne suivante. */
+.argent-ligne > span:first-child { min-width: 0; }
+.argent-ligne > span:last-child { white-space: nowrap; }
+.argent-ligne.fort {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+}
+.argent-bloc.accent .argent-ligne.fort { color: var(--brand-strong); }

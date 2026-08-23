@@ -1136,6 +1136,85 @@ function sagaTotauxEncaissement(lives) {
   return t;
 }
 
+/* ============ Où est l'argent ============
+   Le tableau de bord montrait le chiffre d'affaires et le reste à reverser,
+   sans dire d'où venait l'argent ni où il allait. Trois circuits coexistent
+   et se confondent facilement :
+
+     · ce que Whatnot doit verser, et ce qu'il a déjà versé ;
+     · ce qui revient aux clientes, versé ou non ;
+     · ce qui reste à Saga — sa commission — et ce qu'elle doit aux apporteurs.
+
+   Cette fonction les calcule en une fois, toutes périodes confondues, pour
+   que les chiffres affichés viennent tous de la même source. */
+function sagaSituationFinanciere() {
+  var lives = sagaLives();
+  var enc = sagaTotauxEncaissement(lives);
+
+  var t = {
+    // Entrées
+    attenduWhatnot: enc.attendu,
+    recuWhatnot: enc.recu,
+    resteWhatnot: enc.reste,
+    ecartWhatnot: enc.ecart,
+    livesEnAttente: enc.livesEnAttente,
+
+    // Sorties vers les clientes
+    duClientes: 0, verseClientes: 0, resteClientes: 0, clientesDues: 0,
+
+    // Ce qui revient à Saga
+    commissionSaga: 0,
+
+    // Apporteurs
+    commissionApporteurs: 0, verseApporteurs: 0, resteApporteurs: 0,
+
+    ca: 0, giveaways: 0
+  };
+
+  lives.forEach(function (live) {
+    var l = sagaTotauxLive(live);
+    t.ca += l.ca;
+    t.giveaways += l.portGiveaway;
+    t.commissionSaga += l.commSaga;
+    t.duClientes += l.net;
+    t.resteClientes += l.reste;
+  });
+
+  sagaVentesDirectes().forEach(function (v) {
+    var d = sagaDecompteDirect(v);
+    t.ca += d.ventes;
+    t.commissionSaga += d.commSaga;
+    t.duClientes += d.net;
+    if (!v.paye) t.resteClientes += d.net;
+  });
+
+  t.verseClientes = t.duClientes - t.resteClientes;
+
+  // Nombre de clientes à qui il reste quelque chose
+  var vues = {};
+  sagaListeClientes().forEach(function (c) {
+    if (vues[c.lettre]) return;
+    vues[c.lettre] = true;
+    if (sagaTotauxDressing(c.lettre).reste > 0) t.clientesDues++;
+  });
+
+  sagaApporteurs().forEach(function (a) {
+    var ta = sagaTotauxApporteur(a.nom);
+    t.commissionApporteurs += ta.total;
+    t.verseApporteurs += ta.verse;
+    t.resteApporteurs += ta.du;
+  });
+
+  /* Ce qui est entré et n'est pas encore ressorti : la commission acquise,
+     plus ce qui est encaissé mais pas encore reversé. */
+  t.enCaisse = t.recuWhatnot - t.verseClientes - t.verseApporteurs;
+
+  Object.keys(t).forEach(function (k) {
+    if (typeof t[k] === 'number') t[k] = sagaCentimes(t[k]);
+  });
+  return t;
+}
+
 /* ============ Date du jour ============
    Le CRM travaille sur la date réelle du poste : toutes les pages
    partagent cette référence, il n'y a plus de date figée en dur. */
@@ -1586,9 +1665,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.18.0';
+var SAGA_VERSION = '1.18.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.18.1', date: '2026-08-19', titre: 'Le tableau de bord montre tout l\'argent', points: [
+    'Un panneau « Où est l\'argent » suit les trois circuits d\'un coup : ce que Whatnot doit et a versé, ce qui revient aux clientes, ce qui revient à Saga',
+    'Un solde en caisse indique ce qui est entré sans être encore ressorti — en rappelant qu\'il n\'est pas entièrement à vous',
+    'Les écarts entre virements reçus et montants attendus y sont signalés'
+  ]},
   { version: '1.18.0', date: '2026-08-19', titre: 'Suivi des virements reçus de Whatnot', points: [
     'Chaque live permet d\'enregistrer le virement reçu : date, montant et référence du relevé',
     'La page des lives annonce ce qui reste à recevoir de Whatnot, ce qui a déjà été encaissé, et ce qui reste à reverser aux clientes — trois montants qu\'il ne faut pas confondre',
