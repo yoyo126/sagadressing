@@ -1516,9 +1516,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.16.0';
+var SAGA_VERSION = '1.16.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.16.1', date: '2026-08-19', titre: 'Le chiffre d\'affaires dit ce qu\'il compte', points: [
+    'L\'ancien CRM affichait le net versé par Whatnot, giveaways déjà retirés ; le nouveau affiche les ventes et déduit les giveaways plus bas. Mêmes données, deux définitions — les montants à reverser, eux, sont identiques',
+    'Le chiffre d\'affaires indique désormais le montant des giveaways déduits, pour que le rapprochement avec l\'ancien CRM soit immédiat'
+  ]},
   { version: '1.16.0', date: '2026-08-19', titre: 'Les montants s\'affichent au centime', points: [
     'Les euros étaient arrondis à l\'affichage : un net de 527,24 € s\'annonçait « 527 € », et la somme des lignes ne tombait plus sur le total',
     'Tous les montants portent désormais leurs centimes, à l\'écran comme dans les PDF — les calculs, eux, étaient déjà exacts',

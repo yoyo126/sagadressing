@@ -739,7 +739,8 @@
 
       var lienLive = l.origine === 'live' ? 'live.html?l=' + l.liveId + '&c=' + CLIENT.lettre : '';
       return '<tr' + (lienLive ? ' data-href="' + lienLive + '"' : '') +
-        ' data-date="' + l.date + '" data-ventes="' + l.ventes + '" data-commission="' + l.commission +
+        ' data-date="' + l.date + '" data-ventes="' + l.ventes + '" data-giveaways="' + l.portGiveaway +
+        '" data-commission="' + l.commission +
         '" data-net="' + l.net + '" data-paye="' + l.paye + '">' +
         '<td>' + fmtDateShortFR(l.date) + '</td>' +
         '<td class="muted">' + label + '</td>' +
@@ -1348,6 +1349,7 @@
   function refreshRecap() {
     const range = currentRange();
     let ca = 0, commission = 0, verse = 0, reste = 0, count = 0, unpaidCount = 0;
+    let giveaways = 0;
 
     document.querySelectorAll('#livesTableBody tr').forEach(function (row) {
       const date = row.dataset.date || '';
@@ -1357,6 +1359,7 @@
 
       count++;
       ca += parseFloat(row.dataset.ventes) || 0;
+      giveaways += parseFloat(row.dataset.giveaways) || 0;
       commission += parseFloat(row.dataset.commission) || 0;
       const net = parseFloat(row.dataset.net) || 0;
       if (row.dataset.paye === '1') {
@@ -1369,7 +1372,13 @@
 
     document.getElementById('recapPeriodLabel').textContent = range.label;
     document.getElementById('recapCA').textContent = fmtEUR(ca);
-    document.getElementById('recapCASub').textContent = count + (count > 1 ? ' ventes' : ' vente') + ' sur la période';
+    /* Le chiffre d'affaires est celui des ventes, avant déduction des frais de
+       port des giveaways. L'ancien CRM affichait au contraire le net versé par
+       Whatnot, giveaways déjà retirés : sans ce rappel, les deux chiffres
+       semblent se contredire alors qu'ils disent la même chose. */
+    document.getElementById('recapCASub').textContent =
+      count + (count > 1 ? ' ventes' : ' vente') + ' sur la période'
+      + (giveaways > 0 ? ' · ' + fmtEUR(giveaways) + ' de giveaways déduits plus bas' : '');
     document.getElementById('recapCommission').textContent = fmtEUR(commission);
     document.getElementById('recapCommissionSub').textContent = ca > 0
       ? Math.round(commission / ca * 100) + ' % du chiffre d\'affaires'

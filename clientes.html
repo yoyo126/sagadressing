@@ -113,7 +113,7 @@
         <div class="kpi-card">
           <div class="kpi-top"><span class="kpi-label">CA total généré</span></div>
           <div class="kpi-value tabular" id="kCA">—</div>
-          <div class="kpi-delta">toutes clientes confondues</div>
+          <div class="kpi-delta" id="kCASub">toutes clientes confondues</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-top"><span class="kpi-label">Ma commission</span></div>
@@ -295,6 +295,11 @@
     // Indicateurs — toujours calculés sur l'ensemble, pas sur le filtre
     var actives = clientes.filter(function (c) { return c.statut === 'active'; }).length;
     var totalCA = clientes.reduce(function (s, c) { return s + c.ca; }, 0);
+    var totalGive = clientes.reduce(function (s, c) {
+      return s + sagaVentesDuDressing(c.lettre).reduce(function (t, v) {
+        return t + (v.portGiveaway || 0);
+      }, 0);
+    }, 0);
     var totalCom = clientes.reduce(function (s, c) { return s + c.commission; }, 0);
     var totalReste = clientes.reduce(function (s, c) { return s + c.reste; }, 0);
     var nbReste = clientes.filter(function (c) { return c.reste > 0; }).length;
@@ -304,6 +309,11 @@
     document.getElementById('kActives').textContent = actives;
     document.getElementById('kActivesSub').textContent = 'sur ' + clientes.length + ' dressings au total';
     document.getElementById('kCA').textContent = fmtEUR(totalCA);
+    /* Ventes brutes : les frais de port des giveaways sont déduits ensuite,
+       cliente par cliente. L'ancien CRM affichait le net déjà diminué. */
+    document.getElementById('kCASub').textContent = totalGive > 0
+      ? 'ventes, avant ' + fmtEUR(totalGive) + ' de giveaways'
+      : 'toutes clientes confondues';
     document.getElementById('kCommission').textContent = fmtEUR(totalCom);
     document.getElementById('kCommissionSub').textContent =
       totalCA > 0 ? Math.round(totalCom / totalCA * 100) + ' % du chiffre d\'affaires' : '—';
