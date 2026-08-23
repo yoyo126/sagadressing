@@ -999,3 +999,19 @@ body.modale-ouverte { overflow: hidden; }
   .calendar-mini .day { max-height: 46px; }
 }
 
+
+/* Action discrète à l'intérieur d'une cellule de tableau : un vrai bouton
+   pour le clavier et les lecteurs d'écran, l'apparence d'un lien pour ne pas
+   faire grossir la ligne. */
+.lien-action {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--brand-strong);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.lien-action:hover { color: var(--ink); }

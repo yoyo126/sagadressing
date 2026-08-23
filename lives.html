@@ -119,26 +119,29 @@
 
   var LIVES = sagaLives();
 
-  /* Où en est le virement de Whatnot pour ce live */
+  /* Où en est le virement de Whatnot pour ce live.
+     Deux lignes au maximum : les actions vivent dans la seconde, en lien
+     discret, pour que la ligne du tableau ne s'étire pas. */
   function celluleEncaissement(live) {
     var e = sagaEncaissement(live);
+    var lien = function (texte, fonction) {
+      return '<button class="lien-action" onclick="event.stopPropagation(); '
+        + fonction + '(\'' + live.id + '\')">' + texte + '</button>';
+    };
+
     if (!e.recu) {
-      /* Le geste se fait depuis la liste : ouvrir chaque live pour cocher un
-         virement reçu serait une corvée pour un pointage de fin de semaine. */
       return '<span class="chip warn">' + sagaEUR(e.attendu) + ' attendus</span>' +
-        '<div style="margin-top:5px;"><button class="btn btn-secondary btn-sm" ' +
-          'onclick="event.stopPropagation(); marquerVirement(\'' + live.id + '\')">' +
-          'J\'ai reçu</button></div>';
+        '<div class="muted" style="font-size:.78rem; margin-top:4px;">' +
+          lien('J\'ai reçu', 'marquerVirement') + '</div>';
     }
+
     var montant = e.montant === null ? e.attendu : e.montant;
-    return '<span class="chip good">' + sagaEUR(montant) + '</span>'
-      + '<div class="muted" style="font-size:.78rem; margin-top:3px;">le ' + sagaDateFR(e.date)
-      + (Math.abs(e.ecart) >= 0.01
-          ? ' · <span style="color:var(--warn);">écart ' + sagaEUR(e.ecart) + '</span>'
-          : '') + '</div>'
-      + '<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm" ' +
-          'onclick="event.stopPropagation(); annulerVirement(\'' + live.id + '\')">' +
-          'Annuler</button></div>';
+    return '<span class="chip good">' + sagaEUR(montant) + '</span>' +
+      '<div class="muted" style="font-size:.78rem; margin-top:4px;">le ' + sagaDateFR(e.date) +
+      (Math.abs(e.ecart) >= 0.01
+        ? ' · <span style="color:var(--warn);">écart ' + sagaEUR(e.ecart) + '</span>'
+        : '') +
+      ' · ' + lien('corriger', 'marquerVirement') + '</div>';
   }
 
   function marquerVirement(id) {
@@ -148,16 +151,6 @@
       sagaSaveLives(LIVES);
       renderLives();
     });
-  }
-
-  function annulerVirement(id) {
-    var live = LIVES.filter(function (l) { return l.id === id; })[0];
-    if (!live) return;
-    if (!confirm('Annuler l\'enregistrement de ce virement ?\n\n« ' + live.titre
-      + ' » repassera en attente de Whatnot.')) return;
-    sagaAnnulerEncaisse(live);
-    sagaSaveLives(LIVES);
-    renderLives();
   }
 
   function statutLive(t) {

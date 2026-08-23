@@ -308,20 +308,12 @@
     }
 
     document.getElementById('encaisseActions').innerHTML = e.recu
-      ? '<button class="btn btn-ghost btn-sm" onclick="annulerEncaissement()">Annuler le virement</button>'
+      ? '<button class="btn btn-ghost btn-sm" onclick="ouvrirEncaissement()">Corriger le virement</button>'
       : '<button class="btn btn-secondary btn-sm" onclick="ouvrirEncaissement()">Marquer le virement reçu</button>';
   }
 
   function ouvrirEncaissement() {
     sagaModaleVirement(LIVE, function () { persist(); renderTout(); });
-  }
-
-  function annulerEncaissement() {
-    if (!confirm('Annuler l\'enregistrement de ce virement ?\n\n'
-      + 'Le live repassera « en attente » de Whatnot.')) return;
-    sagaAnnulerEncaisse(LIVE);
-    persist();
-    renderTout();
   }
 
   /* ============ Bandeau de filtre par cliente ============ */

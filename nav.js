@@ -1122,30 +1122,40 @@ function sagaAnnulerEncaisse(live) {
    l'autre, sans avoir à ouvrir chaque live un par un. */
 function sagaModaleVirement(live, auValider) {
   var e = sagaEncaissement(live);
+  /* Enregistrer ou corriger : c'est le même geste. Un virement saisi de
+     travers doit pouvoir être repris sans avoir à l'effacer d'abord. */
+  var montantSaisi = e.recu && e.montant !== null ? e.montant : e.attendu;
 
   var fond = document.createElement('div');
   fond.className = 'modale';
   fond.innerHTML =
     '<div class="modale-boite" style="width:min(440px,100%);">' +
-      '<div class="modale-tete"><strong>Virement reçu de Whatnot</strong>' +
+      '<div class="modale-tete"><strong>' +
+        (e.recu ? 'Corriger le virement' : 'Virement reçu de Whatnot') + '</strong>' +
         '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
       '<div class="modale-corps">' +
         '<p class="card-note" style="margin-bottom:14px;">' + sagaEchapper(live.titre) +
           ' — montant attendu <strong>' + sagaEUR(e.attendu) + '</strong>.</p>' +
         '<div class="form-field"><label class="form-label" for="sagaVirDate">Date du virement</label>' +
-          '<input class="form-input" type="date" id="sagaVirDate" value="' + sagaAujourdhui() + '" /></div>' +
+          '<input class="form-input" type="date" id="sagaVirDate" value="' +
+            (e.recu && e.date ? e.date : sagaAujourdhui()) + '" /></div>' +
         '<div class="form-field" style="margin-top:12px;">' +
           '<label class="form-label" for="sagaVirMontant">Montant reçu (€)</label>' +
           '<input class="form-input" type="number" step="0.01" id="sagaVirMontant" value="' +
-            e.attendu.toFixed(2) + '" />' +
+            montantSaisi.toFixed(2) + '" />' +
           '<span class="card-note">Saisissez ce qui figure sur le relevé : un écart avec le ' +
             'montant attendu sera signalé, jamais masqué.</span></div>' +
         '<div class="form-field" style="margin-top:12px;">' +
           '<label class="form-label" for="sagaVirRef">Référence (facultatif)</label>' +
-          '<input class="form-input" id="sagaVirRef" placeholder="Ex. libellé du virement" /></div>' +
-        '<div style="display:flex; gap:10px; margin-top:18px;">' +
+          '<input class="form-input" id="sagaVirRef" value="' + sagaEchapper(e.reference) +
+            '" placeholder="Ex. libellé du virement" /></div>' +
+        '<div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">' +
           '<button class="btn btn-primary btn-sm" data-valider>Enregistrer</button>' +
           '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+          (e.recu
+            ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto; color:var(--critical);" ' +
+              'data-retirer>Retirer le virement</button>'
+            : '') +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1176,6 +1186,17 @@ function sagaModaleVirement(live, auValider) {
     fermer();
     if (auValider) auValider(live);
   };
+
+  var retirer = fond.querySelector('[data-retirer]');
+  if (retirer) {
+    retirer.onclick = function () {
+      if (!confirm('Retirer ce virement ?\n\n« ' + live.titre
+        + ' » repassera en attente de Whatnot.')) return;
+      sagaAnnulerEncaisse(live);
+      fermer();
+      if (auValider) auValider(live);
+    };
+  }
 
   setTimeout(function () { fond.querySelector('#sagaVirMontant').focus(); }, 0);
 }
@@ -1649,9 +1670,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.18.2';
+var SAGA_VERSION = '1.18.3';
 
 var SAGA_VERSIONS = [
+  { version: '1.18.3', date: '2026-08-19', titre: 'Corriger un virement, sans étirer le tableau', points: [
+    'Un virement déjà enregistré se corrige : date, montant et référence se reprennent, et le retrait se fait depuis la même fenêtre',
+    'Les actions passent en lien discret sous le montant : les lignes du tableau des lives ont retrouvé leur hauteur'
+  ]},
   { version: '1.18.2', date: '2026-08-19', titre: 'Pointer les virements depuis la liste des lives', points: [
     'Un bouton « J\'ai reçu » sur chaque ligne de la liste des lives : plus besoin d\'ouvrir chaque live pour pointer un virement',
     'Le tableau de bord porte une seule case, « Reste à percevoir de Whatnot », à la place du panneau détaillé'
