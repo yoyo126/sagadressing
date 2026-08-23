@@ -46,6 +46,22 @@ FICHIERS_APP = ['style.css', 'nav.js', 'saga-pdf.js']
 PRELUDE = "<?php require __DIR__ . '/entete.php'; ?>\n"
 
 
+def version_application():
+    """Numéro de version, lu dans nav.js — il sert à forcer le navigateur à
+    recharger les fichiers modifiés. Sans cela, un nav.js gardé en cache
+    laisse des boutons appeler des fonctions qui n'existent pas encore, et
+    l'échec est silencieux."""
+    nav = io.open(os.path.join(RACINE, 'nav.js'), encoding='utf-8').read()
+    m = re.search(r"var SAGA_VERSION = '([^']+)'", nav)
+    return m.group(1) if m else '0'
+
+
+def marquer_versions(html, version):
+    for fichier in ('nav.js', 'server-sync.js', 'saga-pdf.js', 'style.css'):
+        html = html.replace('"' + fichier + '"', '"' + fichier + '?v=' + version + '"')
+    return html
+
+
 def rediriger_liens(texte):
     """Réécrit les liens entre pages, de .html vers .php.
 
@@ -113,6 +129,10 @@ def convertir(html):
         '<script src="nav.js"></script>',
         '<script src="nav.js"></script>\n<script src="server-sync.js"></script>',
         1)
+
+    # 5. Les fichiers partagés portent le numéro de version : un navigateur
+    #    qui garde l'ancien nav.js casse les boutons ajoutés depuis.
+    html = marquer_versions(html, version_application())
 
     return PRELUDE + html
 

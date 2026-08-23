@@ -1670,9 +1670,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.18.3';
+var SAGA_VERSION = '1.18.4';
 
 var SAGA_VERSIONS = [
+  { version: '1.18.4', date: '2026-08-19', titre: 'Les fichiers modifiés ne restent plus en cache', points: [
+    'Les fichiers partagés portent le numéro de version : un navigateur qui gardait l\'ancien nav.js faisait échouer les boutons récents, sans rien afficher',
+    'Un bouton qui appelle une fonction absente le dit désormais, au lieu de ne rien faire',
+    '« annuler » revient à côté de « corriger », sur la liste des lives comme sur la page d\'un live'
+  ]},
   { version: '1.18.3', date: '2026-08-19', titre: 'Corriger un virement, sans étirer le tableau', points: [
     'Un virement déjà enregistré se corrige : date, montant et référence se reprennent, et le retrait se fait depuis la même fenêtre',
     'Les actions passent en lien discret sous le montant : les lignes du tableau des lives ont retrouvé leur hauteur'

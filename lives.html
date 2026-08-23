@@ -140,17 +140,38 @@
       '<div class="muted" style="font-size:.78rem; margin-top:4px;">le ' + sagaDateFR(e.date) +
       (Math.abs(e.ecart) >= 0.01
         ? ' · <span style="color:var(--warn);">écart ' + sagaEUR(e.ecart) + '</span>'
-        : '') +
-      ' · ' + lien('corriger', 'marquerVirement') + '</div>';
+        : '') + '</div>' +
+      '<div style="font-size:.78rem; margin-top:2px;">' +
+        lien('corriger', 'marquerVirement') + ' · ' + lien('annuler', 'annulerVirement') + '</div>';
   }
 
   function marquerVirement(id) {
     var live = LIVES.filter(function (l) { return l.id === id; })[0];
     if (!live) return;
+    /* Un bouton qui ne fait rien est le pire des défauts : si le navigateur
+       sert un nav.js d'une version antérieure, on le dit plutôt que d'échouer
+       en silence. */
+    if (typeof sagaModaleVirement !== 'function') {
+      alert('Cette action demande une version plus récente du CRM.\n\n'
+        + 'Rechargez la page en maintenant Maj enfoncée (⇧ + rechargement).');
+      return;
+    }
     sagaModaleVirement(live, function () {
       sagaSaveLives(LIVES);
       renderLives();
     });
+  }
+
+  function annulerVirement(id) {
+    var live = LIVES.filter(function (l) { return l.id === id; })[0];
+    if (!live) return;
+    var e = sagaEncaissement(live);
+    if (!confirm('Annuler le virement de ' + sagaEUR(e.montant === null ? e.attendu : e.montant)
+      + ' enregistré pour « ' + live.titre + ' » ?\n\n'
+      + 'Le live repassera en attente de virement.')) return;
+    sagaAnnulerEncaisse(live);
+    sagaSaveLives(LIVES);
+    renderLives();
   }
 
   function statutLive(t) {
