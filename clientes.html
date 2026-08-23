@@ -188,7 +188,8 @@
 
   function persist() { sagaSave('clientes', clientes); }
 
-  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+  // Une seule règle d'affichage, définie dans nav.js : au centime
+  function fmtEUR(n) { return sagaEUR(n); }
 
   function pickVignette(input) {
     if (!input.files || !input.files[0]) return;

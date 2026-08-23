@@ -1391,7 +1391,19 @@ function sagaTelephone(brut) {
   return t;
 }
 
-function sagaEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+/* Les montants s'affichent au centime. Arrondir à l'euro faussait la lecture
+   — un net à reverser de 288,45 € annoncé « 288 € » — et surtout empêchait
+   les colonnes de s'additionner : la somme des lignes affichées ne tombait
+   plus sur le total affiché. Les calculs, eux, ont toujours été au centime. */
+function sagaEUR(n) {
+  return (Number(n) || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  }) + ' €';
+}
+
+/* Sans décimales : réservé aux libellés où le centime n'apporte rien,
+   comme un palier de prix de boutique. */
+function sagaEURrond(n) { return Math.round(Number(n) || 0).toLocaleString('fr-FR') + ' €'; }
 
 function sagaDateFR(iso) {
   if (!iso) return '—';
@@ -1504,9 +1516,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.15.1';
+var SAGA_VERSION = '1.16.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.16.0', date: '2026-08-19', titre: 'Les montants s\'affichent au centime', points: [
+    'Les euros étaient arrondis à l\'affichage : un net de 527,24 € s\'annonçait « 527 € », et la somme des lignes ne tombait plus sur le total',
+    'Tous les montants portent désormais leurs centimes, à l\'écran comme dans les PDF — les calculs, eux, étaient déjà exacts',
+    'Sept fonctions d\'affichage recopiées d\'une page à l\'autre n\'en font plus qu\'une'
+  ]},
   { version: '1.15.1', date: '2026-08-19', titre: 'Les accès sont là où on les cherche', points: [
     'La gestion des accès rejoint l\'onglet « Utilisateurs » des Paramètres, à la place de la liste de démonstration — il n\'y a plus deux endroits pour une seule chose',
     'Après une création ou une modification, la page revient sur le bon onglet, et un rafraîchissement ne rejoue plus l\'action'

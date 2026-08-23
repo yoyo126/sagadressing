@@ -160,7 +160,8 @@
   var apporteurs = sagaApporteurs();
   function persist() { sagaSave('apporteurs', apporteurs); }
 
-  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+  // Une seule règle d'affichage, définie dans nav.js : au centime
+  function fmtEUR(n) { return sagaEUR(n); }
 
   function render() {
     var q = document.getElementById('searchInput').value.trim().toLowerCase();

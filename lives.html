@@ -251,9 +251,7 @@
 
   var ANALYSE = null;
 
-  function eurPrecis(n) {
-    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-  }
+  function eurPrecis(n) { return sagaEUR(n); }
 
   /* Choix de dressing proposés : les clientes enregistrées, plus les lettres
      du fichier qui n'appartiennent encore à personne — pour pouvoir importer

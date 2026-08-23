@@ -311,7 +311,8 @@
   var TODAY_ISO = sagaAujourdhui();   // date réelle du poste
   var MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
-  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+  // Une seule règle d'affichage, définie dans nav.js : au centime
+  function fmtEUR(n) { return sagaEUR(n); }
   function fmtDate(iso) {
     if (!iso) return '—';
     var d = new Date(iso + 'T00:00:00');

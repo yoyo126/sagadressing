@@ -1310,13 +1310,9 @@
   var MONTHS_FR_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   var TODAY_ISO = sagaAujourdhui();   // le CRM travaille sur la date réelle du poste
 
-  function fmtEUR(n) {
-    return Math.round(n).toLocaleString('fr-FR') + ' €';
-  }
-
-  function fmtEURcents(n) {
-    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-  }
+  // Une seule règle d'affichage, définie dans nav.js : au centime
+  function fmtEUR(n) { return sagaEUR(n); }
+  function fmtEURcents(n) { return sagaEUR(n); }
 
   // Date "du jour" de la maquette, pour que tous les documents soient cohérents entre eux
   function todayLabel() {

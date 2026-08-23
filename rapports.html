@@ -418,7 +418,8 @@
     return s === 'live' ? 'lives uniquement' : s === 'direct' ? 'ventes hors live uniquement' : 'toutes origines';
   }
 
-  function fmtEUR(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; }
+  // Une seule règle d'affichage, définie dans nav.js : au centime
+  function fmtEUR(n) { return sagaEUR(n); }
 
   function currentSource() {
     var btn = document.querySelector('#sourceToggle button.active');
