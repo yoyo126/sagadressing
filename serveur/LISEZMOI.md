@@ -55,6 +55,12 @@ ligne qui exige la connexion, l'état du CRM écrit dans la page, et
 
 `serveur/build/` n'est pas versionné : il se régénère.
 
+**Déposer le dossier en entier**, jamais une sélection de fichiers. Les pages
+portent le numéro de version dans les adresses de `nav.js` et `style.css` —
+c'est ce qui force le navigateur à recharger un fichier modifié, après trois
+épisodes de boutons muets pour cause de cache. Un dépôt partiel laisse des
+pages réclamant une version que le serveur n'a pas.
+
 ## Comment l'application parle au serveur
 
 L'application lisait le stockage du navigateur de façon immédiate, à quatre-vingt-dix
