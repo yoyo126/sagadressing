@@ -106,11 +106,16 @@
               </div>
               <div class="form-field">
                 <label class="form-label" for="fLivraison">Profil de livraison</label>
-                <select class="form-select" id="fLivraison" onchange="refreshApercu()">
-                  <option>De 100 g à &lt; 250 g</option>
-                  <option>De 250 g à &lt; 500 g</option>
-                  <option>De 500 g à &lt; 1 kg</option>
-                </select>
+                <input class="form-input" id="fLivraison" value="De 100&#160;g &agrave; &lt;250&#160;g" oninput="refreshApercu()" />
+                <span class="card-note">
+                  Doit correspondre au mot pour mot à un profil existant dans votre compte Whatnot,
+                  espaces compris — c'est sur ce libellé que l'import se cale.
+                </span>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="fEtat">État (facultatif)</label>
+                <input class="form-input" id="fEtat" value="" placeholder="ex. Bon état" oninput="refreshApercu()" />
+                <span class="card-note">Laissé vide, comme dans le générateur d'origine.</span>
               </div>
               <div class="form-field">
                 <label class="form-label" for="fMention">Mention dans le titre</label>
@@ -458,15 +463,19 @@
     var qte = document.getElementById('fQte').value;
     var type = document.getElementById('fType').value;
     var livraison = document.getElementById('fLivraison').value;
+    var etat = document.getElementById('fEtat').value.trim();
     var desc = document.getElementById('fDesc').value;
 
     var lignesCSV = [entetes.map(echap).join(',')];
     L.forEach(function (l) {
       // Les vignettes locales ne sont pas des URL publiques : la colonne reste vide
       var imageUrl = /^https?:\/\//.test(l.image) ? l.image : '';
+      /* « Offres acceptées », « Matières dangereuses » et « État » restent
+         vides : c'est ce que produisait le générateur d'origine, et Whatnot
+         refuse le fichier dès qu'on y met « Non » ou « Utilisé ». */
       lignesCSV.push([
         cat, sousCat, l.titre, desc, qte, type, l.prix, livraison,
-        'Non', 'Non', 'Utilisé', '', l.sku, imageUrl, '', '', '', '', '', '', ''
+        '', '', etat, '', l.sku, imageUrl, '', '', '', '', '', '', ''
       ].map(echap).join(','));
     });
 

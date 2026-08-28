@@ -1670,9 +1670,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.18.4';
+var SAGA_VERSION = '1.19.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.19.0', date: '2026-08-19', titre: 'Le CSV de boutique repasse dans Whatnot', points: [
+    'Whatnot refusait le fichier : trois colonnes portaient « Non », « Non » et « Utilisé » là où le générateur d\'origine les laissait vides',
+    'Le profil de livraison redevient un champ libre, avec le libellé exact qui fonctionnait — Whatnot le compare au mot près',
+    'Le champ « État » revient, facultatif et vide par défaut',
+    'Le fichier produit est désormais identique, caractère pour caractère, à celui de l\'ancien générateur'
+  ]},
   { version: '1.18.4', date: '2026-08-19', titre: 'Les fichiers modifiés ne restent plus en cache', points: [
     'Les fichiers partagés portent le numéro de version : un navigateur qui gardait l\'ancien nav.js faisait échouer les boutons récents, sans rien afficher',
     'Un bouton qui appelle une fonction absente le dit désormais, au lieu de ne rien faire',
