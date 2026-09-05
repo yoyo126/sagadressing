@@ -803,10 +803,12 @@ function sagaPartArticle(a) {
 function sagaReparerIdentites() {
   if (sagaLoad('identites_reprises', 0)) return null;
 
+  var liste = sagaListeClientes().filter(function (c) { return c.key; });
+
   var parLettre = {};
-  sagaListeClientes().forEach(function (c) {
+  liste.forEach(function (c) {
     var code = String(c.lettre || '').toUpperCase();
-    if (!code || !c.key) return;
+    if (!code) return;
     (parLettre[code] = parLettre[code] || []).push(c.key);
   });
 
@@ -816,8 +818,27 @@ function sagaReparerIdentites() {
     else ambigues.push(code);
   });
 
+  /* Codes que plus personne ne porte : ce sont ceux qu'une cliente a quittés
+     en changeant de lettre, à l'époque où les ventes ne suivaient pas. Elles
+     s'en retrouvent détachées — 11 421,86 € au 5 septembre 2026, dont tout
+     l'historique de Fabienne MIALANE, restée sur « F » après son passage en
+     « FM ». La clé de fiche garde la trace du code d'origine : elle a été
+     construite « prénom-lettre » le jour de la création. On ne s'en sert que
+     si une seule cliente correspond ; sinon on préfère ne rien trancher. */
+  var orphelins = [];
   function cle(lettre) {
-    return cleDe[String(lettre || '').toUpperCase()] || '';
+    var code = String(lettre || '').toUpperCase();
+    if (!code) return '';
+    if (cleDe[code]) return cleDe[code];
+    if (Object.prototype.hasOwnProperty.call(cleDe, code)) return '';
+
+    var suffixe = '-' + code.toLowerCase();
+    var candidats = liste.filter(function (c) {
+      return c.key.length > suffixe.length && c.key.slice(-suffixe.length) === suffixe;
+    });
+    cleDe[code] = candidats.length === 1 ? candidats[0].key : '';
+    if (!cleDe[code]) orphelins.push(code);
+    return cleDe[code];
   }
   /* Rebaptise les clés d'un objet indexé par lettre (paiements, taux figés). */
   function rekey(obj) {
@@ -880,15 +901,24 @@ function sagaReparerIdentites() {
   });
   if (paiesTouchees) sagaSave('paiements_apporteurs', paies);
 
+  /* Ce qui n'a pas trouvé preneur doit se voir, pas se taire : un article
+     sans cliente est un montant qui manque sur une fiche. */
+  var restants = 0;
+  sagaLives().forEach(function (live) {
+    (live.articles || []).forEach(function (a) { if (!a.cle) restants++; });
+  });
+
   sagaSave('identites_reprises', 1);
-  if (articles || directesTouchees || notesTouchees) {
-    sagaTracer('Reprise des identités',
-      articles + ' article(s), ' + directesTouchees + ' vente(s) hors live, '
-      + notesTouchees + ' note(s)',
-      ambigues.length ? 'Codes portés par plusieurs clientes, laissés en l’état : '
-        + ambigues.join(', ') : 'Aucun code ambigu');
-  }
-  return { articles: articles, directes: directesTouchees, notes: notesTouchees, ambigues: ambigues };
+  sagaTracer('Reprise des identités',
+    articles + ' article(s), ' + directesTouchees + ' vente(s) hors live, '
+    + notesTouchees + ' note(s)',
+    [ambigues.length ? 'Codes portés par plusieurs clientes : ' + ambigues.join(', ') : '',
+     orphelins.length ? 'Codes sans cliente : ' + orphelins.join(', ') : '',
+     restants ? restants + ' article(s) restés sans cliente' : 'Tous les articles rattachés'
+    ].filter(Boolean).join(' · '));
+
+  return { articles: articles, directes: directesTouchees, notes: notesTouchees,
+           ambigues: ambigues, orphelins: orphelins, restants: restants };
 }
 
 /* Pas tout de suite : server-sync.js s'exécute juste après nav.js, efface le
@@ -1051,18 +1081,13 @@ function sagaLettreWhatnot(libelle) {
   if (code.length === 1) return code;
 
   /* Un code de plusieurs lettres n'est retenu que si une cliente le porte
-     vraiment. Attention : Whatnot n'écrit qu'une lettre — c'est ainsi que
-     l'ancien CRM lisait ses exports, et les 2 970 ventes reprises n'en
-     portent jamais deux. Un « FA » dans une annonce est donc bien plus
-     probablement le F de Fabienne suivi d'autre chose qu'un code à part
-     entière. On ne se laisse convaincre que si aucune cliente ne porte la
-     première lettre seule : sans cela, rendre « FA » connu suffisait à
-     détourner les ventes de « F » vers quelqu'un d'autre. */
+     vraiment : sans cela, un mot collé au montant passerait pour un code.
+     Les annonces en portent bel et bien — le live du 30/08/2026 contient
+     « FM », « CS », « MA » et « NA » — donc on les respecte. */
   var connus = {};
   sagaListeClientes().forEach(function (c) {
     if (c.lettre) connus[String(c.lettre).toUpperCase()] = true;
   });
-  if (connus[code.charAt(0)]) return code.charAt(0);
   return connus[code] ? code : code.charAt(0);
 }
 
@@ -1865,7 +1890,7 @@ var SAGA_VERSIONS = [
   { version: '1.20.0', date: '2026-09-05', titre: 'Le code de dressing n’est plus une identité', points: [
     'Chaque vente est rattachée à la cliente elle-même, plus à sa lettre. Changer un code ne déplace donc plus rien : l’ancienneté, le chiffre d’affaires et les notes restent à leur place.',
     'Deux clientes peuvent porter le même code — deux « S » — sans mélanger leurs chiffres. Si elles vendent sur le même live, l’import demande simplement à qui revient chaque ligne.',
-    'Import Whatnot : une annonce écrite « FA » n’est plus attribuée à un code à deux lettres tant qu’une cliente porte le « F » seul. Whatnot n’écrit qu’une lettre par annonce.',
+    'Ventes détachées récupérées : un code quitté lors d’un renommage laissait ses ventes derrière lui. Elles retrouvent leur cliente — 11 421,86 €, dont tout l’historique de Fabienne MIALANE, resté sur « F » après son passage en « FM ».',
     'Reprise automatique au premier chargement : les ventes déjà enregistrées reçoivent l’identité de leur cliente. Aucun montant n’est recalculé.'
   ] },
   { version: '1.19.0', date: '2026-08-19', titre: 'Le CSV de boutique repasse dans Whatnot', points: [
