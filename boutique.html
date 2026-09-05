@@ -336,11 +336,14 @@
     if (!nouveau) { document.getElementById('fix_' + id).focus(); return; }
     if (nouveau === c.lettre) return;
 
-    var ventes = sagaVentesDuDressing(c.lettre).length;
+    /* Les ventes suivent la cliente, plus son code : le changement n'a
+       d'effet que sur ce qui vient, et l'historique reste au complet. */
+    var ventes = sagaVentesDuDressing(c.key || c.lettre).length;
     if (ventes && !confirm('« ' + (c.nom || c.prenom) + ' » a ' + ventes
-        + ' vente(s) enregistrée(s) sous le code « ' + c.lettre + ' ».\n\n'
-        + 'Elles y resteront rattachées : seuls les prochains articles et les '
-        + 'annonces de la boutique porteront « ' + nouveau + ' ».\n\nChanger le code ?')) {
+        + ' vente(s) enregistrée(s).\n\n'
+        + 'Elles restent les siennes : son chiffre d\'affaires ne bouge pas. '
+        + 'Seuls les prochains articles et les annonces de la boutique '
+        + 'porteront « ' + nouveau + ' ».\n\nChanger le code ?')) {
       return;
     }
 

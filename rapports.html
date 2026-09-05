@@ -143,11 +143,11 @@
     var res = [];
 
     sagaLives().forEach(function (live) {
-      sagaLettresDuLive(live).forEach(function (lettre) {
-        var d = sagaDecompte(live, lettre);
+      sagaPartsDuLive(live).forEach(function (part) {
+        var d = sagaDecompte(live, part);
         res.push({
           date: live.date, liveId: live.id, session: live.titre,
-          cliente: d.prenom, nom: sagaInfosCliente(lettre).nom, lettre: lettre,
+          cliente: d.prenom, nom: sagaInfosCliente(part.id).nom, lettre: d.lettre,
           /* Le port des giveaways est plafonné par le contrat : c'est le
              montant déduit qui doit figurer au rapport, pas celui engagé. */
           source: 'live', ventes: d.ca, giveaways: d.portGiveaway,

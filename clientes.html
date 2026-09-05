@@ -226,7 +226,7 @@
     /* Chiffres recalculés à chaque affichage depuis les ventes : la fiche ne
        porte plus que l'identité de la cliente. */
     clientes.forEach(function (c) {
-      var t = sagaTotauxDressing(c.lettre);
+      var t = sagaTotauxDressing(c.key || c.lettre);
       c.ca = t.ca; c.commission = t.commission; c.reste = t.reste;
     });
 
@@ -296,7 +296,7 @@
     var actives = clientes.filter(function (c) { return c.statut === 'active'; }).length;
     var totalCA = clientes.reduce(function (s, c) { return s + c.ca; }, 0);
     var totalGive = clientes.reduce(function (s, c) {
-      return s + sagaVentesDuDressing(c.lettre).reduce(function (t, v) {
+      return s + sagaVentesDuDressing(c.key || c.lettre).reduce(function (t, v) {
         return t + (v.portGiveaway || 0);
       }, 0);
     }, 0);

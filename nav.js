@@ -337,6 +337,7 @@ function sagaArchiverDressing(code, infos) {
   registre[code] = {
     prenom: infos.prenom || ('Dressing ' + code),
     nom: infos.nom || infos.prenom || '',
+    lettre: infos.lettre || '',
     commission: infos.commission,
     apporteur: infos.apporteur || '',
     apporteurPct: infos.apporteurPct || 0,
@@ -353,13 +354,39 @@ function sagaOublierDressingRetire(code) {
   sagaSave('dressings_retires', registre);
 }
 
-function sagaTauxDressing(lettre) {
-  var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
+/* Retrouve la cliente désignée par un identifiant de part : une clé de fiche
+   d'abord, une lettre ensuite pour les articles pas encore repris.
+   Renvoie { fiche, entree } — l'un des deux peut manquer. */
+function sagaResoudreDressing(id) {
   var fiches = sagaFiches();
-  var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
-    .filter(function (f) { return f.lettre === lettre; })[0];
+  var liste = sagaLoad('clientes', []);
+  var fiche = fiches[id] || null;
+  var cle = fiche ? id : '';
+  var c = liste.filter(function (x) { return x.key === id; })[0] || null;
+  if (c) cle = c.key;
+  if (!fiche && c) fiche = fiches[c.key] || null;
+
+  /* Identifiant hérité : avant la bascule, les articles portaient la lettre.
+     On ne se rabat là-dessus que si aucune clé ne correspond, sinon deux
+     clientes du même code se remettraient à se confondre. */
+  if (!fiche && !c) {
+    c = liste.filter(function (x) { return x.lettre === id; })[0] || null;
+    if (c) cle = c.key || '';
+    var cleFiche = Object.keys(fiches).filter(function (k) { return fiches[k].lettre === id; })[0];
+    fiche = (c && fiches[c.key]) || (cleFiche ? fiches[cleFiche] : null);
+    if (!cle && cleFiche) cle = cleFiche;
+  }
+  return { fiche: fiche, entree: c, cle: cle };
+}
+
+function sagaTauxDressing(id) {
+  var trouve = sagaResoudreDressing(id);
+  var fiche = trouve.fiche, c = trouve.entree;
   // Cliente supprimée : ses taux d'alors, pour ne pas rejouer ses ventes autrement
-  var r = sagaDressingsRetires()[lettre];
+  var r = sagaDressingsRetires()[id]
+       || (c && sagaDressingsRetires()[c.lettre])
+       || null;
+  var lettre = (fiche && fiche.lettre) || (c && c.lettre) || (r && r.lettre) || id;
 
   function choisir() {
     for (var i = 0; i < arguments.length; i++) {
@@ -370,6 +397,7 @@ function sagaTauxDressing(lettre) {
 
   var source = fiche || c || r || null;
   return {
+    lettre: lettre, cle: trouve.cle || '',
     prenom: choisir(fiche && fiche.prenom, c && c.prenom, r && r.prenom, 'Dressing ' + lettre),
     commission: choisir(fiche && fiche.commission, c && c.pct, r && r.commission, 30),
     apporteur: source ? (source.apporteur || '') : '',
@@ -562,41 +590,40 @@ function sagaSupprimerCliente(cle, options) {
     sagaSave('clients_data', fiches);
   }
 
-  /* Les notes suivent le code, pas la fiche : on ne les retire que si plus
-     aucune cliente ne porte ce code, sinon elles appartiennent à l'autre. */
+  /* Les notes appartiennent à la cliente, plus au code : deux clientes sur
+     « S » ne se partagent plus les mêmes. */
   var notesRetirees = 0;
-  if (code && !sagaClientesDuCode(code).length) {
-    var notes = sagaNotes();
-    var restantes = notes.filter(function (n) { return n.lettre !== code; });
-    notesRetirees = notes.length - restantes.length;
-    if (notesRetirees) sagaSaveNotes(restantes);
-  }
+  var notes = sagaNotes();
+  var notesRestantes = notes.filter(function (n) { return sagaPartArticle(n) !== cle; });
+  notesRetirees = notes.length - notesRestantes.length;
+  if (notesRetirees) sagaSaveNotes(notesRestantes);
 
-  /* Les ventes sont rattachées au code, pas à la fiche. Deux issues, et
-     l'appelant tranche : les emporter avec la fiche, ou les conserver — et
-     dans ce cas mémoriser le taux, sinon leurs montants changeraient. */
+  /* Les ventes suivent l'identité de la cliente. Deux issues, et l'appelant
+     tranche : les emporter avec la fiche, ou les conserver — et dans ce cas
+     mémoriser le taux, sinon leurs montants changeraient. */
   var ventesRetirees = 0;
-  if (options.supprimerVentes && code) {
+  if (options.supprimerVentes) {
     var lives = sagaLives();
     lives.forEach(function (live) {
       var avant = live.articles.length;
-      live.articles = live.articles.filter(function (a) { return a.lettre !== code; });
+      live.articles = live.articles.filter(function (a) { return sagaPartArticle(a) !== cle; });
       ventesRetirees += avant - live.articles.length;
-      if (live.paiements) delete live.paiements[code];
+      if (live.paiements) delete live.paiements[cle];
+      if (live.tauxParCode) delete live.tauxParCode[cle];
     });
     // Un live vidé de tous ses articles n'a plus de raison d'être
     sagaSaveLives(lives.filter(function (live) { return live.articles.length > 0; }));
 
     var directes = sagaVentesDirectes();
-    var restantes = directes.filter(function (v) { return v.lettre !== code; });
+    var restantes = directes.filter(function (v) { return sagaPartArticle(v) !== cle; });
     ventesRetirees += directes.length - restantes.length;
     if (restantes.length !== directes.length) sagaSaveVentesDirectes(restantes);
 
-    sagaOublierDressingRetire(code);
-  } else if (code && sagaVentesDuDressing(code).length) {
-    sagaArchiverDressing(code, {
+    sagaOublierDressingRetire(cle);
+  } else if (sagaVentesDuDressing(cle).length) {
+    sagaArchiverDressing(cle, {
       prenom: (entree && entree.prenom) || (fiche && fiche.prenom) || '',
-      nom: nom,
+      nom: nom, lettre: code,
       commission: (fiche && fiche.commission) || (entree && entree.pct) || 30,
       apporteur: (fiche && fiche.apporteur) || (entree && entree.apporteur) || '',
       apporteurPct: (fiche && fiche.apporteurPct) || 0
@@ -709,25 +736,19 @@ function sagaModaleNouvelleCliente(options, auCreer) {
   setTimeout(function () { fond.querySelector('#sagaNcPrenom').focus(); }, 0);
 }
 
-/* Clé de fiche (?c=…) correspondant à une lettre de dressing */
-function sagaFicheDressing(lettre) {
-  var fiches = sagaFiches();
-  var cle = Object.keys(fiches).filter(function (k) { return fiches[k].lettre === lettre; })[0];
-  if (cle) return cle;
-  var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
-  return (c && c.key) || '';
+/* Clé de fiche (?c=…) correspondant à un identifiant de part */
+function sagaFicheDressing(id) {
+  return sagaResoudreDressing(id).cle || '';
 }
 
 /* Coordonnées complètes d'une cliente, pour les fiches et les documents */
-function sagaInfosCliente(lettre) {
-  var fiches = sagaFiches();
-  var fiche = Object.keys(fiches).map(function (k) { return fiches[k]; })
-    .filter(function (f) { return f.lettre === lettre; })[0];
-  var c = sagaLoad('clientes', []).filter(function (x) { return x.lettre === lettre; })[0];
-  var r = sagaDressingsRetires()[lettre];
-  var t = sagaTauxDressing(lettre);
+function sagaInfosCliente(id) {
+  var trouve = sagaResoudreDressing(id);
+  var fiche = trouve.fiche, c = trouve.entree;
+  var r = sagaDressingsRetires()[id];
+  var t = sagaTauxDressing(id);
   return {
-    lettre: lettre,
+    lettre: t.lettre,
     prenom: t.prenom,
     nom: (fiche && fiche.nom) || (c && c.nom) || (r && r.nom) || t.prenom,
     adresse: (fiche && fiche.adresse) || (c && c.adresse) || '',
@@ -750,23 +771,170 @@ function sagaInfosCliente(lettre) {
 
 function sagaCentimes(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 
+/* ============ Ce qui identifie une part de live ============
+   Le code de dressing est une étiquette, pas une identité. Whatnot n'en
+   connaît qu'une seule lettre par annonce, et rien n'empêche deux clientes
+   d'écrire « S » — tant qu'elles ne vendent pas sur le même live, c'est sans
+   conséquence pour elles. Tant que la lettre servait d'identité, en revanche,
+   elles partageaient le même chiffre d'affaires, le même taux de commission
+   et les mêmes notes ; et renommer un code détachait une cliente de tout son
+   historique d'un seul coup.
+
+   Chaque article porte donc la clé de sa fiche (`cle`), qui ne change jamais.
+   La lettre ne sert plus qu'à deux choses : l'afficher, et lire les exports
+   Whatnot. La changer n'a plus d'effet sur le passé.
+
+   Les articles d'avant cette bascule n'ont pas de clé : la lettre en tient
+   lieu, le temps que sagaReparerIdentites() les complète. */
+function sagaPartArticle(a) {
+  if (!a) return '';
+  return a.cle || a.lettre || '';
+}
+
+/* ============ Reprise : l'identité passe du code à la fiche ============
+   À faire une fois, et pendant que la correspondance lettre → cliente est
+   encore sans ambiguïté : après, il sera trop tard pour deviner à qui
+   appartenait le « S » de tel live.
+
+   Aucun montant ne bouge ici. On ne fait que nommer autrement ce qui existe
+   déjà : là où la donnée disait « la lettre S », elle dira « la cliente
+   severine-sa ». Une lettre portée par deux clientes est laissée telle
+   quelle — on ne tranche pas à la place de l'utilisateur — et signalée. */
+function sagaReparerIdentites() {
+  if (sagaLoad('identites_reprises', 0)) return null;
+
+  var parLettre = {};
+  sagaListeClientes().forEach(function (c) {
+    var code = String(c.lettre || '').toUpperCase();
+    if (!code || !c.key) return;
+    (parLettre[code] = parLettre[code] || []).push(c.key);
+  });
+
+  var cleDe = {}, ambigues = [];
+  Object.keys(parLettre).forEach(function (code) {
+    if (parLettre[code].length === 1) cleDe[code] = parLettre[code][0];
+    else ambigues.push(code);
+  });
+
+  function cle(lettre) {
+    return cleDe[String(lettre || '').toUpperCase()] || '';
+  }
+  /* Rebaptise les clés d'un objet indexé par lettre (paiements, taux figés). */
+  function rekey(obj) {
+    if (!obj) return obj;
+    var out = {};
+    Object.keys(obj).forEach(function (k) { out[cle(k) || k] = obj[k]; });
+    return out;
+  }
+
+  var articles = 0, touches = 0;
+  var lives = sagaLives();
+  lives.forEach(function (live) {
+    (live.articles || []).forEach(function (a) {
+      if (a.cle || !a.lettre) return;
+      var k = cle(a.lettre);
+      if (!k) return;
+      a.cle = k;
+      articles++;
+    });
+    live.paiements = rekey(live.paiements);
+    live.tauxParCode = rekey(live.tauxParCode);
+    touches++;
+  });
+  if (touches) sagaSaveLives(lives);
+
+  var directes = sagaVentesDirectes(), directesTouchees = 0;
+  directes.forEach(function (v) {
+    if (v.cle || !v.lettre) return;
+    var k = cle(v.lettre);
+    if (!k) return;
+    v.cle = k;
+    directesTouchees++;
+  });
+  if (directesTouchees) sagaSaveVentesDirectes(directes);
+
+  var notes = sagaNotes(), notesTouchees = 0;
+  notes.forEach(function (n) {
+    if (n.cle || !n.lettre) return;
+    var k = cle(n.lettre);
+    if (!k) return;
+    n.cle = k;
+    notesTouchees++;
+  });
+  if (notesTouchees) sagaSaveNotes(notes);
+
+  /* Les règlements d'apporteur sont repérés par « live|lettre » : la même
+     clé doit désigner la même commission après la bascule, sinon un
+     versement déjà fait réapparaîtrait comme dû. */
+  var paies = sagaPaiementsApporteurs(), paiesTouchees = 0;
+  Object.keys(paies).forEach(function (nom) {
+    var avant = paies[nom] || {}, apres = {};
+    Object.keys(avant).forEach(function (k) {
+      var coupe = k.lastIndexOf('|');
+      var neuf = coupe === -1 ? k
+        : k.slice(0, coupe + 1) + (cle(k.slice(coupe + 1)) || k.slice(coupe + 1));
+      if (neuf !== k) paiesTouchees++;
+      apres[neuf] = avant[k];
+    });
+    paies[nom] = apres;
+  });
+  if (paiesTouchees) sagaSave('paiements_apporteurs', paies);
+
+  sagaSave('identites_reprises', 1);
+  if (articles || directesTouchees || notesTouchees) {
+    sagaTracer('Reprise des identités',
+      articles + ' article(s), ' + directesTouchees + ' vente(s) hors live, '
+      + notesTouchees + ' note(s)',
+      ambigues.length ? 'Codes portés par plusieurs clientes, laissés en l’état : '
+        + ambigues.join(', ') : 'Aucun code ambigu');
+  }
+  return { articles: articles, directes: directesTouchees, notes: notesTouchees, ambigues: ambigues };
+}
+
+/* Pas tout de suite : server-sync.js s'exécute juste après nav.js, efface le
+   stockage local et y réinstalle l'état du serveur. Lancée maintenant, la
+   reprise travaillerait sur les restes de la page précédente et son résultat
+   serait balayé sans jamais repartir vers le serveur. Le temps mort la place
+   après cet amorçage, et sagaSave y est déjà l'enveloppe qui synchronise. */
+setTimeout(function () { sagaReparerIdentites(); }, 0);
+
+/* Les parts d'un live, une par cliente présente, dans l'ordre d'apparition.
+   `id` sert aux calculs, `lettre` à l'affichage. La part sans identifiant
+   rassemble les articles pas encore attribués. */
+function sagaPartsDuLive(live) {
+  var vus = [], res = [];
+  ((live && live.articles) || []).forEach(function (a) {
+    var id = sagaPartArticle(a);
+    if (vus.indexOf(id) !== -1) return;
+    vus.push(id);
+    res.push({ id: id, cle: (a && a.cle) || '', lettre: (a && a.lettre) || '' });
+  });
+  return res;
+}
+
 /* Décompte d'un dressing sur un live, recalculé depuis ses articles.
+   `part` est un identifiant de part, ou la part elle-même.
    base = ventes − frais Whatnot ; net = base − giveaways − commissions */
-function sagaDecompte(live, lettre) {
-  var arts = live.articles.filter(function (a) { return a.lettre === lettre; });
+function sagaDecompte(live, part) {
+  var id = (part && part.id !== undefined) ? part.id : (part || '');
+  var arts = live.articles.filter(function (a) { return sagaPartArticle(a) === id; });
   var ventes = arts.filter(function (a) { return a.type !== 'giveaway'; })
                    .reduce(function (s, a) { return s + a.montant; }, 0);
   var giveaways = arts.filter(function (a) { return a.type === 'giveaway'; })
                       .reduce(function (s, a) { return s + a.montant; }, 0);
-  var t = sagaTauxDressing(lettre);
+  /* La lettre affichée est celle que portaient les articles ce soir-là : un
+     changement de code ne réécrit pas les lives passés. */
+  var lettre = (arts[0] && arts[0].lettre)
+    || ((part && part.lettre) || (typeof part === 'string' ? part : '')) || '';
+  var t = sagaTauxDressing(id);
 
   /* Taux figé sur le live, s'il en porte un.
      Les lives repris de l'ancien CRM gardent le taux avec lequel ils ont été
      réglés à l'époque : une cliente passée de 30 à 20 % verrait sinon ses
      anciens lives recalculés au nouveau taux, et l'historique cesserait de
      correspondre à ce qui lui a été versé. */
-  var pctSaga = (live.tauxParCode && live.tauxParCode[lettre] !== undefined)
-    ? live.tauxParCode[lettre] : t.commission;
+  var pctSaga = (live.tauxParCode && live.tauxParCode[id] !== undefined)
+    ? live.tauxParCode[id] : t.commission;
 
   // Une vente hors Whatnot ne supporte pas les frais de la plateforme
   var soumisFrais = arts.filter(function (a) { return a.type === 'vente'; })
@@ -788,8 +956,9 @@ function sagaDecompte(live, lettre) {
      affichait. `ventes` reste le brut, pour le détail. */
   var ca = sagaCentimes(ventes - portGiveaway);
 
-  var paiement = (live.paiements || {})[lettre] || null;
+  var paiement = (live.paiements || {})[id] || null;
   return {
+    id: id, cle: (arts[0] && arts[0].cle) || '',
     lettre: lettre, prenom: t.prenom, articles: arts, ca: ca,
     pctSaga: pctSaga, tauxFige: pctSaga !== t.commission,
     ventes: sagaCentimes(ventes), giveaways: sagaCentimes(giveaways), base: base,
@@ -880,10 +1049,20 @@ function sagaLettreWhatnot(libelle) {
   if (!m) return '';
   var code = m[1].toUpperCase();
   if (code.length === 1) return code;
+
+  /* Un code de plusieurs lettres n'est retenu que si une cliente le porte
+     vraiment. Attention : Whatnot n'écrit qu'une lettre — c'est ainsi que
+     l'ancien CRM lisait ses exports, et les 2 970 ventes reprises n'en
+     portent jamais deux. Un « FA » dans une annonce est donc bien plus
+     probablement le F de Fabienne suivi d'autre chose qu'un code à part
+     entière. On ne se laisse convaincre que si aucune cliente ne porte la
+     première lettre seule : sans cela, rendre « FA » connu suffisait à
+     détourner les ventes de « F » vers quelqu'un d'autre. */
   var connus = {};
   sagaListeClientes().forEach(function (c) {
     if (c.lettre) connus[String(c.lettre).toUpperCase()] = true;
   });
+  if (connus[code.charAt(0)]) return code.charAt(0);
   return connus[code] ? code : code.charAt(0);
 }
 
@@ -1010,29 +1189,40 @@ function sagaLiveDepuisWhatnot(analyse, options) {
   var sansLettre = options.sansLettre || {};
   var articles = [], totaux = {};
 
+  /* `affectations` et `sansLettre` désignent des clientes, pas des lettres :
+     c'est l'écran d'import qui a tranché. L'article retient l'identité de la
+     cliente, et la lettre qu'elle portait ce soir-là. */
+  var lettreDe = {};
+
   analyse.ventes.forEach(function (v) {
-    var lettre = v.lettre
+    var choix = v.lettre
       ? (affectations[v.lettre] || v.lettre)
       : (sansLettre[v.commande] || '');
+    var t = sagaTauxDressing(choix);
+    var id = t.cle || choix;
+    lettreDe[id] = t.lettre || choix;
     articles.push({
       id: 'a' + (v.commande || articles.length),
       commande: v.commande,
       libelle: v.libelle,
-      lettre: lettre,
+      cle: t.cle,
+      lettre: lettreDe[id],
       montant: sagaCentimes(v.montant),
       type: 'vente'
     });
-    totaux[lettre] = sagaCentimes((totaux[lettre] || 0) + v.montant);
+    totaux[id] = sagaCentimes((totaux[id] || 0) + v.montant);
   });
 
   var parts = sagaRepartirGiveaways(analyse.totalGiveaways, totaux);
-  Object.keys(parts).forEach(function (lettre) {
-    if (!parts[lettre]) return;
+  Object.keys(parts).forEach(function (id) {
+    if (!parts[id]) return;
+    var t = sagaTauxDressing(id);
     articles.push({
-      id: 'g-' + lettre,
+      id: 'g-' + id,
       libelle: 'Giveaways du live (' + analyse.giveaways.length + ') — part au prorata des ventes',
-      lettre: lettre,
-      montant: parts[lettre],
+      cle: t.cle,
+      lettre: lettreDe[id] || t.lettre || id,
+      montant: parts[id],
       type: 'giveaway'
     });
   });
@@ -1051,16 +1241,10 @@ function sagaLiveDepuisWhatnot(analyse, options) {
 }
 
 /* Lettres présentes sur un live, dans l'ordre d'apparition */
-function sagaLettresDuLive(live) {
-  var vues = [];
-  live.articles.forEach(function (a) { if (vues.indexOf(a.lettre) === -1) vues.push(a.lettre); });
-  return vues;
-}
-
 function sagaTotauxLive(live) {
   var t = { ventes: 0, ca: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, portGiveaway: 0, net: 0, reste: 0, clientes: 0 };
-  sagaLettresDuLive(live).forEach(function (lettre) {
-    var d = sagaDecompte(live, lettre);
+  sagaPartsDuLive(live).forEach(function (part) {
+    var d = sagaDecompte(live, part);
     t.clientes++;
     t.ventes += d.ventes; t.ca += d.ca; t.giveaways += d.giveaways; t.base += d.base;
     t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
@@ -1255,7 +1439,7 @@ function sagaSaveVentesDirectes(v) { return sagaSave('ventes_directes', v); }
 
 /* Décompte d'une vente hors Whatnot : ni frais de plateforme, ni giveaway */
 function sagaDecompteDirect(v) {
-  var t = sagaTauxDressing(v.lettre);
+  var t = sagaTauxDressing(sagaPartArticle(v));
   var commSaga = sagaCentimes(v.montant * t.commission / 100);
   var commApporteur = v.apporteur ? sagaCentimes(v.montant * t.apporteurPct / 100) : 0;
   var frais = v.frais || 0;
@@ -1269,15 +1453,16 @@ function sagaDecompteDirect(v) {
 
 /* Toutes les ventes d'un dressing, lives et hors live réunis, du plus récent au plus ancien.
    C'est ce que lit la fiche cliente : elle ne conserve plus sa propre copie. */
-function sagaVentesDuDressing(lettre) {
+function sagaVentesDuDressing(id) {
   var res = [];
 
   sagaLives().forEach(function (live) {
-    if (sagaLettresDuLive(live).indexOf(lettre) === -1) return;
-    var d = sagaDecompte(live, lettre);
+    var parts = sagaPartsDuLive(live).filter(function (p) { return p.id === id; });
+    if (!parts.length) return;
+    var d = sagaDecompte(live, parts[0]);
     res.push({
       origine: 'live', liveId: live.id, date: live.date, label: live.titre,
-      lettre: lettre, ventes: d.ventes, ca: d.ca, giveaways: d.giveaways,
+      lettre: d.lettre, ventes: d.ventes, ca: d.ca, giveaways: d.giveaways,
       portGiveaway: d.portGiveaway,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: 0,
       net: d.net, paye: d.paye ? 1 : 0,
@@ -1286,11 +1471,11 @@ function sagaVentesDuDressing(lettre) {
     });
   });
 
-  sagaVentesDirectes().filter(function (v) { return v.lettre === lettre; }).forEach(function (v) {
+  sagaVentesDirectes().filter(function (v) { return sagaPartArticle(v) === id; }).forEach(function (v) {
     var d = sagaDecompteDirect(v);
     res.push({
       origine: 'direct', venteId: v.id, date: v.date, label: v.libelle,
-      lettre: lettre, ventes: d.ventes, ca: d.ventes, giveaways: 0, portGiveaway: 0,
+      lettre: v.lettre || '', ventes: d.ventes, ca: d.ventes, giveaways: 0, portGiveaway: 0,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: d.frais,
       net: d.net, paye: v.paye ? 1 : 0,
       datePaiement: v.datePaiement || '', modePaiement: v.paye ? 'Virement' : '',
@@ -1387,13 +1572,13 @@ function sagaCommissionsApporteur(nom) {
   var res = [];
 
   sagaLives().forEach(function (live) {
-    sagaLettresDuLive(live).forEach(function (lettre) {
-      var d = sagaDecompte(live, lettre);
+    sagaPartsDuLive(live).forEach(function (part) {
+      var d = sagaDecompte(live, part);
       if (d.apporteur !== nom || !d.commApporteur) return;
-      var cle = live.id + '|' + lettre;
+      var cle = live.id + '|' + part.id;
       res.push({
         cle: cle, origine: 'Live', date: live.date, session: live.titre,
-        lettre: lettre, cliente: d.prenom, base: d.base, montant: d.commApporteur,
+        lettre: d.lettre, cliente: d.prenom, base: d.base, montant: d.commApporteur,
         paye: !!regles[cle], paiement: regles[cle] || null
       });
     });
@@ -1489,10 +1674,14 @@ function sagaAnnulerPaiement(vente) {
 function sagaNotes() { return sagaLoad('notes', []); }
 function sagaSaveNotes(n) { return sagaSave('notes', n); }
 
-function sagaAjouterNote(type, texte, lettre) {
+/* `cible` est la cliente : sa clé de fiche, ou sa lettre à défaut. Une note
+   suit sa cliente, y compris après un changement de code. */
+function sagaAjouterNote(type, texte, cible) {
   var notes = sagaNotes();
+  var t = sagaTauxDressing(cible || '');
   notes.unshift({
-    id: 'n' + Date.now(), type: type, lettre: lettre || '',
+    id: 'n' + Date.now(), type: type,
+    cle: cible || '', lettre: (cible ? t.lettre : ''),
     texte: texte, date: sagaAujourdhui(), done: false
   });
   sagaSaveNotes(notes);
@@ -1670,9 +1859,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.19.0';
+var SAGA_VERSION = '1.20.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.20.0', date: '2026-09-05', titre: 'Le code de dressing n’est plus une identité', points: [
+    'Chaque vente est rattachée à la cliente elle-même, plus à sa lettre. Changer un code ne déplace donc plus rien : l’ancienneté, le chiffre d’affaires et les notes restent à leur place.',
+    'Deux clientes peuvent porter le même code — deux « S » — sans mélanger leurs chiffres. Si elles vendent sur le même live, l’import demande simplement à qui revient chaque ligne.',
+    'Import Whatnot : une annonce écrite « FA » n’est plus attribuée à un code à deux lettres tant qu’une cliente porte le « F » seul. Whatnot n’écrit qu’une lettre par annonce.',
+    'Reprise automatique au premier chargement : les ventes déjà enregistrées reçoivent l’identité de leur cliente. Aucun montant n’est recalculé.'
+  ] },
   { version: '1.19.0', date: '2026-08-19', titre: 'Le CSV de boutique repasse dans Whatnot', points: [
     'Whatnot refusait le fichier : trois colonnes portaient « Non », « Non » et « Utilisé » là où le générateur d\'origine les laissait vides',
     'Le profil de livraison redevient un champ libre, avec le libellé exact qui fonctionnait — Whatnot le compare au mot près',

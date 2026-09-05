@@ -218,7 +218,10 @@
       encaisse: { statut: 'En attente', date: '' }, articles: []
     };
   }
-  var FILTRE = params.get('c') || '';   // lettre de dressing, vide = tout le live (modifiable au clic)
+  /* Cliente sur laquelle le live est filtré ; vide = tout le live. On y garde
+     l'identifiant de la part, pas la lettre — un lien ancien, ou mis en
+     favori du temps où l'adresse portait « &c=F », reste compris. */
+  var FILTRE = params.get('c') || '';
   var articleEnEdition = null;
 
   function persist() {
@@ -227,10 +230,23 @@
     sagaSaveLives(LIVES);
   }
 
-  function lettresDuLive() { return sagaLettresDuLive(LIVE); }
+  function partsDuLive() { return sagaPartsDuLive(LIVE); }
+  function lettresDuLive() {
+    return partsDuLive().map(function (p) { return p.id; });
+  }
 
-  // Le filtre n'a de sens que si la lettre est présente sur ce live
-  function filtreValide() { return FILTRE && lettresDuLive().indexOf(FILTRE) !== -1; }
+  /* Le filtre n'a de sens que si la cliente est présente sur ce live. Une
+     adresse ancienne désigne une lettre : on la traduit une fois pour
+     toutes en identifiant de part. */
+  function filtreValide() {
+    if (!FILTRE) return false;
+    var parts = partsDuLive();
+    if (parts.some(function (p) { return p.id === FILTRE; })) return true;
+    var parLettre = parts.filter(function (p) { return p.lettre === FILTRE; })[0];
+    if (!parLettre) return false;
+    FILTRE = parLettre.id;
+    return true;
+  }
 
   function libelleType(t) {
     return t === 'giveaway' ? 'Giveaway' : t === 'horslive' ? 'Hors Whatnot' : 'Vente';
@@ -335,7 +351,7 @@
     var infos = sagaInfosCliente(FILTRE);
     var fiche = ficheCliente(FILTRE);
     document.getElementById('filtreTexte').innerHTML =
-      'Vue filtrée sur <strong>' + infos.nom + ' (' + FILTRE + ')</strong> — ' +
+      'Vue filtrée sur <strong>' + infos.nom + ' (' + sagaEchapper(d.lettre) + ')</strong> — ' +
       d.articles.length + ' article' + (d.articles.length > 1 ? 's' : '') + ' sur ce live.' +
       (fiche ? ' <a href="cliente.html?c=' + fiche + '" style="color:var(--brand-strong);">Ouvrir sa fiche</a>' : '');
     back.href = 'lives.html';
@@ -374,24 +390,24 @@
 
   /* ============ Répartition par cliente ============ */
   function renderRepartition() {
-    var lettres = lettresDuLive();
-    if (filtreValide()) lettres = [FILTRE];
+    var ids = lettresDuLive();
+    if (filtreValide()) ids = [FILTRE];
 
-    document.getElementById('repartitionBody').innerHTML = lettres.map(function (lettre) {
-      var d = sagaDecompte(LIVE, lettre);
+    document.getElementById('repartitionBody').innerHTML = ids.map(function (id) {
+      var d = sagaDecompte(LIVE, id);
       var statut = d.paye
         ? '<span class="chip good">Payé</span><div class="muted" style="font-size:.72rem; margin-top:3px;">' +
           sagaDateFR(d.paiement.date) + ' · ' + d.paiement.mode + '</div>'
         : '<span class="chip warn">En attente</span>';
       var action = d.paye
-        ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); annulerPaiement(\'' + lettre + '\')">Annuler</button>'
-        : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payerCliente(\'' + lettre + '\')">Payer</button>';
-      var infos = sagaInfosCliente(lettre);
+        ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); annulerPaiement(\'' + id + '\')">Annuler</button>'
+        : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payerCliente(\'' + id + '\')">Payer</button>';
+      var infos = sagaInfosCliente(id);
       // Cliquer sur la ligne filtre le live sur cette cliente, sur place
-      return '<tr class="ligne-cliente" onclick="filtrerSur(\'' + lettre + '\')" title="Voir le détail de ' + infos.nom + ' sur ce live">' +
-        '<td><div class="name-cell"><span class="tag-avatar">' + lettre + '</span>' +
+      return '<tr class="ligne-cliente" onclick="filtrerSur(\'' + id + '\')" title="Voir le détail de ' + infos.nom + ' sur ce live">' +
+        '<td><div class="name-cell"><span class="tag-avatar">' + sagaEchapper(d.lettre) + '</span>' +
           '<span><span class="name-main">' + infos.nom + '</span>' +
-          '<span class="name-sub">dressing ' + lettre + ' · ' + d.articles.length + ' article(s)</span></span>' +
+          '<span class="name-sub">dressing ' + sagaEchapper(d.lettre) + ' · ' + d.articles.length + ' article(s)</span></span>' +
         '</div></td>' +
         '<td class="num tabular">' + sagaEUR(d.ventes) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.portGiveaway) + '</td>' +
@@ -401,12 +417,12 @@
         '<td class="num tabular"><strong>' + sagaEUR(d.net) + '</strong></td>' +
         '<td>' + statut + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' + action +
-          '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerCliente(\'' + lettre + '\')">PDF</button></td>' +
+          '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerCliente(\'' + id + '\')">PDF</button></td>' +
       '</tr>';
     }).join('');
 
     var foot = document.getElementById('repartitionFoot');
-    if (filtreValide() || lettres.length < 2) { foot.innerHTML = ''; return; }
+    if (filtreValide() || ids.length < 2) { foot.innerHTML = ''; return; }
     var t = sagaTotauxLive(LIVE);
     foot.innerHTML = '<tr><td><strong>Total</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.ventes) + '</strong></td>' +
@@ -420,7 +436,7 @@
   /* ============ Articles ============ */
   function articlesAffiches() {
     return filtreValide()
-      ? LIVE.articles.filter(function (a) { return a.lettre === FILTRE; })
+      ? LIVE.articles.filter(function (a) { return sagaPartArticle(a) === FILTRE; })
       : LIVE.articles;
   }
 
@@ -443,17 +459,30 @@
   /* Toutes les clientes connues sont proposées, pas seulement celles déjà
      présentes sur ce live : c'est ce qui permet de réattribuer un article à
      quelqu'un qui n'y figurait pas encore. */
+  /* La liste désigne des clientes, pas des lettres : deux clientes en « S »
+     y figurent séparément, et l'article suivra la bonne même si l'une des
+     deux change de code demain. */
   function renderChoixLettres(selection) {
     var champ = document.getElementById('aLettre');
     var courant = selection || champ.value;
-    var lettres = lettresDuLive().slice();
-    sagaToutesClientes().forEach(function (c) {
-      if (lettres.indexOf(c.lettre) === -1) lettres.push(c.lettre);
+    var vus = [], options = [];
+
+    function ajouter(id, lettre, prenom) {
+      if (!id || vus.indexOf(id) !== -1) return;
+      vus.push(id);
+      options.push('<option value="' + sagaEchapper(id) + '">'
+        + sagaEchapper(lettre || '—') + ' — ' + sagaEchapper(prenom) + '</option>');
+    }
+
+    // Celles qui vendent déjà sur ce live d'abord, les autres ensuite
+    partsDuLive().forEach(function (p) {
+      ajouter(p.id, p.lettre, sagaTauxDressing(p.id).prenom);
     });
-    champ.innerHTML = lettres.map(function (l) {
-      var t = sagaTauxDressing(l);
-      return '<option value="' + l + '">' + l + ' — ' + t.prenom + '</option>';
-    }).join('') +
+    sagaListeClientes().forEach(function (c) {
+      ajouter(c.key || c.lettre, c.lettre, c.prenom);
+    });
+
+    champ.innerHTML = options.join('') +
       /* Une vente peut revenir à quelqu'un qui n'est pas encore au fichier :
          on crée la cliente sans quitter le live. */
       '<option value="__nouvelle__">＋ Nouvelle cliente…</option>';
@@ -470,7 +499,7 @@
       detail: 'Elle sera enregistrée dans Clientes, et l\'article lui sera attribué.',
       auFermer: function () { renderChoixLettres(precedent); }
     }, function (entree) {
-      renderChoixLettres(entree.lettre);
+      renderChoixLettres(entree.key || entree.lettre);
       annoncer(entree.nom + ' a été créée (dressing ' + entree.lettre
         + ') — l\'article lui sera attribué.');
     });
@@ -511,7 +540,7 @@
     articleEnEdition = id;
     document.getElementById('articleForm').style.display = 'flex';
     document.getElementById('aLibelle').value = a.libelle;
-    document.getElementById('aLettre').value = a.lettre;
+    document.getElementById('aLettre').value = sagaPartArticle(a);
     document.getElementById('aMontant').value = a.montant;
     document.getElementById('aType').value = a.type;
     majChampGiveaway();
@@ -525,15 +554,19 @@
     if (!libelle) { document.getElementById('aLibelle').focus(); return; }
     if (isNaN(montant)) { document.getElementById('aMontant').focus(); return; }
 
-    var codeChoisi = document.getElementById('aLettre').value;
-    if (!codeChoisi || codeChoisi === '__nouvelle__') {
+    var cibleChoisie = document.getElementById('aLettre').value;
+    if (!cibleChoisie || cibleChoisie === '__nouvelle__') {
       document.getElementById('aLettre').focus();
       return;
     }
 
+    /* L'article retient la cliente, et la lettre qu'elle porte aujourd'hui —
+       la première pour les calculs, la seconde pour l'affichage. */
+    var cible = sagaTauxDressing(cibleChoisie);
     var champs = {
       libelle: libelle,
-      lettre: codeChoisi,
+      cle: cible.cle,
+      lettre: cible.lettre || cibleChoisie,
       montant: montant,
       type: document.getElementById('aType').value
     };
@@ -542,13 +575,14 @@
     var message = '';
     if (articleEnEdition) {
       var a = LIVE.articles.filter(function (x) { return x.id === articleEnEdition; })[0];
-      var ancienneLettre = a.lettre;
+      var avant = sagaPartArticle(a);
+      var nomAvant = sagaTauxDressing(avant);
       Object.keys(champs).forEach(function (k) { a[k] = champs[k]; });
       // Réattribution : l'article sort de la vue filtrée, on l'annonce explicitement
-      if (ancienneLettre !== a.lettre) {
+      if (avant !== sagaPartArticle(a)) {
         message = '« ' + a.libelle + ' » (' + sagaEUR(a.montant) + ') a été transféré de ' +
-          sagaTauxDressing(ancienneLettre).prenom + ' (' + ancienneLettre + ') vers ' +
-          sagaTauxDressing(a.lettre).prenom + ' (' + a.lettre + ').';
+          nomAvant.prenom + ' (' + nomAvant.lettre + ') vers ' +
+          cible.prenom + ' (' + champs.lettre + ').';
       }
     } else {
       champs.id = 'a' + Date.now();
@@ -689,16 +723,16 @@
     return l;
   }
 
-  function imprimerCliente(lettre) {
-    var d = sagaDecompte(LIVE, lettre);
+  function imprimerCliente(id) {
+    var d = sagaDecompte(LIVE, id);
     var pdf = sagaNouveauPdf('Récapitulatif ' + d.prenom + ' — ' + LIVE.titre);
-    var infos = sagaInfosCliente(lettre);
+    var infos = sagaInfosCliente(id);
 
     pdf.titre('Récapitulatif de live');
     pdf.sousTitre(LIVE.titre + ' · ' + sagaDateLongue(LIVE.date) + ' · ' + LIVE.categorie);
 
     pdf.section('Cliente');
-    pdf.paragraphe(infos.nom + '  —  dressing ' + lettre, { gras: true, taille: 10.5 });
+    pdf.paragraphe(infos.nom + '  —  dressing ' + d.lettre, { gras: true, taille: 10.5 });
     if (infos.adresse) pdf.paragraphe(infos.adresse);
     var contact = [sagaTelephone(infos.tel), infos.email].filter(Boolean).join('  ·  ');
     if (contact) pdf.paragraphe(contact);
@@ -717,13 +751,13 @@
   }
 
   function imprimerLiveComplet() {
-    var lettres = lettresDuLive();
+    var ids = lettresDuLive();
     var t = sagaTotauxLive(LIVE);
     var pdf = sagaNouveauPdf('Récapitulatif ' + LIVE.titre);
 
     pdf.titre(LIVE.titre);
     pdf.sousTitre(sagaDateLongue(LIVE.date) + ' · ' + LIVE.categorie +
-      ' · frais Whatnot ' + (LIVE.fraisPct || 0) + ' % · ' + lettres.length + ' dressing(s)');
+      ' · frais Whatnot ' + (LIVE.fraisPct || 0) + ' % · ' + ids.length + ' dressing(s)');
 
     pdf.section('Répartition par cliente');
     pdf.tableau([
@@ -734,10 +768,10 @@
       { titre: 'Comm. apport.',  cle: 'app',     largeur: 14, aligne: 'droite' },
       { titre: 'Net',            cle: 'net',     largeur: 14, aligne: 'droite' },
       { titre: 'Statut',         cle: 'statut',  largeur: 15, discret: true }
-    ], lettres.map(function (l) {
-      var d = sagaDecompte(LIVE, l);
+    ], ids.map(function (id) {
+      var d = sagaDecompte(LIVE, id);
       return {
-        cliente: d.prenom + ' (' + l + ')', ventes: sagaEUR(d.ca), give: sagaEUR(d.portGiveaway),
+        cliente: d.prenom + ' (' + d.lettre + ')', ventes: sagaEUR(d.ca), give: sagaEUR(d.portGiveaway),
         saga: sagaEUR(d.commSaga), app: sagaEUR(d.commApporteur), net: sagaEUR(d.net),
         statut: d.paye ? 'Payé ' + sagaDateFR(d.paiement.date) : 'En attente'
       };
@@ -746,9 +780,9 @@
       saga: sagaEUR(t.commSaga), app: sagaEUR(t.commApporteur), net: sagaEUR(t.net)
     });
 
-    lettres.forEach(function (l) {
-      var d = sagaDecompte(LIVE, l);
-      pdf.section(d.prenom + ' (' + l + ') — ' + d.articles.length + ' article(s)');
+    ids.forEach(function (id) {
+      var d = sagaDecompte(LIVE, id);
+      pdf.section(d.prenom + ' (' + d.lettre + ') — ' + d.articles.length + ' article(s)');
       pdf.tableau(colonnesArticles(), lignesArticles(d.articles),
         { libelle: 'Net à reverser', montant: sagaEUR(d.net) });
     });

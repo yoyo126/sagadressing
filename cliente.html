@@ -707,7 +707,7 @@
     }
 
     // Tableau des ventes — dérivé des lives et des ventes hors live partagés
-    VENTES = sagaVentesDuDressing(CLIENT.lettre);
+    VENTES = sagaVentesDuDressing(identiteCliente());
 
     document.getElementById('livesTableBody').innerHTML = VENTES.map(function (l, i) {
       var label = l.origine === 'direct'
@@ -737,7 +737,7 @@
         action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); supprimerVenteDirecte(\'' + l.venteId + '\')">Supprimer</button>';
       }
 
-      var lienLive = l.origine === 'live' ? 'live.html?l=' + l.liveId + '&c=' + CLIENT.lettre : '';
+      var lienLive = l.origine === 'live' ? 'live.html?l=' + l.liveId + '&c=' + encodeURIComponent(identiteCliente()) : '';
       return '<tr' + (lienLive ? ' data-href="' + lienLive + '"' : '') +
         ' data-date="' + l.date + '" data-ventes="' + l.ca + '" data-giveaways="' + l.portGiveaway +
         '" data-commission="' + l.commission +
@@ -814,7 +814,7 @@
       : 'En attente de règlement.', { couleur: [0.45, 0.41, 0.32] });
 
     if (live) {
-      var arts = live.articles.filter(function (a) { return a.lettre === CLIENT.lettre; });
+      var arts = live.articles.filter(function (a) { return sagaPartArticle(a) === identiteCliente(); });
       if (arts.length) {
         pdf.section('Détail des ' + arts.length + ' article(s)');
         pdf.tableau([
@@ -839,6 +839,11 @@
      la source du générateur de boutique : les deux restent donc synchronisés. */
 
   function clientesStore() { return sagaLoad('clientes', []); }
+
+  /* Ce qui désigne la cliente dans les ventes : sa clé de fiche, qui ne
+     change jamais. La lettre ne sert plus qu'à l'affichage — c'est ce qui
+     permet de la renommer sans détacher son historique. */
+  function identiteCliente() { return currentClientKey() || CLIENT.lettre; }
 
   /* La clé prime sur le code : deux clientes peuvent porter le même code,
      et l'on retomberait sinon sur la fiche de l'autre. */
@@ -968,28 +973,23 @@
     /* Un code partagé avec une autre cliente est accepté ici — c'est la
        génération de la boutique qui exigera de les départager. On prévient
        quand même, et on rappelle ce que le changement déplace. */
+    /* Deux clientes peuvent porter le même code : les ventes sont rattachées
+       à la fiche, pas à la lettre, et rien ne les confond plus. Le seul
+       endroit où la lettre doit rester unique est l'import Whatnot, qui ne
+       lit qu'elle — d'où l'avertissement, sur ce point précis. */
     var homonymes = sagaClientesDuCode(lettre, currentClientKey());
     if (homonymes.length) {
       var noms = homonymes.map(function (c) { return c.nom || c.prenom; }).join(', ');
       if (!confirm('Le code « ' + lettre + ' » est déjà porté par ' + noms + '.\n\n'
-          + 'Vous pouvez l\'enregistrer quand même : la génération de la boutique '
-          + 'vous demandera de départager les deux codes.\n\nEnregistrer ?')) {
+          + 'Leurs chiffres resteront bien séparés. En revanche, si elles vendent '
+          + 'sur le même live, l\'import Whatnot ne pourra pas les départager tout '
+          + 'seul : il vous demandera à qui revient chaque ligne.\n\nEnregistrer ?')) {
         document.getElementById('iLettre').focus();
         return;
       }
     }
 
     var ancienneLettre = CLIENT.lettre;
-    /* Les ventes sont rattachées au code, pas à la fiche : changer de code
-       les laisserait sur l'ancien. On le dit avant, pas après. */
-    if (lettre !== ancienneLettre && sagaVentesDuDressing(ancienneLettre).length) {
-      if (!confirm('Les ventes déjà enregistrées restent rattachées au code « '
-          + ancienneLettre + ' » et ne suivront pas ' + prenom + ' sur « ' + lettre + ' ».\n\n'
-          + 'Changer le code malgré tout ?')) {
-        document.getElementById('iLettre').focus();
-        return;
-      }
-    }
 
     CLIENT.prenom = prenom;
     CLIENT.lettre = lettre;
@@ -1180,7 +1180,7 @@
       lignes.forEach(function (l) {
         var live = l.origine === 'live' ? sagaLive(l.liveId) : null;
         if (!live) return;
-        var arts = live.articles.filter(function (a) { return a.lettre === CLIENT.lettre; });
+        var arts = live.articles.filter(function (a) { return sagaPartArticle(a) === identiteCliente(); });
         if (!arts.length) return;
         pdf.section(l.label + ' — ' + arts.length + ' article(s)');
         pdf.tableau([
@@ -1206,7 +1206,7 @@
      place de l'utilisatrice — on lui pose la question. */
   function supprimerCliente() {
     var nom = CLIENT.nom || CLIENT.prenom;
-    var ventes = sagaVentesDuDressing(CLIENT.lettre);
+    var ventes = sagaVentesDuDressing(identiteCliente());
 
     if (!ventes.length) {
       if (!confirm('Supprimer définitivement la fiche de ' + nom + ' ?\n\n'
@@ -1244,7 +1244,8 @@
           '<p class="card-note" style="margin:0 0 14px;">' +
             '<strong>' + quoi.join(' et ') + '</strong>, soit ' +
             pluriel(nbArticles, 'article') + ' pour <strong>' + fmtEUR(total) + '</strong>, ' +
-            'sont enregistrés sous le code « ' + sagaEchapper(CLIENT.lettre) + ' »' +
+            'sont enregistrés au nom de ' + sagaEchapper(CLIENT.prenom) +
+            ' (dressing ' + sagaEchapper(CLIENT.lettre) + ')' +
             (impayees.length
               ? ', dont <strong>' + pluriel(impayees.length, 'non réglé') + '</strong> pour ' +
                 fmtEUR(duImpaye) + ' restant à reverser'
@@ -1473,6 +1474,7 @@
     ventes.unshift({
       id: 'vd' + Date.now(),
       date: document.getElementById('dsDate').value || sagaAujourdhui(),
+      cle: identiteCliente(),
       lettre: CLIENT.lettre,
       libelle: document.getElementById('dsDescription').value.trim() || 'Article vendu directement',
       montant: c.montant,
@@ -1802,7 +1804,7 @@
   }
 
   function notesDeLaCliente() {
-    return sagaNotes().filter(function (n) { return n.lettre === CLIENT.lettre; });
+    return sagaNotes().filter(function (n) { return sagaPartArticle(n) === identiteCliente(); });
   }
 
   function renderNotes() {
@@ -1848,7 +1850,7 @@
     var field = document.getElementById('noteText');
     var texte = field.value.trim();
     if (!texte) { field.focus(); return; }
-    sagaAjouterNote(noteTypeSelected(), texte, CLIENT.lettre);
+    sagaAjouterNote(noteTypeSelected(), texte, identiteCliente());
     field.value = '';
     renderNotes();
   }

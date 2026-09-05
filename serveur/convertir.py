@@ -21,10 +21,15 @@ articles d'un seul live. Les montants ne sont pas recalculés : ils découlent
 des mêmes articles, avec la même formule — c'est vérifié à la fin, live par
 live, contre les totaux enregistrés par l'ancien CRM.
 
-Les codes de dressing demandent une décision : l'ancien les portait par live,
-si bien que deux clientes pouvaient utiliser « C » sans se gêner. Le nouveau
-les veut uniques. Chaque cliente garde donc son code habituel quand il est
-libre, et reçoit sinon un code de deux lettres, signalé dans le compte rendu.
+Les codes de dressing ne sont plus une identité : chaque article porte la clé
+de fiche de sa cliente. Deux clientes peuvent donc garder « C », comme dans
+l'ancien CRM, sans que leurs chiffres se mélangent — c'est l'écran d'import
+qui les départage, le jour où elles vendent sur le même live.
+
+Chaque cliente conserve ainsi le code qu'elle écrit vraiment dans ses annonces
+Whatnot. C'est ce qui compte : Whatnot n'en publie qu'une lettre, et un code
+inventé de deux lettres ne serait jamais reconnu à l'import. Les codes portés
+par plusieurs clientes sont listés dans le compte rendu, pour information.
 """
 
 import io
@@ -174,17 +179,16 @@ def date_longue(iso):
 # ============================================================
 
 def attribuer_codes(clientes, lives_par_cliente):
-    """Un code unique par cliente, en préservant l'habitude quand c'est possible."""
-    pris = {}
+    """Le code que chaque cliente écrit réellement dans ses annonces.
+
+    On ne cherche plus à les rendre uniques : l'identité d'une vente est la
+    fiche de sa cliente, pas sa lettre. Renommer pour lever une collision
+    ferait exactement le contraire de ce qu'il faut — la cliente continuerait
+    d'écrire « S » sur Whatnot, et l'import ne la reconnaîtrait plus."""
     codes = {}
-    notes = []
+    doublons = defaultdict(list)
 
-    # Les clientes les plus actives choisissent en premier : leur code est celui
-    # que Whatnot et les acheteuses connaissent déjà.
-    ordre = sorted(clientes,
-                   key=lambda c: -len(lives_par_cliente.get(c['id'], [])))
-
-    for c in ordre:
+    for c in clientes:
         cid = c['id']
         habituels = Counter()
         for l in lives_par_cliente.get(cid, []):
@@ -192,46 +196,21 @@ def attribuer_codes(clientes, lives_par_cliente):
             if code:
                 habituels[code] += 1
 
-        prenom = sans_accent(c.get('prenom') or '').upper()
-        nom = sans_accent(c.get('nom') or '').upper()
-        prenom = re.sub(r'[^A-Z]', '', prenom)
-        nom = re.sub(r'[^A-Z]', '', nom)
+        if habituels:
+            choisi = habituels.most_common(1)[0][0]
+        else:
+            # Jamais vue en live : l'initiale, faute de mieux. À confirmer.
+            prenom = re.sub(r'[^A-Z]', '', sans_accent(c.get('prenom') or '').upper())
+            nom = re.sub(r'[^A-Z]', '', sans_accent(c.get('nom') or '').upper())
+            choisi = (prenom or nom or 'X')[0]
 
-        candidats = [code for code, _ in habituels.most_common()]
-        if prenom:
-            candidats.append(prenom[0])
-            if len(prenom) > 1:
-                candidats.append(prenom[0] + prenom[1])
-            if nom:
-                candidats.append(prenom[0] + nom[0])
-                if len(nom) > 1:
-                    candidats.append(prenom[0] + nom[0] + nom[1])
-        if nom:
-            candidats.append(nom[0])
-
-        choisi = None
-        for cand in candidats:
-            cand = re.sub(r'[^A-Z]', '', cand)[:3]
-            if cand and cand not in pris:
-                choisi = cand
-                break
-
-        if not choisi:  # tout est pris : on ajoute une lettre
-            base = (prenom or nom or 'X')[0]
-            for suffixe in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
-                if base + suffixe not in pris:
-                    choisi = base + suffixe
-                    break
-
-        pris[choisi] = cid
         codes[cid] = choisi
+        doublons[choisi].append(c)
 
-        prefere = habituels.most_common(1)[0][0] if habituels else ''
-        if prefere and prefere != choisi:
-            notes.append((c, prefere, choisi))
-        elif not prefere:
-            notes.append((c, '', choisi))
-
+    notes = []
+    for code, partagé in sorted(doublons.items()):
+        if len(partagé) > 1:
+            notes.append((code, partagé))
     return codes, notes
 
 
@@ -257,11 +236,12 @@ def convertir(T):
     for v in ventes_src:
         ventes_par_live[v['live_id']].append(v)
 
-    codes, notes_codes = attribuer_codes(clientes_src, par_cliente)
-    for c, avant, apres in notes_codes:
+    codes, codes_partages = attribuer_codes(clientes_src, par_cliente)
+    for code, partagees in codes_partages:
         rapport['codes'].append({
-            'cliente': ((c.get('prenom') or '') + ' ' + (c.get('nom') or '')).strip(),
-            'avant': avant, 'apres': apres
+            'code': code,
+            'clientes': [((c.get('prenom') or '') + ' ' + (c.get('nom') or '')).strip()
+                         for c in partagees]
         })
 
     # ---------- Apporteurs ----------
@@ -295,6 +275,7 @@ def convertir(T):
     clients_data = {}
     notes = []
     cle_par_cliente = {}
+    cles_prises = set()
 
     for c in clientes_src:
         cid = c['id']
@@ -302,7 +283,15 @@ def convertir(T):
         prenom = (c.get('prenom') or '').strip()
         nomf = (c.get('nom') or '').strip()
         complet = (prenom + ' ' + nomf).strip() or ('Cliente ' + str(cid))
+        # La clé identifie la cliente pour toujours : elle doit rester unique
+        # même quand deux clientes partagent un code, ce qui est désormais
+        # permis. Deux « Fabienne » en « F » se seraient sinon confondues.
         cle = slug(prenom or nomf) + '-' + code.lower()
+        if cle in cles_prises:
+            cle = slug(complet) + '-' + code.lower()
+        if cle in cles_prises:
+            cle = slug(prenom or nomf) + '-' + str(cid)
+        cles_prises.add(cle)
         cle_par_cliente[cid] = cle
 
         adresse = ', '.join(x for x in [
@@ -336,7 +325,7 @@ def convertir(T):
         libre = (c.get('notes') or '').strip()
         if libre:
             notes.append({
-                'id': 'n-cl-' + str(cid), 'type': 'note', 'lettre': code,
+                'id': 'n-cl-' + str(cid), 'type': 'note', 'cle': cle, 'lettre': code,
                 'texte': texte_sur(libre),
                 'date': (c.get('date_creation') or '')[:10], 'done': False
             })
@@ -372,12 +361,13 @@ def convertir(T):
 
         for l in membres:
             code = codes[l['cliente_id']]
+            ident = cle_par_cliente[l['cliente_id']]
             fraisPct = max(fraisPct, nb(l.get('frais_whatnot_pct')))
 
             # Le taux appliqué à l'époque est figé sur le live : la fiche d'une
             # cliente peut avoir changé de taux depuis, et l'historique doit
             # rester celui de ce qui lui a été versé.
-            taux_par_code[code] = nb(l.get('commission_pct'), 30)
+            taux_par_code[ident] = nb(l.get('commission_pct'), 30)
 
             for v in ventes_par_live.get(l['id'], []):
                 genre = (v.get('type') or 'vente').strip().lower()
@@ -395,7 +385,8 @@ def convertir(T):
                         'compté par l\'ancien CRM. Reprise en note, sans effet sur les montants.'
                         % (genre, montant, v.get('date_vente') or '', v.get('num_commande') or '—'))
                     notes.append({
-                        'id': 'n-rb-' + str(v['id']), 'type': 'note', 'lettre': code,
+                        'id': 'n-rb-' + str(v['id']), 'type': 'note',
+                'cle': cle_par_cliente[l['cliente_id']], 'lettre': code,
                         'texte': texte_sur('Ancien CRM — ligne « %s » de %.2f € : %s (commande %s). '
                                            'Elle n\'entrait dans aucun calcul.'
                                            % (genre, montant,
@@ -410,6 +401,7 @@ def convertir(T):
                     'id': 'a-' + str(v['id']),
                     'commande': v.get('num_commande') or '',
                     'libelle': texte_sur((v.get('article') or '').strip() or 'Article'),
+                    'cle': cle_par_cliente[l['cliente_id']],
                     'lettre': code,
                     'montant': centimes(abs(nb(v.get('montant')))) if est_giveaway
                                else centimes(nb(v.get('montant'))),
@@ -417,7 +409,7 @@ def convertir(T):
                 })
 
             if l.get('paye') == '1':
-                paiements[code] = {
+                paiements[ident] = {
                     'date': (l.get('date_paiement') or date or '')[:10],
                     'mode': (l.get('mode_paiement') or '').strip() or 'Virement'
                 }
@@ -502,6 +494,8 @@ def convertir(T):
         'agenda': agenda,
         'journal': journal,
         'paiements_apporteurs': {},
+        # Les articles portent déjà leur identité : la reprise du CRM n'a rien à faire.
+        'identites_reprises': 1,
     }
 
     # ---------- Contrôle : les montants sont-ils inchangés ? ----------
@@ -582,14 +576,11 @@ def main():
 
     if rapport['codes']:
         print()
-        print('Codes de dressing attribués :')
+        print('Codes portés par plusieurs clientes — sans conséquence sur les')
+        print('chiffres, chacune garde les siens. À départager seulement le jour')
+        print('où deux d\'entre elles vendent sur le même live :')
         for r in rapport['codes']:
-            if r['avant']:
-                print('   %-26s %s → %s   (code déjà pris par une autre)'
-                      % (r['cliente'][:26], r['avant'], r['apres']))
-            else:
-                print('   %-26s     → %s   (aucun code auparavant)'
-                      % (r['cliente'][:26], r['apres']))
+            print('   %-4s %s' % (r['code'], ', '.join(r['clientes'])))
 
     print()
     print('État écrit dans %s (%.0f Ko)' % (sortie, os.path.getsize(sortie) / 1024))

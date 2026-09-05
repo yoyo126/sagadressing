@@ -96,13 +96,19 @@ Le fichier produit s'installe ensuite par `importer.php`, sur le serveur.
 
 - **Un live n'a pas le même sens.** Ancien : un live appartient à une cliente,
   et une « session » regroupe la soirée. Nouveau : le live est la soirée, et
-  chaque article porte le code de son dressing. Les sessions deviennent donc
-  les lives, et les anciens lives leurs articles.
-- **Les codes de dressing devaient être uniques.** L'ancien les portait par
-  live : deux clientes pouvaient utiliser « C » sans se gêner, tant qu'elles
-  n'étaient pas dans la même soirée — vérifié, ce n'est jamais arrivé. Chaque
-  cliente garde son code habituel quand il est libre, sinon elle en reçoit un
-  de deux lettres, listé dans le compte rendu.
+  chaque article porte la cliente à qui il revient. Les sessions deviennent
+  donc les lives, et les anciens lives leurs articles.
+- **Le code de dressing n'identifie pas une cliente.** L'ancien CRM le portait
+  par live : deux clientes pouvaient utiliser « C » sans se gêner, tant
+  qu'elles n'étaient pas dans la même soirée — vérifié, ce n'est jamais
+  arrivé. Rendre ces codes uniques a été une erreur, corrigée en 1.20.0 :
+  chaque article porte désormais la clé de fiche de sa cliente (`cle`), et le
+  code n'est plus qu'une étiquette. Chaque cliente garde donc le code qu'elle
+  écrit vraiment dans ses annonces — c'est indispensable, Whatnot n'en publie
+  qu'une seule lettre et un code inventé de deux lettres ne serait jamais
+  reconnu à l'import. Les codes partagés sont listés au compte rendu ; ils ne
+  se départagent qu'à l'import, et seulement si les deux clientes vendent le
+  même soir.
 - **Le taux de commission est figé sur les lives repris** (`tauxParCode`). Une
   cliente passée de 30 à 20 % verrait sinon ses anciens lives recalculés au
   nouveau taux : 406 € d'écart sur un seul cas réel.

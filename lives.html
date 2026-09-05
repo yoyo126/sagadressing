@@ -288,10 +288,10 @@
     // Cumul par cliente, tous lives confondus
     var parCliente = {};
     lives.forEach(function (l) {
-      sagaLettresDuLive(l).forEach(function (lettre) {
-        var d = sagaDecompte(l, lettre);
-        var e = parCliente[lettre] ||
-          (parCliente[lettre] = { nom: sagaInfosCliente(lettre).nom, lives: 0, ventes: 0, saga: 0, net: 0, reste: 0 });
+      sagaPartsDuLive(l).forEach(function (part) {
+        var d = sagaDecompte(l, part);
+        var e = parCliente[part.id] ||
+          (parCliente[part.id] = { nom: sagaInfosCliente(part.id).nom, lives: 0, ventes: 0, saga: 0, net: 0, reste: 0 });
         e.lives++; e.ventes += d.ca; e.saga += d.commSaga; e.net += d.net;
         if (!d.paye) e.reste += d.net;
       });
@@ -346,17 +346,22 @@
   /* Choix de dressing proposés : les clientes enregistrées, plus les lettres
      du fichier qui n'appartiennent encore à personne — pour pouvoir importer
      un live avant même d'avoir créé les fiches. */
+  /* La valeur d'une option est la cliente elle-même, pas sa lettre : deux
+     clientes en « S » y figurent séparément, et c'est vous qui dites laquelle
+     a vendu ce soir-là. Whatnot, lui, ne sait écrire qu'une lettre. */
   function optionsDressings(selection, lettresDuFichier) {
-    var vues = {}, html = '';
-    sagaToutesClientes().forEach(function (c) {
-      vues[c.lettre] = true;
-      html += '<option value="' + sagaEchapper(c.lettre) + '"'
-        + (c.lettre === selection ? ' selected' : '') + '>'
+    var vues = [], html = '';
+    sagaListeClientes().forEach(function (c) {
+      var id = c.key || c.lettre;
+      if (!id || vues.indexOf(id) !== -1) return;
+      vues.push(id);
+      html += '<option value="' + sagaEchapper(id) + '"'
+        + (id === selection || c.lettre === selection ? ' selected' : '') + '>'
         + sagaEchapper(c.prenom) + ' (' + sagaEchapper(c.lettre) + ')</option>';
     });
     (lettresDuFichier || []).forEach(function (l) {
-      if (!l || vues[l]) return;
-      vues[l] = true;
+      if (!l || vues.indexOf(l) !== -1) return;
+      vues.push(l);
       html += '<option value="' + sagaEchapper(l) + '"'
         + (l === selection ? ' selected' : '') + '>Lettre ' + sagaEchapper(l)
         + ' — aucune cliente pour l\'instant</option>';
@@ -388,8 +393,8 @@
       auFermer: function () { select.value = select.dataset.precedent || ''; }
     }, function (entree) {
       rafraichirChoixImport();
-      select.value = entree.lettre;
-      select.dataset.precedent = entree.lettre;
+      select.value = entree.key || entree.lettre;
+      select.dataset.precedent = select.value;
       if (select.id === 'sansLettreTout') affecterTout();
     });
   }
@@ -475,7 +480,16 @@
       + '<thead><tr><th>Lettre</th><th class="num">CA encaissé</th><th class="num">Total net</th><th>Dressing</th></tr></thead><tbody>';
 
     a.parLettre.filter(function (g) { return g.lettre; }).forEach(function (g) {
-      html += '<tr><td><strong>' + sagaEchapper(g.lettre) + '</strong></td>'
+      /* Deux clientes peuvent porter la même lettre : Whatnot n'en écrit
+         qu'une, il n'a donc aucun moyen de les distinguer. C'est le seul
+         moment où il faut trancher — et mieux vaut le dire que deviner. */
+      var homonymes = sagaClientesDuCode(g.lettre);
+      var alerte = homonymes.length > 1
+        ? '<div class="muted" style="font-size:.78rem; margin-top:4px; color:var(--warn);">'
+          + sagaEchapper(homonymes.map(function (c) { return c.prenom; }).join(' ou '))
+          + ' — à départager</div>'
+        : '';
+      html += '<tr><td><strong>' + sagaEchapper(g.lettre) + '</strong>' + alerte + '</td>'
         + '<td class="num tabular">' + g.ventes.length + '</td>'
         + '<td class="num tabular">' + eurPrecis(g.total) + '</td>'
         + '<td><select class="form-select" data-lettre="' + sagaEchapper(g.lettre) + '">'

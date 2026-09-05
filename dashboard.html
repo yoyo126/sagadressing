@@ -160,9 +160,9 @@
   function ventesDuCRM() {
     var res = [];
     sagaLives().forEach(function (live) {
-      sagaLettresDuLive(live).forEach(function (lettre) {
-        var d = sagaDecompte(live, lettre);
-        res.push({ date: live.date, source: 'live', lettre: lettre, nom: sagaInfosCliente(lettre).nom,
+      sagaPartsDuLive(live).forEach(function (part) {
+        var d = sagaDecompte(live, part);
+        res.push({ date: live.date, source: 'live', lettre: d.lettre, nom: sagaInfosCliente(part.id).nom,
                    ventes: d.ca, saga: d.commSaga, net: d.net, paye: d.paye });
       });
     });
@@ -170,7 +170,7 @@
     sagaVentesDirectes().forEach(function (v) {
       var d = sagaDecompteDirect(v);
       res.push({ date: v.date, source: 'direct', lettre: v.lettre,
-                 nom: sagaInfosCliente(v.lettre).nom,
+                 nom: sagaInfosCliente(sagaPartArticle(v)).nom,
                  ventes: d.ventes, saga: d.commSaga, net: d.net, paye: !!v.paye });
     });
     return res;
