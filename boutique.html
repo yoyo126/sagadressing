@@ -206,8 +206,25 @@
     rechercheDressTimer = setTimeout(renderDressings, 200);
   });
 
+  /* Whatnot accepte huit photos par annonce, et l'outil d'origine les
+     exploitait : on garde une liste. Les configurations d'avant, qui ne
+     retenaient qu'une image, sont relues telles quelles. */
+  var PHOTOS_MAX = 8;
+
+  function photosDe(c) {
+    var v = config.images[c.id];
+    if (Array.isArray(v)) return v.filter(Boolean);
+    if (v) return [v];
+    return c.vignette ? [c.vignette] : [];
+  }
+
   function imageDe(c) {
-    return config.images[c.id] || c.vignette || '';
+    return photosDe(c)[0] || '';
+  }
+
+  function poserPhotos(id, liste) {
+    if (liste.length) config.images[id] = liste.slice(0, PHOTOS_MAX);
+    else delete config.images[id];
   }
 
   /* Avec cent dressings, tout afficher devient illisible : la liste ne montre
@@ -247,22 +264,38 @@
     var doublons = sagaCodesEnDoublon(clientes);
 
     document.getElementById('dressList').innerHTML = liste.map(function (c) {
-      var img = imageDe(c);
-      var vign = img
-        ? '<img class="vignette-thumb" src="' + img + '" alt="" />'
+      var ref = sagaEchapper(c.id).replace(/'/g, "\\'");
+      var photos = photosDe(c);
+      var locales = photos.filter(function (u) { return !sagaPhotoHebergee(u); }).length;
+      var vign = photos.length
+        ? photos.map(function (u, j) {
+            return '<span style="position:relative; display:inline-block;">'
+              + '<img class="vignette-thumb" src="' + sagaEchapper(u) + '" alt=""'
+              + (sagaPhotoHebergee(u) ? '' : ' style="outline:2px solid var(--warn);"') + ' />'
+              + '<button class="btn btn-ghost btn-sm" title="Retirer cette photo"'
+              + ' style="position:absolute; top:-6px; right:-6px; padding:0; width:17px; height:17px;'
+              + ' line-height:15px; border-radius:50%; background:var(--critical); color:#fff;"'
+              + ' onclick="event.preventDefault(); event.stopPropagation();'
+              + ' retirerPhoto(\'' + ref + '\', ' + j + ')">×</button></span>';
+          }).join('')
         : '<span class="vignette-thumb empty">—</span>';
-      var perso = config.images[c.id] ? ' <span class="chip neutral" style="font-size:.62rem;">remplacée</span>' : '';
+      var perso = photos.length > 1
+        ? ' <span class="chip neutral" style="font-size:.62rem;">' + photos.length + ' photos</span>' : '';
+      if (locales) {
+        perso += ' <span class="chip warn" style="font-size:.62rem;">'
+          + locales + ' hors ligne</span>';
+      }
       var conflit = doublons[c.lettre]
         ? ' <span class="chip warn" style="font-size:.62rem;">code en double</span>' : '';
-      var ref = sagaEchapper(c.id).replace(/'/g, "\\'");
       return '<label class="dress-row">' +
         '<input type="checkbox" ' + (config.selection[c.id] ? 'checked' : '') +
           ' onchange="toggleDress(\'' + ref + '\', this.checked)" />' +
         vign +
         '<span class="dress-name"><strong>' + c.lettre + '</strong> · ' + (c.nom || c.prenom) + perso + conflit +
-          (img ? '' : '<div class="muted" style="font-size:.7rem;">Aucune vignette</div>') + '</span>' +
-        '<input type="file" accept="image/*" id="img_' + c.id + '" style="display:none;" onchange="changeImage(\'' + ref + '\', this)" />' +
-        '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.id + '\').click()">Changer</button>' +
+          (photos.length ? '' : '<div class="muted" style="font-size:.7rem;">Aucune photo</div>') + '</span>' +
+        '<input type="file" accept="image/*" multiple id="img_' + c.id + '" style="display:none;" onchange="changeImage(\'' + ref + '\', this)" />' +
+        '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.id + '\').click()">'
+          + (photos.length ? 'Ajouter' : 'Photos') + '</button>' +
       '</label>';
     }).join('') || '<p class="card-note">' +
       (q ? 'Aucune cliente ne correspond à « ' + q + ' ».' : 'Recherchez une cliente pour la retenir.') + '</p>';
@@ -278,11 +311,47 @@
   }
 
   function changeImage(id, input) {
-    if (!input.files || !input.files[0]) return;
-    sagaReadImage(input.files[0], 600, function (dataUrl) {
-      config.images[id] = dataUrl;
-      persist(); renderDressings(); refreshApercu();
+    var fichiers = Array.prototype.slice.call(input.files || []);
+    input.value = '';   // pour pouvoir redéposer le même fichier
+    if (!fichiers.length) return;
+
+    var c = clientes.filter(function (x) { return x.id === id; })[0];
+    var deja = c ? photosDe(c).slice() : [];
+    var place = PHOTOS_MAX - deja.length;
+    if (place <= 0) {
+      alert(PHOTOS_MAX + ' photos au maximum par dressing. Retirez-en une avant d\'en ajouter.');
+      return;
+    }
+    fichiers = fichiers.slice(0, place);
+
+    var restants = fichiers.length, echecs = [];
+    fichiers.forEach(function (f) {
+      sagaTeleverserPhoto(f, function (url) {
+        deja.push(url);
+        fini();
+      }, function (message) {
+        echecs.push(f.name + ' : ' + message);
+        fini();
+      });
     });
+
+    function fini() {
+      if (--restants > 0) return;
+      poserPhotos(id, deja);
+      persist(); renderDressings(); refreshApercu();
+      if (echecs.length) {
+        alert('Photo(s) non envoyée(s) :\n\n' + echecs.join('\n'));
+      }
+    }
+  }
+
+  function retirerPhoto(id, index) {
+    var c = clientes.filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    var liste = photosDe(c).slice();
+    liste.splice(index, 1);
+    poserPhotos(id, liste);
+    persist(); renderDressings(); refreshApercu();
   }
 
   /* ---------- Codes en double ----------
@@ -308,7 +377,8 @@
           ' porté' + (codes.length > 1 ? 's' : '') + ' par plusieurs clientes retenues.</strong> ' +
           'Le fichier ne peut pas être généré tant que chaque code ne désigne qu\'une cliente. ' +
           'Donnez un code distinct à l\'une d\'elles — « C » et « CA », par exemple. ' +
-          'Les ventes déjà enregistrées restent rattachées à l\'ancien code.</span>' +
+          'Leurs ventes déjà enregistrées ne bougeront pas : elles suivent la cliente, ' +
+          'plus son code.</span>' +
       '</div>' +
       codes.map(function (code) {
         return '<div style="border-top:1px solid var(--line); padding-top:10px;">' +
@@ -399,7 +469,8 @@
     clientesRetenues().forEach(function (c) {
       config.paliers.filter(function (p) { return config.paliersActifs[p]; }).forEach(function (p) {
         out.push({ lettre: c.lettre, prenom: c.prenom, prix: p,
-                   titre: titrePour(p, c.lettre), sku: c.lettre + '_' + p, image: imageDe(c) });
+                   titre: titrePour(p, c.lettre), sku: c.lettre + '_' + p,
+                   image: imageDe(c), photos: photosDe(c) });
       });
     });
     return out;
@@ -471,14 +542,17 @@
 
     var lignesCSV = [entetes.map(echap).join(',')];
     L.forEach(function (l) {
-      // Les vignettes locales ne sont pas des URL publiques : la colonne reste vide
-      var imageUrl = /^https?:\/\//.test(l.image) ? l.image : '';
+      /* Seules les photos déposées sur le serveur partent : Whatnot va les
+         chercher lui-même, une vignette locale lui serait illisible. */
+      var urls = (l.photos || []).filter(sagaPhotoHebergee).slice(0, 8);
+      while (urls.length < 8) urls.push('');
       /* « Offres acceptées », « Matières dangereuses » et « État » restent
          vides : c'est ce que produisait le générateur d'origine, et Whatnot
          refuse le fichier dès qu'on y met « Non » ou « Utilisé ». */
       lignesCSV.push([
         cat, sousCat, l.titre, desc, qte, type, l.prix, livraison,
-        '', '', etat, '', l.sku, imageUrl, '', '', '', '', '', '', ''
+        '', '', etat, '', l.sku,
+        urls[0], urls[1], urls[2], urls[3], urls[4], urls[5], urls[6], urls[7]
       ].map(echap).join(','));
     });
 

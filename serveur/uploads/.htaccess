@@ -1,0 +1,23 @@
+# ============================================================
+#  Photos de la boutique
+# ============================================================
+#  Ce dossier est public en lecture, et il doit l'être : Whatnot vient y
+#  chercher les images des annonces depuis ses propres serveurs, sans compte
+#  ni mot de passe. Déposer une photo, en revanche, passe par televerser.php
+#  et demande une session ouverte.
+#
+#  Un dossier public où l'on dépose des fichiers est exactement l'endroit où
+#  un script déguisé en image ferait des dégâts : l'exécution y est donc
+#  interdite, quelle que soit l'extension.
+# ============================================================
+
+RemoveHandler .php .phtml .pht .phar .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+RemoveType .php .phtml .pht .phar .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+
+<FilesMatch "\.(php|phtml|phar|pht|php[0-9]|cgi|pl|py|sh|asp|aspx|jsp|htaccess)$">
+  Require all denied
+</FilesMatch>
+
+# Pas de liste du contenu : on accède à une photo par son adresse, pas en
+# parcourant le dossier.
+Options -Indexes

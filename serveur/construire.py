@@ -37,8 +37,12 @@ PAGES = ['dashboard', 'clientes', 'cliente', 'lives', 'live',
 FICHIERS_SERVEUR = ['.htaccess', 'db.php', 'lib_auth.php', 'entete.php',
                     'api.php', 'login.php', 'logout.php', 'server-sync.js',
                     'schema.sql', 'verifier.php', 'config.example.php',
-                    'importer.php', 'sauvegarde.php',
+                    'importer.php', 'sauvegarde.php', 'televerser.php',
                     'comptes_actions.php', 'comptes_bloc.php']
+
+# Dossier public des photos d'annonces. Whatnot vient les y chercher sans
+# compte : le dossier voyage avec son .htaccess, qui y interdit l'exécution.
+DOSSIERS_SERVEUR = ['uploads']
 
 # Fichiers de l'application à déposer tels quels
 FICHIERS_APP = ['style.css', 'nav.js', 'saga-pdf.js']
@@ -163,6 +167,21 @@ def construire():
     for f in FICHIERS_SERVEUR:
         shutil.copy2(os.path.join(SERVEUR, f), os.path.join(SORTIE, f))
         produits.append(f)
+
+    for d in DOSSIERS_SERVEUR:
+        source = os.path.join(SERVEUR, d)
+        cible = os.path.join(SORTIE, d)
+        if not os.path.isdir(source):
+            continue
+        if not os.path.isdir(cible):
+            os.makedirs(cible)
+        # Les photos déjà déposées sur le serveur ne sont pas ici : on ne
+        # copie que le gabarit du dossier, jamais son contenu en ligne.
+        for nom in sorted(os.listdir(source)):
+            chemin = os.path.join(source, nom)
+            if os.path.isfile(chemin):
+                shutil.copy2(chemin, os.path.join(cible, nom))
+                produits.append(d + '/' + nom)
 
     for f in FICHIERS_APP:
         contenu = io.open(os.path.join(RACINE, f), encoding='utf-8').read()

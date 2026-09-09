@@ -269,6 +269,49 @@ function sagaReadImage(file, maxSize, callback) {
   reader.readAsDataURL(file);
 }
 
+/* ============ Photos d'annonces ============
+   Whatnot ne sait afficher une image que s'il peut aller la chercher à une
+   adresse internet : une vignette rangée dans le CRM lui reste invisible, et
+   c'est pourquoi la colonne « Image URL » du fichier d'annonces partait vide.
+   La photo est donc déposée sur le serveur, qui en renvoie l'adresse — c'est
+   elle, et non l'image, que la boutique conserve.
+
+   Hors serveur (la maquette ouverte depuis un dossier), il n'y a personne à
+   qui déposer : on retombe sur une vignette locale, qui s'affiche à l'écran
+   mais ne partira pas dans le fichier. L'écran le dit. */
+function sagaPhotoHebergee(url) {
+  return /^https?:\/\//.test(String(url || ''));
+}
+
+function sagaTeleverserPhoto(file, auSucces, auxErreurs) {
+  var enLigne = typeof window.sagaJetonServeur === 'function';
+
+  if (!enLigne) {
+    // Pas de serveur : vignette locale, réduite pour ne pas saturer le stockage
+    sagaReadImage(file, 900, function (dataUrl) { auSucces(dataUrl, false); });
+    return;
+  }
+
+  var corps = new FormData();
+  corps.append('photo', file);
+
+  fetch('televerser.php', {
+    method: 'POST',
+    body: corps,
+    headers: { 'X-Saga-Jeton': window.sagaJetonServeur() }
+  }).then(function (r) {
+    return r.json().then(function (j) { return { ok: r.ok, corps: j }; });
+  }).then(function (r) {
+    if (!r.ok || !r.corps || !r.corps.url) {
+      throw new Error((r.corps && r.corps.erreur) || 'Réponse inattendue du serveur.');
+    }
+    auSucces(r.corps.url, true);
+  }).catch(function (e) {
+    if (auxErreurs) auxErreurs(e.message || String(e));
+    else alert('La photo n\'a pas pu être envoyée.\n\n' + (e.message || e));
+  });
+}
+
 /* Téléchargement d'un fichier généré côté navigateur */
 function sagaDownload(filename, content, mime) {
   var blob = new Blob([content], { type: (mime || 'text/plain') + ';charset=utf-8' });
@@ -1937,9 +1980,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.21.0';
+var SAGA_VERSION = '1.22.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.22.0', date: '2026-09-09', titre: 'Les photos repartent dans les annonces Whatnot', points: [
+    'Les photos sont de nouveau déposées sur le serveur, comme le faisait le générateur d’origine : le fichier d’annonces porte leur adresse, et Whatnot les affiche.',
+    'Jusqu’à huit photos par dressing, comme avant. Elles se retirent une par une.',
+    'Une photo enregistrée hors ligne est signalée : elle s’affiche dans le CRM mais ne peut pas partir dans le fichier.'
+  ] },
   { version: '1.21.0', date: '2026-09-09', titre: 'Les photos de la boutique ne disparaissent plus', points: [
     'Une photo ajoutée à un dressing s’affichait, puis s’effaçait au rechargement. Le serveur rendait la table des images sous forme de liste vide, et une image rangée par nom n’y survivait pas à l’enregistrement. Corrigé de bout en bout ; les tables déjà abîmées sont remises d’aplomb au chargement.',
     'Même cause, même correction pour les règlements d’apporteur, qui pouvaient se perdre de la même façon.',

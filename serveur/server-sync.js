@@ -295,5 +295,9 @@
   });
 
   window.sagaVersionEtat = function () { return etatVersion; };
+
+  /* Le téléversement d'une photo de boutique s'authentifie comme les
+     enregistrements : même session, même jeton. */
+  window.sagaJetonServeur = function () { return jeton; };
   window.sagaEnvoyerMaintenant = envoyerMaintenant;
 })();
