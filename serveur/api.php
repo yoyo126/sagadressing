@@ -42,7 +42,7 @@ if ($action === 'lire') {
     }
     saga_json([
         'version' => (int) $ligne['version'],
-        'etat'    => json_decode($ligne['contenu'], true),
+        'etat'    => json_decode($ligne['contenu']),
     ]);
 }
 
@@ -74,7 +74,16 @@ if ($action === 'ecrire') {
         saga_json(['erreur' => 'requete_invalide'], 400);
     }
 
-    $contenu = json_encode($demande['etat'], JSON_UNESCAPED_UNICODE);
+    /* L'état est relu en objets, jamais en tableaux associatifs. En PHP un
+       objet JSON vide devient un tableau vide, que json_encode réécrit « [] » ;
+       l'application, elle, y attend « {} », une table à remplir. Elle y rangeait
+       une photo de boutique ou un règlement d'apporteur, et la clé nommée posée
+       sur un tableau disparaissait à l'enregistrement, sans un mot. */
+    $enveloppe = json_decode($brut);
+    if (!is_object($enveloppe) || !isset($enveloppe->etat)) {
+        saga_json(['erreur' => 'etat_illisible'], 400);
+    }
+    $contenu = json_encode($enveloppe->etat, JSON_UNESCAPED_UNICODE);
     if ($contenu === false) {
         saga_json(['erreur' => 'etat_illisible'], 400);
     }
@@ -98,7 +107,7 @@ if ($action === 'ecrire') {
                 'erreur'  => 'conflit',
                 'message' => 'Ces données ont été modifiées ailleurs entre-temps.',
                 'version' => (int) $courant['version'],
-                'etat'    => json_decode($courant['contenu'], true),
+                'etat'    => json_decode($courant['contenu']),
             ], 409);
         }
 

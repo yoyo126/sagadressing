@@ -73,7 +73,8 @@ if ($etat) {
     $contenu['tables']['etat'] = [
         'version' => (int) $etat['version'],
         'maj_le'  => $etat['maj_le'],
-        'contenu' => json_decode($etat['contenu'], true),
+        // Sans assoc : un « {} » de l'état doit le rester dans la sauvegarde
+        'contenu' => json_decode($etat['contenu']),
     ];
 }
 

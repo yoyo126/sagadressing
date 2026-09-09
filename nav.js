@@ -151,7 +151,18 @@ function sagaTexteSur(valeur) {
    Les images (data:…base64) n'utilisent aucun de ces caractères. */
 function sagaAssainir(valeur) {
   if (typeof valeur === 'string') return sagaTexteSur(valeur);
-  if (Array.isArray(valeur)) return valeur.map(sagaAssainir);
+  if (Array.isArray(valeur)) {
+    /* Un tableau portant des clés nommées est une table qui s'ignore : le
+       serveur rend « [] » là où l'application attendait « {} », et le code
+       y range ensuite ses valeurs par nom. .map() ne visite que les indices
+       numériques — ces clés partaient à la poubelle à l'enregistrement, en
+       silence. C'est ainsi que les photos de la boutique disparaissaient. */
+    var nommees = Object.keys(valeur).filter(function (k) { return !/^\d+$/.test(k); });
+    if (!nommees.length) return valeur.map(sagaAssainir);
+    var table = {};
+    Object.keys(valeur).forEach(function (k) { table[k] = sagaAssainir(valeur[k]); });
+    return table;
+  }
   if (valeur && typeof valeur === 'object') {
     var out = {};
     Object.keys(valeur).forEach(function (k) { out[k] = sagaAssainir(valeur[k]); });
@@ -921,12 +932,54 @@ function sagaReparerIdentites() {
            ambigues: ambigues, orphelins: orphelins, restants: restants };
 }
 
+/* ============ Tables vides rendues en tableaux ============
+   Le serveur relisait l'état en tableaux associatifs PHP, où un objet JSON
+   vide est indiscernable d'un tableau vide : « {} » repartait en « [] ».
+   L'application, elle, y range des valeurs par nom — une photo de boutique,
+   un règlement d'apporteur — et une clé nommée sur un tableau ne survit pas
+   à l'enregistrement. Corrigé côté serveur ; ceci remet d'aplomb ce qui a
+   déjà été abîmé, et ne coûte rien quand tout va bien. */
+function sagaTablesAttendues() {
+  return {
+    paiements_apporteurs: true, clients_data: true, apporteurs_data: true,
+    dressings_retires: true, mail_config: true
+  };
+}
+
+function sagaReparerTablesVides() {
+  var corrige = 0;
+
+  Object.keys(sagaTablesAttendues()).forEach(function (cle) {
+    var v = sagaLoad(cle, null);
+    if (Array.isArray(v) && !v.length) { sagaSave(cle, {}); corrige++; }
+  });
+
+  var bc = sagaLoad('boutique_config', null);
+  if (bc && typeof bc === 'object') {
+    var touche = false;
+    ['images', 'selection', 'paliersActifs'].forEach(function (champ) {
+      if (Array.isArray(bc[champ])) { bc[champ] = {}; touche = true; }
+    });
+    if (touche) { sagaSave('boutique_config', bc); corrige++; }
+  }
+
+  var lives = sagaLives(), livesTouches = false;
+  lives.forEach(function (live) {
+    ['paiements', 'tauxParCode'].forEach(function (champ) {
+      if (Array.isArray(live[champ])) { live[champ] = {}; livesTouches = true; }
+    });
+  });
+  if (livesTouches) { sagaSaveLives(lives); corrige++; }
+
+  return corrige;
+}
+
 /* Pas tout de suite : server-sync.js s'exécute juste après nav.js, efface le
    stockage local et y réinstalle l'état du serveur. Lancée maintenant, la
    reprise travaillerait sur les restes de la page précédente et son résultat
    serait balayé sans jamais repartir vers le serveur. Le temps mort la place
    après cet amorçage, et sagaSave y est déjà l'enveloppe qui synchronise. */
-setTimeout(function () { sagaReparerIdentites(); }, 0);
+setTimeout(function () { sagaReparerTablesVides(); sagaReparerIdentites(); }, 0);
 
 /* Les parts d'un live, une par cliente présente, dans l'ordre d'apparition.
    `id` sert aux calculs, `lettre` à l'affichage. La part sans identifiant
@@ -1884,9 +1937,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.20.0';
+var SAGA_VERSION = '1.21.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.21.0', date: '2026-09-09', titre: 'Les photos de la boutique ne disparaissent plus', points: [
+    'Une photo ajoutée à un dressing s’affichait, puis s’effaçait au rechargement. Le serveur rendait la table des images sous forme de liste vide, et une image rangée par nom n’y survivait pas à l’enregistrement. Corrigé de bout en bout ; les tables déjà abîmées sont remises d’aplomb au chargement.',
+    'Même cause, même correction pour les règlements d’apporteur, qui pouvaient se perdre de la même façon.',
+    'Attention : les photos sont désormais conservées, mais elles ne partent pas encore dans le fichier Whatnot — celui-ci demande une adresse internet publique, pas une image rangée dans le CRM.'
+  ] },
   { version: '1.20.0', date: '2026-09-05', titre: 'Le code de dressing n’est plus une identité', points: [
     'Chaque vente est rattachée à la cliente elle-même, plus à sa lettre. Changer un code ne déplace donc plus rien : l’ancienneté, le chiffre d’affaires et les notes restent à leur place.',
     'Deux clientes peuvent porter le même code — deux « S » — sans mélanger leurs chiffres. Si elles vendent sur le même live, l’import demande simplement à qui revient chaque ligne.',

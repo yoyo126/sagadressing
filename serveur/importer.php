@@ -61,7 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!isset($nouveau['clientes']) || !is_array($nouveau['clientes'])) {
             $erreur = 'Ce fichier ne ressemble pas à un état de CRM : il ne contient aucune cliente.';
         } else {
-            $contenu = json_encode($nouveau, JSON_UNESCAPED_UNICODE);
+            /* Ré-encodé depuis une lecture en objets : décodé en tableaux
+               associatifs, un « {} » de l'état repartirait en « [] », et
+               l'application ne pourrait plus rien y ranger. */
+            $contenu = json_encode(json_decode($brut), JSON_UNESCAPED_UNICODE);
             $maintenant = date('Y-m-d H:i:s');
 
             $db->beginTransaction();
