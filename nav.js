@@ -1979,9 +1979,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.23.1';
+var SAGA_VERSION = '1.23.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.23.2', date: '2026-09-10', titre: 'Boutique : la photo se remplace enfin', points: [
+    'Retirer une photo ne servait à rien quand le dressing n’avait que la vignette de sa fiche : elle revenait aussitôt. Et déposer une photo la rangeait derrière cette vignette au lieu de la remplacer — « changer la photo » était donc impossible.',
+    'La vignette héritée de la fiche est maintenant nommée pour ce qu’elle est : « vignette de la fiche — non exportable ». Elle dépanne à l’écran, mais Whatnot ne sait pas la lire.',
+    'Le bouton indique « Remplacer » quand il n’y a que cette vignette, « Ajouter » quand de vraies photos sont déjà déposées.'
+  ] },
   { version: '1.23.1', date: '2026-09-10', titre: 'Boutique : le message de fin disait faux', points: [
     'Après génération, le fichier annonçait encore que les vignettes n’étaient pas exportées — un texte resté de l’ancienne version alors que les colonnes d’images étaient bel et bien remplies. Il dit maintenant ce qui est réellement parti.',
     'L’aperçu distingue une photo envoyée sur le serveur d’une vignette restée dans le navigateur, qui ne peut pas partir.',

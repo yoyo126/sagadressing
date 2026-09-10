@@ -48,8 +48,10 @@
             </div>
             <div id="dressList" class="dress-list"></div>
             <p class="card-note" style="margin-top:12px;">
-              La vignette provient de la fiche cliente. Vous pouvez la remplacer ici pour cette boutique
-              sans modifier la fiche.
+              À défaut de photo, la boutique affiche la vignette de la fiche cliente — mais celle-ci
+              est rangée dans le CRM, pas à une adresse internet : Whatnot ne sait pas la lire.
+              Déposez ici les photos de l'annonce, jusqu'à huit ; elles sont envoyées sur le serveur
+              et partent dans le fichier. La fiche cliente n'est pas modifiée.
             </p>
           </div>
 
@@ -211,11 +213,27 @@
      retenaient qu'une image, sont relues telles quelles. */
   var PHOTOS_MAX = 8;
 
-  function photosDe(c) {
-    var v = config.images[c.id];
+  /* Les photos choisies ici pour la boutique. Un tableau, même vide, est un
+     choix : c'est ce qui permet de retirer la vignette héritée de la fiche
+     sans la voir revenir aussitôt. */
+  function photosChoisies(id) {
+    var v = config.images[id];
     if (Array.isArray(v)) return v.filter(Boolean);
-    if (v) return [v];
+    if (v) return [v];              // ancienne forme : une seule image
+    return null;                    // rien de choisi : la fiche fera foi
+  }
+
+  /* Ce que la boutique affiche : les photos choisies, ou à défaut la vignette
+     de la fiche cliente. Cette dernière n'est qu'un pis-aller — elle est
+     rangée dans le CRM, pas à une adresse, donc invisible pour Whatnot. */
+  function photosDe(c) {
+    var choisies = photosChoisies(c.id);
+    if (choisies) return choisies;
     return c.vignette ? [c.vignette] : [];
+  }
+
+  function vientDeLaFiche(c) {
+    return photosChoisies(c.id) === null && !!c.vignette;
   }
 
   function imageDe(c) {
@@ -223,8 +241,8 @@
   }
 
   function poserPhotos(id, liste) {
-    if (liste.length) config.images[id] = liste.slice(0, PHOTOS_MAX);
-    else delete config.images[id];
+    // Toujours enregistré, y compris vide : « aucune photo » est un choix
+    config.images[id] = liste.slice(0, PHOTOS_MAX);
   }
 
   /* Avec cent dressings, tout afficher devient illisible : la liste ne montre
@@ -281,9 +299,17 @@
         : '<span class="vignette-thumb empty">—</span>';
       var perso = photos.length > 1
         ? ' <span class="chip neutral" style="font-size:.62rem;">' + photos.length + ' photos</span>' : '';
-      if (locales) {
-        perso += ' <span class="chip warn" style="font-size:.62rem;">'
-          + locales + ' hors ligne</span>';
+      /* Dire d'où vient l'image invendable : la vignette de la fiche est un
+         pis-aller que la boutique affiche faute de mieux, pas un choix. */
+      if (locales && vientDeLaFiche(c)) {
+        perso += ' <span class="chip warn" style="font-size:.62rem;"'
+          + ' title="La vignette de la fiche cliente est rangée dans le CRM, pas à une'
+          + ' adresse internet : Whatnot ne peut pas la lire. Déposez une photo ici.">'
+          + 'vignette de la fiche — non exportable</span>';
+      } else if (locales) {
+        perso += ' <span class="chip warn" style="font-size:.62rem;"'
+          + ' title="Photo enregistrée dans le navigateur, invisible pour Whatnot.'
+          + ' Retirez-la et redéposez-la.">' + locales + ' hors ligne</span>';
       }
       var conflit = doublons[c.lettre]
         ? ' <span class="chip warn" style="font-size:.62rem;">code en double</span>' : '';
@@ -295,7 +321,8 @@
           (photos.length ? '' : '<div class="muted" style="font-size:.7rem;">Aucune photo</div>') + '</span>' +
         '<input type="file" accept="image/*" multiple id="img_' + c.id + '" style="display:none;" onchange="changeImage(\'' + ref + '\', this)" />' +
         '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.id + '\').click()">'
-          + (photos.length ? 'Ajouter' : 'Photos') + '</button>' +
+          + (vientDeLaFiche(c) ? 'Remplacer'
+             : photos.length ? 'Ajouter' : 'Photos') + '</button>' +
       '</label>';
     }).join('') || '<p class="card-note">' +
       (q ? 'Aucune cliente ne correspond à « ' + q + ' ».' : 'Recherchez une cliente pour la retenir.') + '</p>';
@@ -315,8 +342,10 @@
     input.value = '';   // pour pouvoir redéposer le même fichier
     if (!fichiers.length) return;
 
-    var c = clientes.filter(function (x) { return x.id === id; })[0];
-    var deja = c ? photosDe(c).slice() : [];
+    /* On repart des photos réellement choisies, jamais de la vignette de la
+       fiche : déposer une photo doit la remplacer, pas se ranger derrière
+       elle. Sans quoi « changer la photo » devenait impossible. */
+    var deja = photosChoisies(id) || [];
     var place = PHOTOS_MAX - deja.length;
     if (place <= 0) {
       alert(PHOTOS_MAX + ' photos au maximum par dressing. Retirez-en une avant d\'en ajouter.');
@@ -350,6 +379,7 @@
     if (!c) return;
     var liste = photosDe(c).slice();
     liste.splice(index, 1);
+    // Enregistré même vide : la vignette de la fiche ne doit pas revenir
     poserPhotos(id, liste);
     persist(); renderDressings(); refreshApercu();
   }
