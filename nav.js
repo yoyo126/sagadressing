@@ -1979,9 +1979,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.23.2';
+var SAGA_VERSION = '1.24.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.24.0', date: '2026-09-10', titre: 'Réattribuer plusieurs articles d’un coup', points: [
+    'Dans un live, chaque vente porte une case à cocher. Cochez, choisissez la cliente, transférez : un live entier tombé sur la mauvaise personne se rattrape en un geste au lieu d’article en article.',
+    'La photo de la fiche cliente est envoyée sur le serveur, comme celles de la boutique : elle sert donc aux annonces au lieu de rester un simple décor. Pensez à enregistrer la fiche après l’avoir choisie.',
+    'Dans la boutique, un bouton « Vignette de la fiche » reprend la photo de la cliente quand on a vidé la liste par erreur.'
+  ] },
   { version: '1.23.2', date: '2026-09-10', titre: 'Boutique : la photo se remplace enfin', points: [
     'Retirer une photo ne servait à rien quand le dressing n’avait que la vignette de sa fiche : elle revenait aussitôt. Et déposer une photo la rangeait derrière cette vignette au lieu de la remplacer — « changer la photo » était donc impossible.',
     'La vignette héritée de la fiche est maintenant nommée pour ce qu’elle est : « vignette de la fiche — non exportable ». Elle dépanne à l’écran, mais Whatnot ne sait pas la lire.',

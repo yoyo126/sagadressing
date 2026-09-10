@@ -313,6 +313,13 @@
       }
       var conflit = doublons[c.lettre]
         ? ' <span class="chip warn" style="font-size:.62rem;">code en double</span>' : '';
+      /* Une liste vidée à la main masque la vignette de la fiche, sinon elle
+         reviendrait aussitôt. Encore faut-il pouvoir la reprendre. */
+      var reprise = (!photos.length && c.vignette)
+        ? '<button class="btn btn-ghost btn-sm" title="Utiliser la photo de la fiche cliente"'
+          + ' onclick="event.preventDefault(); reprendreVignette(\'' + ref + '\')">'
+          + 'Vignette de la fiche</button>'
+        : '';
       return '<label class="dress-row">' +
         '<input type="checkbox" ' + (config.selection[c.id] ? 'checked' : '') +
           ' onchange="toggleDress(\'' + ref + '\', this.checked)" />' +
@@ -322,7 +329,7 @@
         '<input type="file" accept="image/*" multiple id="img_' + c.id + '" style="display:none;" onchange="changeImage(\'' + ref + '\', this)" />' +
         '<button class="btn btn-ghost btn-sm" onclick="event.preventDefault(); document.getElementById(\'img_' + c.id + '\').click()">'
           + (vientDeLaFiche(c) ? 'Remplacer'
-             : photos.length ? 'Ajouter' : 'Photos') + '</button>' +
+             : photos.length ? 'Ajouter' : 'Photos') + '</button>' + reprise +
       '</label>';
     }).join('') || '<p class="card-note">' +
       (q ? 'Aucune cliente ne correspond à « ' + q + ' ».' : 'Recherchez une cliente pour la retenir.') + '</p>';
@@ -372,6 +379,11 @@
         alert('Photo(s) non envoyée(s) :\n\n' + echecs.join('\n'));
       }
     }
+  }
+
+  function reprendreVignette(id) {
+    delete config.images[id];   // rien de choisi : la fiche reprend la main
+    persist(); renderDressings(); refreshApercu();
   }
 
   function retirerPhoto(id, index) {

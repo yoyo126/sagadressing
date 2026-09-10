@@ -878,12 +878,22 @@
 
   var vignetteEnCours = null; // null = inchangée
 
+  /* La vignette passe par le serveur, comme les photos de boutique : rangée
+     dans le CRM, elle ne serait qu'un décor — la boutique s'en sert pour les
+     annonces, et Whatnot ne sait lire qu'une image ayant une adresse. */
   function pickInfoVignette(input) {
     if (!input.files || !input.files[0]) return;
-    sagaReadImage(input.files[0], 600, function (dataUrl) {
-      vignetteEnCours = dataUrl;
-      afficheVignette(dataUrl);
+    var boite = document.getElementById('iVignettePreview');
+    boite.innerHTML = '<span>Envoi…</span>';
+    sagaTeleverserPhoto(input.files[0], function (url) {
+      vignetteEnCours = url;
+      afficheVignette(url);
+      flashInfos('✓ Photo envoyée — enregistrez la fiche');
+    }, function (message) {
+      afficheVignette(vignetteEnCours !== null ? vignetteEnCours : vignetteCourante());
+      alert('La photo n\'a pas pu être envoyée.\n\n' + message);
     });
+    input.value = '';
   }
 
   function clearInfoVignette() {

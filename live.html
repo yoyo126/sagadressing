@@ -155,9 +155,21 @@
 
           <div id="articleMessage" class="info-card" style="display:none; margin-bottom:14px; background:var(--good-bg); border-color:var(--good); color:var(--good); font-size:.83rem;"></div>
 
+          <!-- Réattribution groupée : cochez, choisissez la cliente, transférez.
+               Un live entier tombé sur la mauvaise cliente se rattrape ici. -->
+          <div id="barreSelection" class="alert-bar" style="display:none; flex-wrap:wrap; gap:10px;">
+            <span id="selectionTexte">—</span>
+            <select class="form-select" id="selectionCible" style="max-width:260px;"></select>
+            <button class="btn btn-secondary btn-sm" onclick="transfererSelection()">Transférer</button>
+            <button class="btn btn-ghost btn-sm" onclick="viderSelection()">Annuler</button>
+          </div>
+
           <div class="table-scroll">
           <table>
-            <thead><tr><th>Article</th><th>Dressing</th><th class="num">Montant</th><th>Type</th><th></th></tr></thead>
+            <thead><tr>
+              <th style="width:28px;"><input type="checkbox" id="cocheTout" onchange="cocherTout(this.checked)" title="Tout cocher" /></th>
+              <th>Article</th><th>Dressing</th><th class="num">Montant</th><th>Type</th><th></th>
+            </tr></thead>
             <tbody id="articlesBody"></tbody>
           </table>
           </div>
@@ -440,11 +452,116 @@
       : LIVE.articles;
   }
 
+  /* ============ Réattribution groupée ============
+     Un live entier peut tomber sur la mauvaise cliente — il a suffi qu'une
+     annonce porte un code encore inconnu. Le rattraper article par article
+     était l'épreuve à ne pas imposer deux fois. */
+  var SELECTION = [];
+
+  function cocherArticle(id, coche) {
+    var i = SELECTION.indexOf(id);
+    if (coche && i === -1) SELECTION.push(id);
+    if (!coche && i !== -1) SELECTION.splice(i, 1);
+    renderArticles();
+  }
+
+  function cocherTout(coche) {
+    SELECTION = coche ? articlesAffiches().map(function (a) { return a.id; }) : [];
+    renderArticles();
+  }
+
+  function viderSelection() {
+    SELECTION = [];
+    renderArticles();
+  }
+
+  function majBarreSelection() {
+    var barre = document.getElementById('barreSelection');
+    var affiches = articlesAffiches();
+
+    // Une case cochée puis l'article supprimé : la sélection se nettoie seule
+    var vivants = affiches.map(function (a) { return a.id; });
+    SELECTION = SELECTION.filter(function (id) { return vivants.indexOf(id) !== -1; });
+
+    var tout = document.getElementById('cocheTout');
+    if (tout) {
+      tout.checked = affiches.length > 0 && SELECTION.length === affiches.length;
+      tout.indeterminate = SELECTION.length > 0 && SELECTION.length < affiches.length;
+    }
+
+    if (!SELECTION.length) { barre.style.display = 'none'; return; }
+
+    var total = LIVE.articles
+      .filter(function (a) { return SELECTION.indexOf(a.id) !== -1; })
+      .reduce(function (s, a) { return s + a.montant; }, 0);
+
+    document.getElementById('selectionTexte').innerHTML =
+      '<strong>' + SELECTION.length + ' article' + (SELECTION.length > 1 ? 's' : '')
+      + '</strong> — ' + sagaEUR(total) + '. À qui les attribuer ?';
+
+    var champ = document.getElementById('selectionCible');
+    var garde = champ.value;
+    champ.innerHTML = optionsClientes();
+    if (garde) champ.value = garde;
+    barre.style.display = 'flex';
+  }
+
+  /* Les mêmes choix que le formulaire d'article : des clientes, pas des
+     lettres — deux « S » restent deux entrées distinctes. */
+  function optionsClientes() {
+    var vus = [], out = ['<option value="">Choisir une cliente…</option>'];
+    function ajouter(id, lettre, prenom) {
+      if (!id || vus.indexOf(id) !== -1) return;
+      vus.push(id);
+      out.push('<option value="' + sagaEchapper(id) + '">'
+        + sagaEchapper(lettre || '—') + ' — ' + sagaEchapper(prenom) + '</option>');
+    }
+    partsDuLive().forEach(function (p) {
+      ajouter(p.id, p.lettre, sagaTauxDressing(p.id).prenom);
+    });
+    sagaListeClientes().forEach(function (c) { ajouter(c.key || c.lettre, c.lettre, c.prenom); });
+    return out.join('');
+  }
+
+  function transfererSelection() {
+    var cible = document.getElementById('selectionCible').value;
+    if (!cible) { document.getElementById('selectionCible').focus(); return; }
+    if (!SELECTION.length) return;
+
+    var t = sagaTauxDressing(cible);
+    var concernes = LIVE.articles.filter(function (a) { return SELECTION.indexOf(a.id) !== -1; });
+    var total = concernes.reduce(function (s, a) { return s + a.montant; }, 0);
+
+    if (!confirm('Attribuer ' + concernes.length + ' article'
+      + (concernes.length > 1 ? 's' : '') + ' à ' + t.prenom
+      + ' (' + (t.lettre || '—') + ') ?\n\n'
+      + 'Montant concerné : ' + sagaEUR(total)
+      + '\n\nLes montants des clientes de ce live seront recalculés.')) return;
+
+    concernes.forEach(function (a) {
+      a.cle = t.cle;
+      a.lettre = t.lettre || cible;
+    });
+
+    persist();
+    sagaTracer('Réattribution d\'articles', LIVE.titre,
+      concernes.length + ' article(s) vers ' + t.prenom + ' · ' + sagaEUR(total));
+
+    var combien = concernes.length;
+    SELECTION = [];
+    renderTout();
+    annoncer(combien + ' article' + (combien > 1 ? 's' : '') + ' attribué'
+      + (combien > 1 ? 's' : '') + ' à ' + t.prenom + ' (' + sagaEUR(total) + ').');
+  }
+
   function renderArticles() {
     var arts = articlesAffiches();
     document.getElementById('articlesEmpty').style.display = arts.length ? 'none' : 'flex';
     document.getElementById('articlesBody').innerHTML = arts.map(function (a) {
-      return '<tr>' +
+      return '<tr' + (SELECTION.indexOf(a.id) !== -1 ? ' style="background:var(--brand-soft);"' : '') + '>' +
+        '<td><input type="checkbox" data-article="' + sagaEchapper(a.id) + '"'
+          + (SELECTION.indexOf(a.id) !== -1 ? ' checked' : '')
+          + ' onchange="cocherArticle(\'' + sagaEchapper(a.id) + '\', this.checked)" /></td>' +
         '<td>' + a.libelle + '</td>' +
         '<td><span class="tag-avatar" style="width:22px;height:22px;font-size:.7rem;">' + a.lettre + '</span></td>' +
         '<td class="num tabular">' + sagaEUR(a.montant) + '</td>' +
@@ -454,6 +571,7 @@
           '<button class="btn btn-ghost btn-sm" onclick="supprimerArticle(\'' + a.id + '\')">Supprimer</button>' +
         '</td></tr>';
     }).join('');
+    majBarreSelection();
   }
 
   /* Toutes les clientes connues sont proposées, pas seulement celles déjà
