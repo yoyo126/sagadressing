@@ -1176,15 +1176,14 @@ function sagaLettreWhatnot(libelle) {
   var code = m[1].toUpperCase();
   if (code.length === 1) return code;
 
-  /* Un code de plusieurs lettres n'est retenu que si une cliente le porte
-     vraiment : sans cela, un mot collé au montant passerait pour un code.
-     Les annonces en portent bel et bien — le live du 30/08/2026 contient
-     « FM », « CS », « MA » et « NA » — donc on les respecte. */
-  var connus = {};
-  sagaListeClientes().forEach(function (c) {
-    if (c.lettre) connus[String(c.lettre).toUpperCase()] = true;
-  });
-  return connus[code] ? code : code.charAt(0);
+  /* Le code est rendu tel qu'il est écrit, connu ou non.
+     Se rabattre sur la première lettre était une fausse bonne idée : le live
+     du 08/09/2026 portait « CM » pour Christine MOUILLON, dont la fiche
+     n'existait pas encore. Le code devenait « C », et les 106 ventes
+     partaient chez Carole SELEUCIDE sans un mot — il a fallu les déplacer
+     une par une. Un code inconnu doit poser la question, jamais désigner
+     quelqu'un d'autre. L'écran d'import s'en charge. */
+  return code;
 }
 
 /* Numéros de commande déjà importés, pour ne pas compter deux fois le même
@@ -1980,9 +1979,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.22.0';
+var SAGA_VERSION = '1.23.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.23.0', date: '2026-09-10', titre: 'Dates de virement et codes inconnus à l’import', points: [
+    'La date d’un virement ou d’un règlement se choisit de nouveau : le calendrier s’ouvrait derrière la fenêtre, invisible et inclicquable, et la date restait bloquée sur celle du jour.',
+    'Un code d’annonce que personne ne porte ne désigne plus quelqu’un d’autre. « CM » devenait « C » : les ventes d’un live entier étaient attribuées à Carole SELEUCIDE au lieu de Christine MOUILLON. L’import s’arrête maintenant dessus et demande à qui elles reviennent.'
+  ] },
   { version: '1.22.0', date: '2026-09-09', titre: 'Les photos repartent dans les annonces Whatnot', points: [
     'Les photos sont de nouveau déposées sur le serveur, comme le faisait le générateur d’origine : le fichier d’annonces porte leur adresse, et Whatnot les affiche.',
     'Jusqu’à huit photos par dressing, comme avant. Elles se retirent une par une.',

@@ -607,8 +607,11 @@ tbody td { padding: 11px 8px; }
 
 /* ---------- Calendrier ---------- */
 .date-input { cursor: pointer; background-image: none; }
+/* Au-dessus des fenêtres modales (z-index 1005) : en dessous, le calendrier
+   s'ouvrait derrière elles — invisible et inclicquable. La date d'un virement
+   ou d'un règlement restait alors bloquée sur sa valeur par défaut. */
 .cal-pop {
-  position: absolute; z-index: 900; width: 306px; padding: 12px;
+  position: absolute; z-index: 1100; width: 306px; padding: 12px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
   box-shadow: 0 12px 32px -10px rgba(36,31,26,0.28), 0 2px 6px rgba(36,31,26,0.08);
 }
