@@ -484,17 +484,42 @@
         '<td style="font-size:.78rem;">' + l.titre + '</td>' +
         '<td class="num tabular">' + l.prix + ' €</td>' +
         '<td class="muted">' + l.sku + '</td>' +
-        '<td>' + (l.image ? '<img class="vignette-thumb" src="' + l.image + '" alt="" />'
-                          : '<span class="chip warn" style="font-size:.62rem;">absente</span>') + '</td>' +
+        '<td>' + (l.image
+            ? '<img class="vignette-thumb" src="' + l.image + '" alt="" />'
+              + (sagaPhotoHebergee(l.image) ? ''
+                 : '<span class="chip warn" style="font-size:.62rem;">hors ligne</span>')
+            : '<span class="chip warn" style="font-size:.62rem;">absente</span>') + '</td>' +
       '</tr>';
     }).join('') || '<tr><td colspan="4" class="muted" style="text-align:center; padding:20px;">Sélectionnez au moins un dressing et un palier.</td></tr>';
 
-    var sansImage = L.filter(function (l) { return !l.image; }).length;
-    document.getElementById('apercuNote').innerHTML = L.length === 0 ? '—'
-      : (L.length > 12 ? 'Les 12 premières lignes sur ' + L.length + '. ' : '')
-        + (sansImage
-            ? '<strong style="color:var(--brand-strong)">' + sansImage + ' annonce(s) sans vignette</strong> — Whatnot les acceptera, mais elles s\'afficheront sans image.'
-            : 'Toutes les annonces ont une vignette.');
+    /* Ce que le fichier emportera vraiment : une vignette rangée dans le
+       navigateur s'affiche ici mais reste illisible pour Whatnot. Mieux vaut
+       le dire avant la génération qu'après. */
+    var partiront = L.filter(function (l) {
+      return (l.photos || []).filter(sagaPhotoHebergee).length;
+    }).length;
+    var horsLigne = L.filter(function (l) {
+      return (l.photos || []).filter(function (u) { return !sagaPhotoHebergee(u); }).length;
+    }).length;
+
+    var note;
+    if (L.length === 0) {
+      note = '—';
+    } else {
+      note = (L.length > 12 ? 'Les 12 premières lignes sur ' + L.length + '. ' : '');
+      if (horsLigne) {
+        note += '<strong style="color:var(--brand-strong)">' + horsLigne
+          + ' annonce(s) portent une photo enregistrée dans le navigateur</strong> — '
+          + 'elle ne partira pas dans le fichier. Redéposez-la depuis cet écran '
+          + 'pour qu\'elle soit envoyée sur le serveur.';
+      } else if (partiront < L.length) {
+        note += (L.length - partiront) + ' annonce(s) sans photo — Whatnot les accepte, '
+          + 'elles s\'afficheront sans image.';
+      } else {
+        note += 'Toutes les annonces partiront avec leur photo.';
+      }
+    }
+    document.getElementById('apercuNote').innerHTML = note;
   }
 
   /* ---------- Génération du fichier ----------
@@ -561,13 +586,25 @@
     var nom = 'boutique_whatnot_' + new Date().toISOString().slice(0, 10) + '.csv';
     sagaDownload(nom, contenu, 'text/csv');
 
-    var localesNonExportees = L.filter(function (l) { return l.image && !/^https?:\/\//.test(l.image); }).length;
-    if (localesNonExportees > 0) {
-      alert('Fichier téléchargé : ' + L.length + ' annonces.\n\n'
-        + 'À savoir : Whatnot ne sait lire que des images accessibles par une adresse internet. '
-        + 'Vos vignettes sont stockées dans le navigateur, la colonne image a donc été laissée vide.\n\n'
-        + 'Une fois le CRM en ligne, les vignettes seront hébergées sur sagadressing.fr et remplies automatiquement.');
+    var avecPhoto = L.filter(function (l) {
+      return (l.photos || []).filter(sagaPhotoHebergee).length;
+    }).length;
+    var horsLigne = L.filter(function (l) {
+      return (l.photos || []).filter(function (u) { return !sagaPhotoHebergee(u); }).length;
+    }).length;
+
+    var bilan = 'Fichier téléchargé : ' + L.length + ' annonces, dont '
+      + avecPhoto + ' avec photo.';
+    if (horsLigne) {
+      bilan += '\n\n' + horsLigne + ' annonce(s) portent une photo enregistrée dans le '
+        + 'navigateur : Whatnot ne sait lire qu\'une image accessible par une adresse '
+        + 'internet, elles ne sont donc pas parties.\n\nRedéposez-les depuis Boutique — '
+        + 'elles seront alors envoyées sur le serveur, et leur adresse partira dans le fichier.';
+    } else if (avecPhoto < L.length) {
+      bilan += '\n\nLes annonces sans photo passeront quand même : Whatnot les accepte, '
+        + 'elles s\'afficheront sans image.';
     }
+    alert(bilan);
   }
 
   majSousCat();

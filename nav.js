@@ -1979,9 +1979,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.23.0';
+var SAGA_VERSION = '1.23.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.23.1', date: '2026-09-10', titre: 'Boutique : le message de fin disait faux', points: [
+    'Après génération, le fichier annonçait encore que les vignettes n’étaient pas exportées — un texte resté de l’ancienne version alors que les colonnes d’images étaient bel et bien remplies. Il dit maintenant ce qui est réellement parti.',
+    'L’aperçu distingue une photo envoyée sur le serveur d’une vignette restée dans le navigateur, qui ne peut pas partir.',
+    'La page de diagnostic affiche le numéro de version déposé et vérifie le dossier des photos.'
+  ] },
   { version: '1.23.0', date: '2026-09-10', titre: 'Dates de virement et codes inconnus à l’import', points: [
     'La date d’un virement ou d’un règlement se choisit de nouveau : le calendrier s’ouvrait derrière la fenêtre, invisible et inclicquable, et la date restait bloquée sur celle du jour.',
     'Un code d’annonce que personne ne porte ne désigne plus quelqu’un d’autre. « CM » devenait « C » : les ventes d’un live entier étaient attribuées à Carole SELEUCIDE au lieu de Christine MOUILLON. L’import s’arrête maintenant dessus et demande à qui elles reviennent.'

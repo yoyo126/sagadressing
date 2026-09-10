@@ -36,8 +36,39 @@ foreach (['pdo_mysql' => 'Accès à MySQL',
          extension_loaded($ext) ? 'présent' : 'extension absente');
 }
 
+/* ---------- Version déposée ----------
+   La question la plus fréquente après un dépôt : « est-ce bien la dernière
+   version qui tourne ? » Le numéro est lu dans nav.js, à sa source. */
+$nav = @file_get_contents(__DIR__ . '/nav.js');
+if ($nav === false) {
+    ctrl('Version du CRM', 'echec', 'nav.js introuvable');
+} elseif (preg_match("/var SAGA_VERSION = '([^']+)'/", $nav, $m)) {
+    ctrl('Version du CRM', 'ok', $m[1] . ' — c\'est ce numéro qui doit '
+        . 'apparaître en bas du menu, dans le CRM');
+} else {
+    ctrl('Version du CRM', 'alerte', 'numéro illisible dans nav.js');
+}
+
+/* ---------- Photos de la boutique ----------
+   Whatnot va chercher les images à leur adresse : le dossier doit exister,
+   être accessible en écriture pour les recevoir, et public en lecture. */
+$dossierPhotos = __DIR__ . '/uploads';
+if (!is_dir($dossierPhotos)) {
+    ctrl('Dossier des photos (uploads)', 'echec',
+         'absent — les photos de boutique ne pourront pas être envoyées');
+} elseif (!is_writable($dossierPhotos)) {
+    ctrl('Dossier des photos (uploads)', 'echec',
+         'présent mais non accessible en écriture — donnez-lui les droits 755');
+} else {
+    ctrl('Dossier des photos (uploads)', 'ok',
+         'accessible en écriture' . (is_file($dossierPhotos . '/.htaccess')
+            ? ', exécution de scripts interdite'
+            : ' — attention, son .htaccess manque'));
+}
+
 /* ---------- Fichiers attendus ---------- */
-$attendus = ['db.php', 'lib_auth.php', 'login.php', 'logout.php', 'schema.sql', '.htaccess'];
+$attendus = ['db.php', 'lib_auth.php', 'login.php', 'logout.php', 'schema.sql', '.htaccess',
+             'televerser.php'];
 $manquants = [];
 foreach ($attendus as $f) {
     if (!is_file(__DIR__ . '/' . $f)) {
