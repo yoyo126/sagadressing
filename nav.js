@@ -1017,12 +1017,56 @@ function sagaReparerTablesVides() {
   return corrige;
 }
 
+/* ============ Règlements rangés sous la lettre ============
+   Entre la 1.20.0 et la 1.24.1, le bouton « Payer » de la fiche cliente
+   rangeait le règlement sous la lettre du dressing, alors que le calcul le
+   cherche sous l'identité de la cliente. Ces règlements existent : on les
+   remet à leur place plutôt que de les faire ressaisir.
+
+   Dans un live, une lettre ne désigne qu'une part — sauf si deux clientes
+   du même code vendent le même soir. Dans ce cas on ne devine pas : le
+   règlement reste où il est, et le journal le signale. */
+function sagaReparerPaiementsParLettre() {
+  var lives = sagaLives(), deplaces = 0, douteux = [];
+
+  lives.forEach(function (live) {
+    if (!live.paiements || Array.isArray(live.paiements)) return;
+    var parts = sagaPartsDuLive(live);
+    var ids = parts.map(function (p) { return p.id; });
+
+    Object.keys(live.paiements).forEach(function (cle) {
+      if (ids.indexOf(cle) !== -1) return;            // déjà à sa place
+      var visees = parts.filter(function (p) { return p.lettre === cle; });
+      if (visees.length !== 1) {
+        if (visees.length > 1) douteux.push(live.titre + ' (' + cle + ')');
+        return;
+      }
+      var cible = visees[0].id;
+      // Un règlement déjà présent sous l'identité fait foi
+      if (!live.paiements[cible]) live.paiements[cible] = live.paiements[cle];
+      delete live.paiements[cle];
+      deplaces++;
+    });
+  });
+
+  if (deplaces) {
+    sagaSaveLives(lives);
+    sagaTracer('Reprise des règlements', deplaces + ' règlement(s) remis à leur cliente',
+      douteux.length ? 'Laissés en l’état, code partagé sur le live : ' + douteux.join(', ') : '');
+  }
+  return { deplaces: deplaces, douteux: douteux };
+}
+
 /* Pas tout de suite : server-sync.js s'exécute juste après nav.js, efface le
    stockage local et y réinstalle l'état du serveur. Lancée maintenant, la
    reprise travaillerait sur les restes de la page précédente et son résultat
    serait balayé sans jamais repartir vers le serveur. Le temps mort la place
    après cet amorçage, et sagaSave y est déjà l'enveloppe qui synchronise. */
-setTimeout(function () { sagaReparerTablesVides(); sagaReparerIdentites(); }, 0);
+setTimeout(function () {
+  sagaReparerTablesVides();
+  sagaReparerIdentites();
+  sagaReparerPaiementsParLettre();
+}, 0);
 
 /* Les parts d'un live, une par cliente présente, dans l'ordre d'apparition.
    `id` sert aux calculs, `lettre` à l'affichage. La part sans identifiant
@@ -1582,7 +1626,7 @@ function sagaVentesDuDressing(id) {
     var d = sagaDecompte(live, parts[0]);
     res.push({
       origine: 'live', liveId: live.id, date: live.date, label: live.titre,
-      lettre: d.lettre, ventes: d.ventes, ca: d.ca, giveaways: d.giveaways,
+      partId: d.id, lettre: d.lettre, ventes: d.ventes, ca: d.ca, giveaways: d.giveaways,
       portGiveaway: d.portGiveaway,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: 0,
       net: d.net, paye: d.paye ? 1 : 0,
@@ -1760,7 +1804,13 @@ function sagaMarquerPayee(vente, dateIso) {
     var live = lives.filter(function (l) { return l.id === vente.liveId; })[0];
     if (!live) return false;
     live.paiements = live.paiements || {};
-    live.paiements[vente.lettre] = { date: dateIso, mode: 'Virement' };
+    /* Rangé sous l'identité de la part, celle que lit sagaDecompte. Rangé
+       sous la lettre, comme avant la 1.20.0, le règlement s'enregistrait
+       bel et bien — « Enregistré » s'affichait — mais la fiche le cherchait
+       ailleurs et la vente restait « en attente ». */
+    var id = vente.partId || vente.lettre;
+    if (vente.lettre && vente.lettre !== id) delete live.paiements[vente.lettre];
+    live.paiements[id] = { date: dateIso, mode: 'Virement' };
     return sagaSaveLives(lives);
   }
   var ventes = sagaVentesDirectes();
@@ -1775,7 +1825,9 @@ function sagaAnnulerPaiement(vente) {
     var lives = sagaLives();
     var live = lives.filter(function (l) { return l.id === vente.liveId; })[0];
     if (!live || !live.paiements) return false;
-    delete live.paiements[vente.lettre];
+    // Les deux clés : un règlement saisi avant le correctif dort sous la lettre
+    if (vente.partId) delete live.paiements[vente.partId];
+    if (vente.lettre) delete live.paiements[vente.lettre];
     return sagaSaveLives(lives);
   }
   var ventes = sagaVentesDirectes();
@@ -1979,9 +2031,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.24.0';
+var SAGA_VERSION = '1.24.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.24.1', date: '2026-09-13', titre: 'Le bouton « Payer » de la fiche cliente fonctionne de nouveau', points: [
+    'Le règlement s’enregistrait — « Enregistré » s’affichait — mais la vente restait « en attente » : il était rangé sous la lettre du dressing alors que la fiche le cherchait sous l’identité de la cliente.',
+    'Les règlements déjà saisis ainsi sont remis à leur place au chargement, avec leur date : rien à ressaisir. Si deux clientes du même code ont vendu le même soir, le règlement n’est attribué à personne et le journal le signale.'
+  ] },
   { version: '1.24.0', date: '2026-09-10', titre: 'Réattribuer plusieurs articles d’un coup', points: [
     'Dans un live, chaque vente porte une case à cocher. Cochez, choisissez la cliente, transférez : un live entier tombé sur la mauvaise personne se rattrape en un geste au lieu d’article en article.',
     'La photo de la fiche cliente est envoyée sur le serveur, comme celles de la boutique : elle sert donc aux annonces au lieu de rester un simple décor. Pensez à enregistrer la fiche après l’avoir choisie.',
