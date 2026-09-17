@@ -147,7 +147,8 @@
         var d = sagaDecompte(live, part);
         res.push({
           date: live.date, liveId: live.id, session: live.titre,
-          cliente: d.prenom, nom: sagaInfosCliente(part.id).nom, lettre: d.lettre,
+          cliente: d.prenom, nom: sagaInfosCliente(part.id).nom,
+          cle: part.id, lettre: d.lettre,
           /* Le port des giveaways est plafonné par le contrat : c'est le
              montant déduit qui doit figurer au rapport, pas celui engagé. */
           source: 'live', ventes: d.ca, giveaways: d.portGiveaway,
@@ -160,10 +161,11 @@
     // Ventes hors live — même source que partout ailleurs
     sagaVentesDirectes().forEach(function (v) {
       var d = sagaDecompteDirect(v);
-      var i = sagaInfosCliente(v.lettre);
+      var idv = sagaPartArticle(v);
+      var i = sagaInfosCliente(idv);
       res.push({
         date: v.date, liveId: '', session: v.libelle,
-        cliente: i.prenom, nom: i.nom, lettre: v.lettre,
+        cliente: i.prenom, nom: i.nom, cle: idv, lettre: v.lettre,
         source: 'direct', ventes: d.ventes, giveaways: 0,   // pas de giveaway hors Whatnot
         saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
         paye: !!v.paye, datePaiement: v.datePaiement || ''
@@ -177,11 +179,15 @@
 
   /* ---------- Choix de la cliente : recherche sur tout l'annuaire ---------- */
   function clientesDuFiltre() {
-    // Toutes les clientes du CRM, celles avec des ventes en premier
+    /* Toutes les clientes du CRM, celles avec des ventes en premier.
+       sagaListeClientes() les garde séparées : sagaToutesClientes() regroupe
+       par code, et deux clientes en « S » n'en formaient plus qu'une. */
     var avecVentes = {};
-    VENTES.forEach(function (v) { avecVentes[v.lettre] = true; });
-    return sagaToutesClientes().map(function (c) {
-      return { lettre: c.lettre, nom: c.nom || c.prenom, aDesVentes: !!avecVentes[c.lettre] };
+    VENTES.forEach(function (v) { avecVentes[v.cle] = true; });
+    return sagaListeClientes().map(function (c) {
+      var cle = c.key || c.lettre;
+      return { cle: cle, lettre: c.lettre, nom: c.nom || c.prenom,
+               aDesVentes: !!avecVentes[cle] };
     }).sort(function (a, b) {
       if (a.aDesVentes !== b.aDesVentes) return a.aDesVentes ? -1 : 1;
       return a.nom.localeCompare(b.nom, 'fr');
@@ -201,20 +207,21 @@
         ' onchange="choisirCliente(\'\')" /><span>Toutes les clientes</span></label>' +
       (liste.length
         ? liste.map(function (c) {
-            var choisi = document.getElementById('repCliente').value === c.lettre ? ' checked' : '';
+            var choisi = document.getElementById('repCliente').value === c.cle ? ' checked' : '';
             return '<label class="check-row">' +
-              '<input type="radio" name="repCli" value="' + c.lettre + '"' + choisi +
-              ' onchange="choisirCliente(\'' + c.lettre + '\')" />' +
+              '<input type="radio" name="repCli" value="' + sagaEchapper(c.cle) + '"' + choisi +
+              ' onchange="choisirCliente(\'' + sagaEchapper(c.cle) + '\')" />' +
               '<span>' + c.nom + ' (' + c.lettre + ')' +
               (c.aDesVentes ? '' : ' <span class="muted">— aucune vente</span>') + '</span></label>';
           }).join('')
         : '<div class="picker-empty">Aucune cliente ne correspond</div>');
   }
 
-  function choisirCliente(lettre) {
-    document.getElementById('repCliente').value = lettre;
-    document.getElementById('repClienteSearch').value = lettre
-      ? sagaInfosCliente(lettre).nom + ' (' + lettre + ')'
+  function choisirCliente(cle) {
+    document.getElementById('repCliente').value = cle;
+    var i = cle ? sagaInfosCliente(cle) : null;
+    document.getElementById('repClienteSearch').value = i
+      ? i.nom + ' (' + i.lettre + ')'
       : '';
     document.getElementById('repClienteListe').style.display = 'none';
     renderReport();
@@ -404,8 +411,10 @@
   function grouperParCliente(rows) {
     var out = {};
     rows.forEach(function (v) {
-      var e = out[v.lettre] ||
-        (out[v.lettre] = { nom: v.nom, lettre: v.lettre, nb: 0, live: 0, direct: 0, giveaways: 0, saga: 0, net: 0 });
+      /* Par identité : regroupées par lettre, deux clientes du même code
+         voyaient leurs chiffres additionnés sur une seule ligne. */
+      var e = out[v.cle] ||
+        (out[v.cle] = { nom: v.nom, lettre: v.lettre, nb: 0, live: 0, direct: 0, giveaways: 0, saga: 0, net: 0 });
       e.nb++;
       e[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
       e.giveaways += v.giveaways; e.saga += v.saga; e.net += v.net;
@@ -429,12 +438,12 @@
   function filteredVentes() {
     var from = document.getElementById('repFrom').value || '0000-01-01';
     var to = document.getElementById('repTo').value || '9999-12-31';
-    var lettre = document.getElementById('repCliente').value;
+    var cible = document.getElementById('repCliente').value;
     var source = currentSource();
 
     return VENTES.filter(function (v) {
       if (v.date < from || v.date > to) return false;
-      if (lettre && v.lettre !== lettre) return false;
+      if (cible && v.cle !== cible) return false;
       if (source === 'live' && v.source !== 'live') return false;
       if (source === 'direct' && v.source !== 'direct') return false;
       return true;
@@ -527,7 +536,7 @@
         '<th class="num">CA encaissé</th><th class="num">Comm. Saga</th><th class="num">Net</th><th>Règlement</th>' +
       '</tr></thead><tbody>' +
       rows.map(function (v) {
-        var lien = v.liveId ? 'live.html?l=' + v.liveId + '&c=' + v.lettre : '';
+        var lien = v.liveId ? 'live.html?l=' + v.liveId + '&c=' + encodeURIComponent(v.cle) : '';
         return '<tr' + (lien ? ' data-href="' + lien + '"' : '') + '>' +
           '<td>' + sagaDateFR(v.date) + '</td>' +
           '<td>' + v.session +
@@ -615,7 +624,7 @@
       lignes.map(function (v) {
         return '<tr>' +
           '<td class="muted">' + sagaDateFR(v.date) + '</td>' +
-          '<td>' + (v.liveId ? '<a href="live.html?l=' + v.liveId + '&c=' + v.lettre + '" style="color:var(--brand-strong);">' + v.session + '</a>' : v.session) +
+          '<td>' + (v.liveId ? '<a href="live.html?l=' + v.liveId + '&c=' + encodeURIComponent(v.cle) + '" style="color:var(--brand-strong);">' + v.session + '</a>' : v.session) +
             (v.source === 'direct' ? ' <span class="chip neutral">Hors live</span>' : '') + '</td>' +
           '<td>' + v.nom + ' (' + v.lettre + ')</td>' +
           '<td class="num tabular">' + fmtEUR(v.ventes) + '</td>' +

@@ -162,14 +162,15 @@
     sagaLives().forEach(function (live) {
       sagaPartsDuLive(live).forEach(function (part) {
         var d = sagaDecompte(live, part);
-        res.push({ date: live.date, source: 'live', lettre: d.lettre, nom: sagaInfosCliente(part.id).nom,
+        res.push({ date: live.date, source: 'live', cle: part.id, lettre: d.lettre,
+                   nom: sagaInfosCliente(part.id).nom,
                    ventes: d.ca, saga: d.commSaga, net: d.net, paye: d.paye });
       });
     });
     // Ventes hors live — même source que partout ailleurs
     sagaVentesDirectes().forEach(function (v) {
       var d = sagaDecompteDirect(v);
-      res.push({ date: v.date, source: 'direct', lettre: v.lettre,
+      res.push({ date: v.date, source: 'direct', cle: sagaPartArticle(v), lettre: v.lettre,
                  nom: sagaInfosCliente(sagaPartArticle(v)).nom,
                  ventes: d.ventes, saga: d.commSaga, net: d.net, paye: !!v.paye });
     });
@@ -210,7 +211,9 @@
       .reduce(function (a, v) {
         a.montant += v.net;
         a[v.source] += v.net;
-        a.clientes[v.lettre] = true;
+        /* Compté par cliente, plus par code : deux clientes du même code
+           n'en faisaient qu'une dans le nombre affiché. */
+        a.clientes[v.cle] = true;
         if (v.date < a.plusAncienne) a.plusAncienne = v.date;
         return a;
       }, { montant: 0, live: 0, direct: 0, clientes: {}, plusAncienne: '9999-12-31' });

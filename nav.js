@@ -2031,9 +2031,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.24.1';
+var SAGA_VERSION = '1.25.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.25.0', date: '2026-09-17', titre: 'Rapports et tableau de bord comptent par cliente', points: [
+    'Les rapports regroupaient par code de dressing. Une cliente qui avait changé de code figurait donc sur deux lignes : Fabienne MIALANE apparaissait en « F » et en « FM », Christine SAYZ en « D » et « CS ». Elles n’en font plus qu’une.',
+    'Et deux clientes partageant un code ne seront plus additionnées sur la même ligne — leurs chiffres restent séparés.',
+    'Le filtre « Cliente » des rapports et le nombre de clientes du tableau de bord suivent la même règle.'
+  ] },
   { version: '1.24.1', date: '2026-09-13', titre: 'Le bouton « Payer » de la fiche cliente fonctionne de nouveau', points: [
     'Le règlement s’enregistrait — « Enregistré » s’affichait — mais la vente restait « en attente » : il était rangé sous la lettre du dressing alors que la fiche le cherchait sous l’identité de la cliente.',
     'Les règlements déjà saisis ainsi sont remis à leur place au chargement, avec leur date : rien à ressaisir. Si deux clientes du même code ont vendu le même soir, le règlement n’est attribué à personne et le journal le signale.'
