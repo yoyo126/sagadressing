@@ -2031,9 +2031,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.26.1';
+var SAGA_VERSION = '1.26.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.26.2', date: '2026-09-17', titre: 'Fin des pages gardées en cache', points: [
+    'Les pages du CRM demandent désormais à ne pas être mises en cache. Un navigateur pouvait servir une page de la veille : ses boutons restaient inertes ou grisés — c’est ce qui faisait croire que l’écran des emails ne fonctionnait pas.',
+    'Plus important : l’état du CRM est écrit dans chaque page. Une page en cache affichait donc des ventes, des paiements et des chiffres périmés, sans rien qui le signale.'
+  ] },
   { version: '1.26.1', date: '2026-09-17', titre: 'L’écran des emails annonçait encore qu’il ne servait à rien', points: [
     'Le bandeau « l’envoi n’est pas encore raccordé » est resté en place alors que l’envoi fonctionne depuis la 1.26.0. Il indique maintenant la marche à suivre : choisir la boîte SMTP, enregistrer son mot de passe, envoyer un test.',
     'La pastille distingue « à configurer », « réglé — à tester » et « voie non raccordée » selon le moyen d’envoi choisi.'

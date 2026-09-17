@@ -14,6 +14,23 @@
 
 require_once __DIR__ . '/lib_auth.php';
 require_once __DIR__ . '/comptes_actions.php';
+
+/* ============ Ces pages ne se mettent pas en cache ============
+   Deux raisons, et la seconde est la plus sérieuse.
+
+   Les adresses de nav.js et style.css portent le numéro de version, ce qui
+   force leur rechargement. Les pages .php, non : un navigateur gardait donc
+   l'ancienne, et ses boutons appelaient des fonctions d'une version révolue —
+   ou, comme sur l'écran des emails, restaient grisés sans explication. Trois
+   épisodes de « boutons muets » ont eu cette cause.
+
+   Surtout, l'état complet du CRM est écrit dans la page. Une page en cache,
+   c'est donc un CRM figé à la veille : des ventes, des paiements et des
+   chiffres périmés, sans rien qui le signale. */
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 saga_exiger_connexion();
 
 $SAGA_UTILISATEUR = saga_utilisateur();
