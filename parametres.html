@@ -482,7 +482,7 @@
 
         <!-- ============ ENVOI DES EMAILS ============ -->
         <div class="tab-panel" id="tab-email" data-panel-group="param" style="margin-top:20px;">
-          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>L'envoi n'est pas encore raccordé.</strong> Aucun email ne part pour l'instant — rien, dans le CRM, ne sait encore expédier de courrier. Les réglages ci-dessous sont bien enregistrés et attendent ce raccordement. Les mots de passe et clés d'API, eux, ne sont jamais conservés ici : ils vivront dans la configuration du serveur, hors de portée des comptes.</span></div>
+          <div class="alert-bar" style="margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg><span><strong>Choisissez « Boîte mail technique IONOS (SMTP) »</strong> dans la liste ci-dessous : c'est la seule voie raccordée pour l'instant. Renseignez la boîte, enregistrez son mot de passe, puis envoyez un email de test — il part réellement. L'envoi par service dédié (Brevo, Postmark) n'est pas encore branché. Le mot de passe, lui, ne rejoint pas les données du CRM : il part directement au serveur, n'en ressort jamais, et reste hors des sauvegardes téléchargées.</span></div>
           <div class="panel-head" style="margin-bottom:10px;">
             <h2>Envoi des emails</h2>
           </div>
@@ -1353,8 +1353,8 @@
   /* ================= ENVOI DES EMAILS ================= */
   var MAIL_HINTS = {
     service: {
-      titre: 'Un service spécialisé, indépendant de vos boîtes mail',
-      texte: "Brevo ou Postmark se chargent de l'envoi et vous disent si le message est bien arrivé. Aucun mot de passe de messagerie n'est stocké : seulement une clé que vous pouvez révoquer à tout moment. Gratuit jusqu'à environ 300 emails par jour chez Brevo — bien au-delà de vos besoins."
+      titre: 'Pas encore raccordé — préférez le SMTP',
+      texte: "Brevo ou Postmark se chargeraient de l'envoi et diraient si le message est bien arrivé, sans stocker de mot de passe de messagerie. Mais cette voie n'est pas encore branchée dans le CRM : un test échouera. Ces mêmes services fournissent d'ailleurs un accès SMTP, utilisable dès maintenant par l'option ci-dessus."
     },
     smtp: {
       titre: 'Une boîte mail créée exprès pour le CRM',
@@ -1375,6 +1375,7 @@
       '<div class="info-card-title">' +
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>' +
         h.titre + '</div><p class="card-note">' + h.texte + '</p>';
+    majPastilleMail(!!sagaLoad('mail_config', null));
   }
 
   /* Réglages d'envoi. Tout est conservé sauf les secrets : une clé d'API ou un
@@ -1399,8 +1400,13 @@
 
   function majPastilleMail(configure) {
     var chip = document.getElementById('mailChip');
-    chip.textContent = configure ? 'Réglé, en attente du raccordement' : 'À configurer';
-    chip.className = configure ? 'chip neutral' : 'chip warn';
+    /* La pastille dit où l'on en est vraiment : réglé ne veut pas dire
+       éprouvé — seul un test réussi le prouve. */
+    var methode = document.getElementById('mailMethod');
+    var parSmtp = methode && methode.value === 'smtp';
+    chip.textContent = !configure ? 'À configurer'
+      : (parSmtp ? 'Réglé — à tester' : 'Réglé, mais voie non raccordée');
+    chip.className = !configure ? 'chip warn' : (parSmtp ? 'chip neutral' : 'chip warn');
   }
 
   function enregistrerReglagesMail() {

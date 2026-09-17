@@ -2031,9 +2031,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.26.0';
+var SAGA_VERSION = '1.26.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.26.1', date: '2026-09-17', titre: 'L’écran des emails annonçait encore qu’il ne servait à rien', points: [
+    'Le bandeau « l’envoi n’est pas encore raccordé » est resté en place alors que l’envoi fonctionne depuis la 1.26.0. Il indique maintenant la marche à suivre : choisir la boîte SMTP, enregistrer son mot de passe, envoyer un test.',
+    'La pastille distingue « à configurer », « réglé — à tester » et « voie non raccordée » selon le moyen d’envoi choisi.'
+  ] },
   { version: '1.26.0', date: '2026-09-17', titre: 'Envoi d’emails : réglages complets et test réel', points: [
     'Tout se saisit dans Paramètres, mot de passe de la boîte compris — plus besoin de toucher au serveur.',
     'Le mot de passe ne passe pas par les données du CRM : il part directement au serveur, n’en ressort jamais, et il est écarté des sauvegardes téléchargées. Seul un compte administrateur peut l’enregistrer.',
