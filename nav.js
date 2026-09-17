@@ -2031,9 +2031,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.25.0';
+var SAGA_VERSION = '1.26.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.26.0', date: '2026-09-17', titre: 'Envoi d’emails : réglages complets et test réel', points: [
+    'Tout se saisit dans Paramètres, mot de passe de la boîte compris — plus besoin de toucher au serveur.',
+    'Le mot de passe ne passe pas par les données du CRM : il part directement au serveur, n’en ressort jamais, et il est écarté des sauvegardes téléchargées. Seul un compte administrateur peut l’enregistrer.',
+    'Le bouton « Envoyer un email de test » expédie un vrai message et affiche la réponse exacte du serveur en cas d’échec.',
+    'L’invitation de compte et la réinitialisation de mot de passe ne sont pas encore branchées : elles viendront une fois le test concluant.'
+  ] },
   { version: '1.25.0', date: '2026-09-17', titre: 'Rapports et tableau de bord comptent par cliente', points: [
     'Les rapports regroupaient par code de dressing. Une cliente qui avait changé de code figurait donc sur deux lignes : Fabienne MIALANE apparaissait en « F » et en « FM », Christine SAYZ en « D » et « CS ». Elles n’en font plus qu’une.',
     'Et deux clientes partageant un code ne seront plus additionnées sur la même ligne — leurs chiffres restent séparés.',

@@ -82,7 +82,16 @@ $contenu['tables']['utilisateurs'] =
     $db->query('SELECT id, email, mdp_hash, prenom, nom, role, proprietaire, actif,
                        cree_le, derniere_connexion FROM utilisateurs')->fetchAll();
 
-$contenu['tables']['reglages'] = $db->query('SELECT cle, valeur FROM reglages')->fetchAll();
+/* Les réglages, moins les secrets d'envoi. Une sauvegarde se télécharge et
+   se range ailleurs : y laisser le mot de passe de la boîte reviendrait à le
+   promener en clair, alors qu'il a précisément été sorti de l'état du CRM
+   pour éviter cela. mail.php tient la liste, pour n'en avoir qu'une. */
+require_once __DIR__ . '/mail.php';
+$secrets = saga_mail_cles_secretes();
+$marques = implode(',', array_fill(0, count($secrets), '?'));
+$st = $db->prepare('SELECT cle, valeur FROM reglages WHERE cle NOT IN (' . $marques . ')');
+$st->execute($secrets);
+$contenu['tables']['reglages'] = $st->fetchAll();
 
 $json = json_encode($contenu, JSON_UNESCAPED_UNICODE);
 $comprime = function_exists('gzencode') ? gzencode($json, 6) : null;

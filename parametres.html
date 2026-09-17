@@ -542,9 +542,16 @@
               <div id="serviceFields">
                 <div class="form-field">
                   <label class="form-label" for="apiKey">Clé API du service</label>
-                  <input class="form-input" type="password" id="apiKey" placeholder="à déposer sur le serveur" disabled />
-                  <span class="card-note">Une clé saisie ici serait enregistrée avec le reste des données, donc lisible par tous les comptes. Elle se dépose dans le fichier de configuration du serveur.</span>
-                  <span class="card-note">Compte à créer chez Brevo (gratuit jusqu'à 300 emails/jour) ou Postmark, puis coller la clé ici.</span>
+                  <input class="form-input" type="password" id="apiKey" autocomplete="new-password"
+                         placeholder="Coller la clé" />
+                  <span class="card-note" id="apiKeyEtat">—</span>
+                  <span class="card-note">Compte à créer chez Brevo (gratuit jusqu'à 300 emails/jour) ou
+                    Postmark, puis coller la clé ici. Elle part directement au serveur, comme le mot de
+                    passe : ni dans les données du CRM, ni dans les sauvegardes.</span>
+                  <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary btn-sm" onclick="enregistrerSecret('api', this)">Enregistrer cette clé</button>
+                    <button class="btn btn-ghost btn-sm" onclick="effacerSecret('api')">Effacer</button>
+                  </div>
                 </div>
               </div>
 
@@ -569,17 +576,30 @@
                 </div>
                 <div class="form-field">
                   <label class="form-label" for="smtpPass">Mot de passe de cette boîte</label>
-                  <input class="form-input" type="password" id="smtpPass" placeholder="à déposer sur le serveur" disabled />
-                  <span class="card-note">Même raison : il vivra dans la configuration du serveur, jamais dans les données du CRM.</span>
-                  <span class="card-note">Stocké chiffré. Celui de la boîte technique, jamais celui de votre messagerie personnelle.</span>
+                  <input class="form-input" type="password" id="smtpPass" autocomplete="new-password"
+                         placeholder="Saisir le mot de passe" />
+                  <span class="card-note" id="smtpPassEtat">—</span>
+                  <span class="card-note">Celui de la boîte technique, jamais celui de votre messagerie
+                    personnelle. Il part directement au serveur et n'en ressort jamais : il ne figure ni
+                    dans les données du CRM, ni dans les sauvegardes téléchargées.</span>
+                  <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary btn-sm" onclick="enregistrerSecret('smtp', this)">Enregistrer ce mot de passe</button>
+                    <button class="btn btn-ghost btn-sm" onclick="effacerSecret('smtp')">Effacer</button>
+                  </div>
                 </div>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for="mailTestTo">Envoyer le test à</label>
+                <input class="form-input" id="mailTestTo" placeholder="votre adresse personnelle" />
+                <span class="card-note">Laissé vide, le test part à l'adresse de votre compte.</span>
               </div>
 
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <button class="btn btn-primary btn-sm" onclick="saveMail(this)">Enregistrer</button>
-                <button class="btn btn-secondary btn-sm" onclick="testMail()">Envoyer un email de test</button>
-                <span class="card-note" id="mailTestResult" style="display:none;"></span>
+                <button class="btn btn-secondary btn-sm" onclick="testMail(this)">Envoyer un email de test</button>
               </div>
+              <div class="card-note" id="mailTestResult" style="display:none; white-space:pre-wrap;"></div>
             </div>
           </div>
 
@@ -1374,6 +1394,7 @@
       });
     }
     majPastilleMail(!!c);
+    chargerEtatSecrets();
   }
 
   function majPastilleMail(configure) {
@@ -1401,12 +1422,122 @@
     }
   }
 
-  function testMail() {
+  /* ---------- Secrets d'envoi ----------
+     Ils ne transitent pas par l'état du CRM : une adresse dédiée les reçoit,
+     les range côté serveur, et ne les rend jamais. L'écran n'affiche donc que
+     « enregistré » ou « pas encore ». */
+  function mailEnLigne() { return typeof window.sagaJetonServeur === 'function'; }
+
+  function mailRequete(action, corps) {
+    return fetch('mail_api.php?action=' + action, {
+      method: corps ? 'POST' : 'GET',
+      headers: corps
+        ? { 'Content-Type': 'application/json', 'X-Saga-Jeton': window.sagaJetonServeur() }
+        : {},
+      body: corps ? JSON.stringify(corps) : undefined
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, corps: j || {} }; });
+    });
+  }
+
+  function afficherEtatSecrets(etat) {
+    var paires = [['smtpPassEtat', etat.smtpDefini], ['apiKeyEtat', etat.apiDefinie]];
+    paires.forEach(function (pr) {
+      var el = document.getElementById(pr[0]);
+      if (!el) return;
+      el.textContent = pr[1]
+        ? '••••• enregistré sur le serveur — saisissez-en un nouveau pour le remplacer'
+        : 'Pas encore enregistré.';
+      el.style.color = pr[1] ? 'var(--good)' : '';
+    });
+  }
+
+  function chargerEtatSecrets() {
+    if (!mailEnLigne()) {
+      ['smtpPassEtat', 'apiKeyEtat'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = 'Disponible une fois le CRM en ligne.';
+      });
+      return;
+    }
+    mailRequete('etat').then(function (r) {
+      if (r.ok) afficherEtatSecrets(r.corps);
+    }).catch(function () {});
+  }
+
+  function enregistrerSecret(quel, btn) {
+    if (!mailEnLigne()) { alert('Disponible une fois le CRM en ligne.'); return; }
+    var champ = document.getElementById(quel === 'smtp' ? 'smtpPass' : 'apiKey');
+    var valeur = champ.value;
+    if (!valeur) { champ.focus(); return; }
+
+    var libelle = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+
+    mailRequete('secret', { quel: quel, valeur: valeur }).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = libelle; }
+      if (!r.ok) { alert(r.corps.message || 'Enregistrement refusé.'); return; }
+      champ.value = '';                       // il ne reste pas à l'écran
+      sagaTracer('Réglages d\'envoi', quel === 'smtp' ? 'mot de passe de la boîte' : 'clé du service',
+                 'enregistré sur le serveur');
+      chargerEtatSecrets();
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = libelle; }
+      alert('Enregistrement impossible.\n\n' + (e.message || e));
+    });
+  }
+
+  function effacerSecret(quel) {
+    if (!mailEnLigne()) { alert('Disponible une fois le CRM en ligne.'); return; }
+    if (!confirm('Effacer cette valeur du serveur ?\n\nL\'envoi d\'emails cessera de fonctionner.')) return;
+    mailRequete('secret', { quel: quel, valeur: '' }).then(function () { chargerEtatSecrets(); });
+  }
+
+  /* ---------- Message de test ----------
+     Les réglages visibles partent avec la demande : on teste ce qui est à
+     l'écran, sans obliger à enregistrer d'abord. Le secret, lui, est déjà
+     sur le serveur. */
+  function testMail(btn) {
     var res = document.getElementById('mailTestResult');
-    res.style.display = 'inline';
+    res.style.display = 'block';
     res.style.color = 'var(--ink-muted)';
-    res.textContent = 'Impossible pour l\'instant : l\'envoi n\'est pas raccordé.';
-    setTimeout(function () { res.style.display = 'none'; }, 5000);
+
+    if (!mailEnLigne()) {
+      res.textContent = 'Disponible une fois le CRM en ligne : l\'envoi passe par le serveur.';
+      return;
+    }
+
+    var reglages = {};
+    CHAMPS_MAIL.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) reglages[id] = el.value;
+    });
+
+    var libelle = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+    res.textContent = 'Envoi en cours…';
+
+    mailRequete('test', {
+      reglages: reglages,
+      destinataire: document.getElementById('mailTestTo').value.trim()
+    }).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = libelle; }
+      var c = r.corps;
+      if (c.ok) {
+        res.style.color = 'var(--good)';
+        res.textContent = '✓ Message envoyé à ' + c.destinataire + '. ' + (c.message || '')
+          + '\n\nRegardez la boîte de réception, et les indésirables.';
+        sagaTracer('Réglages d\'envoi', 'email de test', c.destinataire);
+      } else {
+        res.style.color = 'var(--critical)';
+        res.textContent = '✗ ' + (c.message || 'Envoi impossible.')
+          + (c.detail ? '\n\nDialogue avec le serveur :\n' + c.detail : '');
+      }
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = libelle; }
+      res.style.color = 'var(--critical)';
+      res.textContent = '✗ ' + (e.message || e);
+    });
   }
 
   // Aperçu de ce que voit la cliente quand elle reçoit un contrat

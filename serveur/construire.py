@@ -38,6 +38,7 @@ FICHIERS_SERVEUR = ['.htaccess', 'db.php', 'lib_auth.php', 'entete.php',
                     'api.php', 'login.php', 'logout.php', 'server-sync.js',
                     'schema.sql', 'verifier.php', 'config.example.php',
                     'importer.php', 'sauvegarde.php', 'televerser.php',
+                    'mail.php', 'mail_api.php',
                     'comptes_actions.php', 'comptes_bloc.php']
 
 # Dossier public des photos d'annonces. Whatnot vient les y chercher sans
