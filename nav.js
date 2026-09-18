@@ -1717,82 +1717,33 @@ function sagaTotauxDressing(lettre) {
   return t;
 }
 
-/* ============ Facturation mensuelle ============
-   Les factures se font par cliente et par mois, chez Qonto, et portent la
-   commission Saga. Le CRM ne les émet pas : il dit lesquelles restent à
-   faire, et garde le numéro de celles qui sont parties — de la même façon
-   qu'il suit les virements Whatnot attendus.
+/* ============ Facturation ============
+   Les factures se font chez Qonto, pas ici. Le CRM ne fait que retenir
+   lesquelles sont parties, ligne par ligne — un live d'une cliente, ou une
+   vente hors live — exactement là où l'on note déjà le règlement.
 
-   Une période est désignée par « identité de la cliente | AAAA-MM ». Les
-   montants ne sont jamais recopiés : ils se recalculent depuis les ventes,
-   comme partout ailleurs. Seul l'acte de facturation est enregistré. */
+   Le montant n'est pas conservé comme une vérité : la commission se
+   recalcule depuis les ventes, comme partout. Seul l'acte de facturation
+   est enregistré : sa date et son numéro. */
 function sagaFactures() { return sagaLoad('factures', {}); }
 function sagaSaveFactures(f) { return sagaSave('factures', f); }
 
-function sagaCleFacture(cle, mois) { return cle + '|' + mois; }
-
-/* Toutes les périodes facturables, une par cliente et par mois où elle a
-   vendu. Les mois sans commission sont écartés : il n'y a rien à facturer. */
-function sagaFacturationMensuelle() {
-  var par = {};
-
-  function ajouter(cle, mois, ca, commission) {
-    if (!cle || !mois) return;
-    var k = sagaCleFacture(cle, mois);
-    if (!par[k]) {
-      var t = sagaTauxDressing(cle);
-      par[k] = { cle: cle, mois: mois, nom: sagaInfosCliente(cle).nom,
-                 prenom: t.prenom, lettre: t.lettre,
-                 ca: 0, commission: 0, ventes: 0 };
-    }
-    par[k].ca += ca;
-    par[k].commission += commission;
-    par[k].ventes++;
-  }
-
-  sagaLives().forEach(function (live) {
-    var mois = (live.date || '').slice(0, 7);
-    sagaPartsDuLive(live).forEach(function (part) {
-      var d = sagaDecompte(live, part);
-      ajouter(part.id, mois, d.ca, d.commSaga);
-    });
-  });
-
-  sagaVentesDirectes().forEach(function (v) {
-    var d = sagaDecompteDirect(v);
-    ajouter(sagaPartArticle(v), (v.date || '').slice(0, 7), d.ventes, d.commSaga);
-  });
-
-  var factures = sagaFactures();
-  return Object.keys(par).map(function (k) {
-    var e = par[k];
-    e.ca = sagaCentimes(e.ca);
-    e.commission = sagaCentimes(e.commission);
-    e.facture = factures[k] || null;
-    e.facturee = !!e.facture;
-    return e;
-  }).filter(function (e) {
-    return e.commission > 0.005 || e.facturee;
-  }).sort(function (a, b) {
-    if (a.mois !== b.mois) return a.mois < b.mois ? 1 : -1;   // du plus récent
-    return b.commission - a.commission;
-  });
+/* Une ligne de vente : un live pour une cliente, ou une vente hors live. */
+function sagaCleFacture(cle, vente) {
+  if (!cle || !vente) return '';
+  return cle + '|' + (vente.origine === 'direct' ? 'v:' + vente.venteId : vente.liveId);
 }
 
-function sagaTotauxFacturation(lignes) {
-  var t = { aFaire: 0, faites: 0, nbAFaire: 0, nbFaites: 0 };
-  (lignes || sagaFacturationMensuelle()).forEach(function (e) {
-    if (e.facturee) { t.faites += e.commission; t.nbFaites++; }
-    else { t.aFaire += e.commission; t.nbAFaire++; }
-  });
-  t.aFaire = sagaCentimes(t.aFaire);
-  t.faites = sagaCentimes(t.faites);
-  return t;
+function sagaFactureDe(cle, vente) {
+  var k = sagaCleFacture(cle, vente);
+  return k ? (sagaFactures()[k] || null) : null;
 }
 
-function sagaMarquerFacturee(cle, mois, infos) {
+function sagaMarquerFacturee(cle, vente, infos) {
+  var k = sagaCleFacture(cle, vente);
+  if (!k) return false;
   var f = sagaFactures();
-  f[sagaCleFacture(cle, mois)] = {
+  f[k] = {
     date: (infos && infos.date) || sagaAujourdhui(),
     numero: (infos && infos.numero) || '',
     montant: (infos && infos.montant !== undefined) ? infos.montant : null
@@ -1800,23 +1751,40 @@ function sagaMarquerFacturee(cle, mois, infos) {
   return sagaSaveFactures(f);
 }
 
-function sagaAnnulerFacture(cle, mois) {
+function sagaAnnulerFacture(cle, vente) {
+  var k = sagaCleFacture(cle, vente);
+  if (!k) return false;
   var f = sagaFactures();
-  delete f[sagaCleFacture(cle, mois)];
+  delete f[k];
   return sagaSaveFactures(f);
 }
 
-/* « 2026-09 » → « septembre 2026 » */
-function sagaMoisLong(mois) {
-  if (!mois || mois.length < 7) return mois || '';
-  var i = parseInt(mois.slice(5, 7), 10) - 1;
-  return (SAGA_MOIS[i] || '') + ' ' + mois.slice(0, 4);
+/* Ce qui reste à facturer pour une cliente, sur ses ventes déjà enregistrées. */
+function sagaTotauxFacturation(cle) {
+  var t = { aFaire: 0, faites: 0, nbAFaire: 0, nbFaites: 0 };
+  var factures = sagaFactures();
+  sagaVentesDuDressing(cle).forEach(function (v) {
+    if (factures[sagaCleFacture(cle, v)]) { t.faites += v.commission; t.nbFaites++; }
+    else { t.aFaire += v.commission; t.nbAFaire++; }
+  });
+  t.aFaire = sagaCentimes(t.aFaire);
+  t.faites = sagaCentimes(t.faites);
+  return t;
 }
 
 /* Saisie d'une facture émise : sa date et son numéro chez Qonto. Le montant
    n'est pas demandé — il vient des ventes, et le retaper inviterait à
    l'écart. Il est rappelé, pour vérification. */
-function sagaModaleFacture(ligne, auValider) {
+function sagaModaleFacture(cle, vente, auValider) {
+  var infosCliente = sagaInfosCliente(cle);
+  var ligne = {
+    nom: infosCliente.nom,
+    libelle: vente.label,
+    date: vente.date,
+    commission: vente.commission,
+    ca: vente.ca,
+    facture: sagaFactureDe(cle, vente)
+  };
   var fond = document.createElement('div');
   fond.className = 'modale';
   var dejaFaite = !!ligne.facture;
@@ -1827,7 +1795,8 @@ function sagaModaleFacture(ligne, auValider) {
         '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
       '<div class="modale-corps">' +
         '<p class="card-note" style="margin-bottom:14px;">' +
-          sagaEchapper(ligne.nom) + ' — ' + sagaEchapper(sagaMoisLong(ligne.mois)) +
+          sagaEchapper(ligne.nom) + ' — ' + sagaEchapper(ligne.libelle) +
+          ' (' + sagaDateFR(ligne.date) + ')' +
           '<br/>Commission Saga à facturer : <strong>' + sagaEUR(ligne.commission) + '</strong>' +
           ' (sur ' + sagaEUR(ligne.ca) + ' de ventes)</p>' +
         '<div class="form-field"><label class="form-label" for="sagaFactDate">Date de la facture</label>' +
@@ -1866,12 +1835,12 @@ function sagaModaleFacture(ligne, auValider) {
   fond.querySelector('[data-valider]').onclick = function () {
     var date = fond.querySelector('#sagaFactDate').value;
     if (!date) { fond.querySelector('#sagaFactDate').focus(); return; }
-    sagaMarquerFacturee(ligne.cle, ligne.mois, {
+    sagaMarquerFacturee(cle, vente, {
       date: date,
       numero: fond.querySelector('#sagaFactNum').value.trim(),
       montant: ligne.commission
     });
-    sagaTracer('Facture émise', ligne.nom + ' — ' + sagaMoisLong(ligne.mois), sagaEUR(ligne.commission));
+    sagaTracer('Facture émise', ligne.nom + ' — ' + ligne.libelle, sagaEUR(ligne.commission));
     fermer();
     if (auValider) auValider();
   };
@@ -1879,11 +1848,11 @@ function sagaModaleFacture(ligne, auValider) {
   var retirer = fond.querySelector('[data-retirer]');
   if (retirer) {
     retirer.onclick = function () {
-      if (!confirm('Marquer cette période comme non facturée ?\n\n'
-        + ligne.nom + ' — ' + sagaMoisLong(ligne.mois)
-        + '\n\nElle repassera dans les factures à faire.')) return;
-      sagaAnnulerFacture(ligne.cle, ligne.mois);
-      sagaTracer('Facture annulée', ligne.nom + ' — ' + sagaMoisLong(ligne.mois));
+      if (!confirm('Marquer cette vente comme non facturée ?\n\n'
+        + ligne.nom + ' — ' + ligne.libelle
+        + '\n\nElle repassera dans les ventes à facturer.')) return;
+      sagaAnnulerFacture(cle, vente);
+      sagaTracer('Facture annulée', ligne.nom + ' — ' + ligne.libelle);
       fermer();
       if (auValider) auValider();
     };
@@ -2206,9 +2175,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.27.0';
+var SAGA_VERSION = '1.27.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.27.1', date: '2026-09-18', titre: 'La facturation revient sur la fiche cliente', points: [
+    'Le suivi des factures quitte les Rapports pour l’onglet Lives de la fiche cliente : un bouton « Facturer » à côté de « Payer », sur chaque ligne, et une colonne qui montre le numéro Qonto une fois la facture émise.',
+    'Sous « Ma commission », le montant qu’il reste à facturer pour cette cliente, toutes ventes confondues.'
+  ] },
   { version: '1.27.0', date: '2026-09-18', titre: 'Suivi des factures, et détail par cliente dans le récap PDF', points: [
     'Rapports : un panneau « Facturation mensuelle ». Une ligne par cliente et par mois, avec la commission Saga à facturer, un bouton « Marquer facturée » où noter la date et le numéro Qonto, et un filtre À faire / Faites / Toutes.',
     'Deux indicateurs, sur le modèle des virements Whatnot : « Reste à facturer » et « Déjà facturé ».',

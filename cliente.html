@@ -87,6 +87,7 @@
             <div class="kpi-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13l4-5 4 3 5-7 3 3"/><path d="M4 19h16"/></svg></div>
           </div>
           <div class="kpi-value tabular" id="recapCommission">—</div>
+          <div class="kpi-delta" id="recapFactureSub" style="color:var(--brand-strong);">—</div>
           <div class="kpi-delta" id="recapCommissionSub">—</div>
         </div>
 
@@ -185,7 +186,7 @@
 
           <div class="table-scroll">
           <table>
-            <thead><tr><th>Date</th><th>Session</th><th class="num">CA encaissé</th><th class="num">Commission</th><th class="num">Net reversé</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Session</th><th class="num">CA encaissé</th><th class="num">Commission</th><th class="num">Net reversé</th><th>Statut</th><th>Facture</th><th></th></tr></thead>
             <tbody id="livesTableBody">
             </tbody>
           </table>
@@ -732,6 +733,18 @@
       var action = l.paye
         ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); cancelPayment(' + i + ')">Annuler</button>'
         : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payOne(' + i + ')">Payer</button>';
+      /* La facture se note là où se note le règlement : ce sont les deux
+         gestes de la même ligne, et les séparer obligeait à chercher. */
+      var facture = sagaFactureDe(identiteCliente(), l);
+      var colFacture = facture
+        ? '<span class="chip good">Facturée</span>'
+          + '<div class="muted" style="font-size:.78rem; margin-top:3px;">'
+          + (facture.numero ? sagaEchapper(facture.numero) + ' · ' : '')
+          + fmtDateFR(facture.date) + '</div>'
+        : '<span class="chip warn">À faire</span>';
+      action += '<button class="btn ' + (facture ? 'btn-ghost' : 'btn-secondary')
+        + ' btn-sm" onclick="event.stopPropagation(); ouvrirFacture(' + i + ')">'
+        + (facture ? 'Facture' : 'Facturer') + '</button>';
       action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerLigne(' + i + ')">PDF</button>';
       if (l.origine === 'direct') {
         action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); supprimerVenteDirecte(\'' + l.venteId + '\')">Supprimer</button>';
@@ -748,8 +761,9 @@
         '<td class="num tabular">' + fmtEUR(l.commission) + '</td>' +
         '<td class="num tabular">' + fmtEUR(l.net) + '</td>' +
         '<td>' + statut + '</td>' +
+        '<td>' + colFacture + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' + action + '</td></tr>';
-    }).join('') || '<tr><td colspan="7" class="muted" style="text-align:center; padding:24px 8px;">Aucune vente enregistrée pour cette cliente.</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="muted" style="text-align:center; padding:24px 8px;">Aucune vente enregistrée pour cette cliente.</td></tr>';
 
     initRowLinks(document.getElementById('livesTableBody'));
 
@@ -1414,6 +1428,15 @@
     document.getElementById('recapResteSub').textContent = unpaidCount > 0
       ? unpaidCount + ' en attente de paiement'
       : 'tout est à jour';
+
+    /* Ce qu'il reste à facturer, sous la commission : c'est le même argent,
+       vu depuis Qonto. Calculé sur toutes ses ventes, pas sur la période
+       affichée — une facture oubliée en juillet doit se voir en septembre. */
+    var f = sagaTotauxFacturation(identiteCliente());
+    document.getElementById('recapFactureSub').textContent = f.nbAFaire
+      ? fmtEUR(f.aFaire) + ' à facturer · ' + f.nbAFaire + ' vente'
+        + (f.nbAFaire > 1 ? 's' : '')
+      : (f.nbFaites ? 'tout est facturé' : '');
   }
 
   document.getElementById('recapPeriodToggle').addEventListener('click', function (e) {
@@ -1529,6 +1552,15 @@
     }, function (d) {
       sagaMarquerPayee(l, d.date);
       sagaTracer('Reversement', CLIENT.nom, l.label + ' — ' + fmtEUR(l.net));
+      renderClient();
+      refreshRecap();
+    });
+  }
+
+  function ouvrirFacture(index) {
+    var l = VENTES[index];
+    if (!l) return;
+    sagaModaleFacture(identiteCliente(), l, function () {
       renderClient();
       refreshRecap();
     });

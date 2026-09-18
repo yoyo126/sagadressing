@@ -127,51 +127,6 @@
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Facturation mensuelle</h2>
-          <div class="toggle-group" id="factToggle">
-            <button data-fact="afaire" class="active">À faire</button>
-            <button data-fact="faites">Faites</button>
-            <button data-fact="tout">Toutes</button>
-          </div>
-        </div>
-
-        <section class="kpi-grid" style="margin-bottom:16px;">
-          <div class="kpi-card">
-            <div class="kpi-top"><span class="kpi-label">Reste à facturer</span></div>
-            <div class="kpi-value tabular" id="factReste" style="color:var(--brand-strong)">—</div>
-            <div class="kpi-delta" id="factResteSub">—</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-top"><span class="kpi-label">Déjà facturé</span></div>
-            <div class="kpi-value tabular" id="factFait">—</div>
-            <div class="kpi-delta" id="factFaitSub">—</div>
-          </div>
-        </section>
-
-        <div class="table-scroll">
-          <table>
-            <thead><tr>
-              <th>Mois</th><th>Cliente</th>
-              <th class="num">CA encaissé</th><th class="num">Commission à facturer</th>
-              <th>Facture</th><th></th>
-            </tr></thead>
-            <tbody id="factBody"></tbody>
-            <tfoot id="factFoot"></tfoot>
-          </table>
-        </div>
-        <div id="factVide" class="empty-state" style="display:none; margin-top:14px;">
-          <div class="t">Rien à afficher</div>
-          <div class="s">Aucune période ne correspond à ce filtre</div>
-        </div>
-        <p class="card-note" style="margin-top:12px;">
-          Une facture par cliente et par mois, portant la commission Saga. Le CRM ne les émet pas :
-          il dit lesquelles restent à faire et garde le numéro de celles qui sont parties.
-          Les montants se recalculent depuis les ventes — ils ne sont jamais recopiés.
-        </p>
-      </div>
-
       <p class="footnote">Saga Dressing — CRM</p>
     </div>
   </div>
@@ -737,82 +692,8 @@
     appliquerRaccourci('annee');
   });
 
-  /* ---------- Facturation mensuelle ----------
-     Même esprit que le suivi des virements Whatnot : le CRM ne facture pas,
-     il dit ce qu'il reste à faire. */
-  function filtreFacturation() {
-    var actif = document.querySelector('#factToggle button.active');
-    return actif ? actif.dataset.fact : 'afaire';
-  }
-
-  function renderFacturation() {
-    var toutes = sagaFacturationMensuelle();
-    var t = sagaTotauxFacturation(toutes);
-
-    document.getElementById('factReste').textContent = fmtEUR(t.aFaire);
-    document.getElementById('factResteSub').textContent = t.nbAFaire
-      ? t.nbAFaire + ' facture' + (t.nbAFaire > 1 ? 's' : '') + ' à établir'
-      : 'tout est facturé';
-    document.getElementById('factFait').textContent = fmtEUR(t.faites);
-    document.getElementById('factFaitSub').textContent = t.nbFaites
-      ? t.nbFaites + ' facture' + (t.nbFaites > 1 ? 's' : '') + ' enregistrée'
-        + (t.nbFaites > 1 ? 's' : '')
-      : 'aucune facture enregistrée';
-
-    var f = filtreFacturation();
-    var lignes = toutes.filter(function (e) {
-      return f === 'tout' || (f === 'faites' ? e.facturee : !e.facturee);
-    });
-
-    document.getElementById('factVide').style.display = lignes.length ? 'none' : 'flex';
-    document.getElementById('factBody').innerHTML = lignes.map(function (e) {
-      var ref = sagaEchapper(e.cle).replace(/'/g, "\\'");
-      var statut = e.facturee
-        ? '<span class="chip good">Facturée</span>'
-          + '<div class="muted" style="font-size:.78rem; margin-top:3px;">'
-          + (e.facture.numero ? sagaEchapper(e.facture.numero) + ' · ' : '')
-          + fmtDateFR(e.facture.date) + '</div>'
-        : '<span class="chip warn">À faire</span>';
-      return '<tr>' +
-        '<td>' + sagaEchapper(sagaMoisLong(e.mois)) + '</td>' +
-        '<td><div class="name-cell"><span class="tag-avatar">' + sagaEchapper(e.lettre || '—') +
-          '</span> ' + sagaEchapper(e.nom) + '</div></td>' +
-        '<td class="num tabular">' + fmtEUR(e.ca) + '</td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(e.commission) + '</strong></td>' +
-        '<td>' + statut + '</td>' +
-        '<td style="text-align:right; white-space:nowrap;">' +
-          '<button class="btn ' + (e.facturee ? 'btn-ghost' : 'btn-secondary') + ' btn-sm" ' +
-          'onclick="ouvrirFacture(\'' + ref + '\', \'' + e.mois + '\')">' +
-          (e.facturee ? 'Modifier' : 'Marquer facturée') + '</button></td>' +
-      '</tr>';
-    }).join('');
-
-    var somme = lignes.reduce(function (a, e) { return a + e.commission; }, 0);
-    document.getElementById('factFoot').innerHTML = lignes.length > 1
-      ? '<tr><td colspan="3"><strong>Total affiché</strong></td>' +
-        '<td class="num tabular"><strong>' + fmtEUR(somme) + '</strong></td><td></td><td></td></tr>'
-      : '';
-  }
-
-  function ouvrirFacture(cle, mois) {
-    var ligne = sagaFacturationMensuelle().filter(function (e) {
-      return e.cle === cle && e.mois === mois;
-    })[0];
-    if (!ligne) return;
-    sagaModaleFacture(ligne, renderFacturation);
-  }
-
-  document.getElementById('factToggle').addEventListener('click', function (e) {
-    var b = e.target.closest('button');
-    if (!b) return;
-    document.querySelectorAll('#factToggle button').forEach(function (x) { x.classList.remove('active'); });
-    b.classList.add('active');
-    renderFacturation();
-  });
-
   renderListeClientes();
   appliquerRaccourci('annee');
-  renderFacturation();
 </script>
 </body>
 </html>
