@@ -291,7 +291,8 @@
       sagaPartsDuLive(l).forEach(function (part) {
         var d = sagaDecompte(l, part);
         var e = parCliente[part.id] ||
-          (parCliente[part.id] = { nom: sagaInfosCliente(part.id).nom, lives: 0, ventes: 0, saga: 0, net: 0, reste: 0 });
+          (parCliente[part.id] = { nom: sagaInfosCliente(part.id).nom, lettre: d.lettre,
+                                   lives: 0, ventes: 0, saga: 0, net: 0, reste: 0 });
         e.lives++; e.ventes += d.ca; e.saga += d.commSaga; e.net += d.net;
         if (!d.paye) e.reste += d.net;
       });
@@ -306,13 +307,51 @@
       { titre: 'Net reversé', cle: 'net',     largeur: 14, aligne: 'droite' },
       { titre: 'Reste dû',    cle: 'reste',   largeur: 13, aligne: 'droite' }
     ], Object.keys(parCliente).sort(function (a, b) { return parCliente[b].ventes - parCliente[a].ventes; })
-      .map(function (lettre) {
-        var e = parCliente[lettre];
+      .map(function (id) {
+        var e = parCliente[id];
+        /* La lettre, pas l'identifiant interne : depuis que les ventes sont
+           rattachées à la fiche, la clé ressemble à « fabienne-f » et n'a
+           rien à faire sur un document. */
         return {
-          cliente: e.nom + ' (' + lettre + ')', lives: String(e.lives), ventes: sagaEUR(e.ventes),
+          cliente: e.nom + (e.lettre ? ' (' + e.lettre + ')' : ''),
+          lives: String(e.lives), ventes: sagaEUR(e.ventes),
           saga: sagaEUR(e.saga), net: sagaEUR(e.net), reste: e.reste > 0 ? sagaEUR(e.reste) : '—'
         };
       }));
+
+    /* Détail live par live. Le tableau de synthèse dit combien chaque soirée
+       a rapporté ; celui-ci dit à qui. C'est ce qu'on regarde pour vérifier un
+       reversement ou retrouver une cliente sur une soirée précise. */
+    pdf.section('Détail par live');
+    lives.forEach(function (l) {
+      var parts = sagaPartsDuLive(l);
+      if (!parts.length) return;
+      var t = sagaTotauxLive(l);
+
+      pdf.paragraphe(l.titre + '  ·  ' + sagaDateFR(l.date)
+        + (l.categorie ? '  ·  ' + l.categorie : ''), { gras: true, taille: 10 });
+
+      pdf.tableau([
+        { titre: 'Cliente',      cle: 'cliente', largeur: 26 },
+        { titre: 'CA encaissé',  cle: 'ventes',  largeur: 14, aligne: 'droite' },
+        { titre: 'Giveaways',    cle: 'give',    largeur: 12, aligne: 'droite' },
+        { titre: 'Comm. Saga',   cle: 'saga',    largeur: 13, aligne: 'droite' },
+        { titre: 'Comm. apport.',cle: 'app',     largeur: 13, aligne: 'droite' },
+        { titre: 'Net reversé',  cle: 'net',     largeur: 13, aligne: 'droite' },
+        { titre: 'Statut',       cle: 'statut',  largeur: 14, discret: true }
+      ], parts.map(function (part) {
+        var d = sagaDecompte(l, part);
+        return {
+          cliente: d.prenom + (d.lettre ? ' (' + d.lettre + ')' : ''),
+          ventes: sagaEUR(d.ca), give: sagaEUR(d.portGiveaway),
+          saga: sagaEUR(d.commSaga), app: sagaEUR(d.commApporteur), net: sagaEUR(d.net),
+          statut: d.paye ? 'Payé ' + sagaDateFR(d.paiement.date) : 'En attente'
+        };
+      }), {
+        cliente: 'Total du live', ventes: sagaEUR(t.ca), give: sagaEUR(t.portGiveaway),
+        saga: sagaEUR(t.commSaga), app: sagaEUR(t.commApporteur), net: sagaEUR(t.net)
+      });
+    });
 
     sagaApercuPdf(pdf, 'Recap_tous_les_lives', 'Récapitulatif de tous les lives');
   }
