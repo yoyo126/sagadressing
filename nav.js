@@ -1063,6 +1063,10 @@ function sagaReparerPaiementsParLettre() {
    serait balayé sans jamais repartir vers le serveur. Le temps mort la place
    après cet amorçage, et sagaSave y est déjà l'enveloppe qui synchronise. */
 setTimeout(function () {
+  /* Un compte en consultation ou comptable ne répare rien : il n'en a pas le
+     droit, et le serveur refuserait. Les réparations ont de toute façon déjà
+     eu lieu, au premier passage d'un compte qui pouvait les faire. */
+  if (sagaCompteRestreint()) return;
   sagaReparerTablesVides();
   sagaReparerIdentites();
   sagaReparerPaiementsParLettre();
@@ -2111,8 +2115,20 @@ function sagaImprimer(titre, corps) {
 var SAGA_ROLES = {
   admin:   { label: 'Administratrice', detail: 'Tous les droits, y compris la gestion des utilisateurs' },
   gestion: { label: 'Gestionnaire',    detail: 'Gère les clientes, lives, paiements et documents' },
-  lecture: { label: 'Lecture seule',   detail: 'Consulte sans rien modifier' }
+  comptable: { label: 'Comptable',     detail: 'Consulte tout, note les factures, ne modifie rien d’autre' },
+  lecture: { label: 'Consultation',    detail: 'Consulte sans rien modifier' }
 };
+
+/* Le rôle qui fait foi est celui du compte connecté, transmis par le serveur.
+   Sans serveur — la maquette ouverte depuis un dossier —, tous les droits. */
+function sagaRoleServeur() {
+  var moi = window.SAGA_UTILISATEUR_SERVEUR;
+  return (moi && moi.role) || 'admin';
+}
+function sagaCompteRestreint() {
+  var r = sagaRoleServeur();
+  return r === 'lecture' || r === 'comptable';
+}
 
 /* Comptes du CRM. Une seule liste, partagée par le menu et les Paramètres :
    il y en avait deux qui s'ignoraient, si bien qu'un compte créé dans les
@@ -2153,11 +2169,17 @@ var SAGA_JOURNAL_MAX = 500;
 function sagaJournal() { return sagaLoad('journal', []); }
 
 function sagaTracer(action, cible, detail) {
-  var u = sagaUtilisateurCourant();
+  /* Le journal nomme la personne réellement connectée : la liste locale des
+     utilisateurs ne connaît pas les comptes du serveur, et attribuait tout à
+     l'administratrice. Avec plusieurs comptes, c'est ce qui dit qui a fait quoi. */
+  var serveur = window.SAGA_UTILISATEUR_SERVEUR;
+  var u = serveur
+    ? { id: 's' + serveur.id, prenom: serveur.prenom, nom: serveur.nom }
+    : sagaUtilisateurCourant();
   var entrees = sagaJournal();
   entrees.unshift({
     date: new Date().toISOString(),
-    utilisateur: sagaNomComplet(u),
+    utilisateur: sagaNomComplet(u) || (serveur && serveur.email) || '—',
     utilisateurId: u ? u.id : null,
     action: action,
     cible: cible || '',
@@ -2175,9 +2197,15 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.27.3';
+var SAGA_VERSION = '1.28.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.28.0', date: '2026-09-19', titre: 'Des droits qui tiennent : consultation et comptable', points: [
+    'Le compte « Consultation » ne peut vraiment plus rien modifier : les boutons qui modifient sont grisés et inactifs, les Paramètres ne sont plus accessibles. Rester possible : tout regarder, filtrer, chercher, exporter et imprimer.',
+    'Nouveau rôle « Comptable » : même chose, avec en plus le bouton « Facturer » sur la fiche d’une cliente. Elle note les factures, et rien d’autre — ni live, ni cliente, ni paiement.',
+    'La règle est tenue par le serveur, pas seulement par l’écran : un enregistrement qui sortirait de ces droits est refusé.',
+    'Le menu affiche le vrai rôle du compte connecté — il indiquait « Administratrice » pour tout le monde —, et le journal nomme la personne qui a réellement agi.'
+  ] },
   { version: '1.27.3', date: '2026-09-19', titre: 'Factures à faire : le nombre, sans montant', points: [
     'La colonne « À facturer » de la liste des clientes et la fiche cliente indiquent seulement le nombre de ventes à facturer.'
   ] },

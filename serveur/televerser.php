@@ -39,7 +39,7 @@ $moi = saga_utilisateur();
 if (!$moi) {
     saga_photo_erreur(403, 'Session expirée. Rechargez la page.');
 }
-if ($moi['role'] === 'lecture') {
+if ($moi['role'] === 'lecture' || $moi['role'] === 'comptable') {
     saga_photo_erreur(403, 'Votre compte est en consultation seule.');
 }
 if (!saga_verifier_jeton(isset($_SERVER['HTTP_X_SAGA_JETON']) ? $_SERVER['HTTP_X_SAGA_JETON'] : '')) {

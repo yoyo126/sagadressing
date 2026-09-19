@@ -33,6 +33,16 @@ header('Expires: 0');
 
 saga_exiger_connexion();
 
+/* Les Paramètres règlent le CRM lui-même : comptes, envoi d'emails, données.
+   Rien à y faire pour qui consulte ou tient la facturation. Le lien est
+   retiré du menu, et l'adresse tapée à la main renvoie au tableau de bord. */
+$SAGA_ROLE = saga_utilisateur()['role'];
+if (in_array($SAGA_ROLE, ['lecture', 'comptable'], true)
+    && basename($_SERVER['SCRIPT_NAME']) === 'parametres.php') {
+    header('Location: dashboard.php');
+    exit;
+}
+
 $SAGA_UTILISATEUR = saga_utilisateur();
 
 /* Les formulaires de comptes sont traités ici, avant que la page ne

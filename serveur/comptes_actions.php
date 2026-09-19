@@ -13,8 +13,9 @@
 
 const SAGA_ROLES_COMPTES = [
     'admin'   => 'Administratrice — accès complet, gère les comptes',
-    'gestion' => 'Gestion — saisit et modifie, ne gère pas les comptes',
-    'lecture' => 'Consultation — regarde sans rien modifier',
+    'gestion'   => 'Gestion — saisit et modifie, ne gère pas les comptes',
+    'comptable' => 'Comptable — consulte tout, note les factures, ne modifie rien d’autre',
+    'lecture'   => 'Consultation — regarde sans rien modifier',
 ];
 
 function saga_compte($id)

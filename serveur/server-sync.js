@@ -200,13 +200,104 @@
     return envoyer();
   }
 
+  /* ---------- Droits du compte ----------
+     Le serveur refuse déjà ce qu'un compte n'a pas le droit d'écrire : c'est
+     lui qui fait foi. Mais un refus découvert après coup trompe — l'écran
+     montrait la modification, puis elle disparaissait. Le navigateur applique
+     donc la même règle en amont : ce qui est interdit ne s'enregistre pas, et
+     les boutons qui y mènent sont grisés et inactifs. */
+  var ROLE = (window.SAGA_UTILISATEUR_SERVEUR && window.SAGA_UTILISATEUR_SERVEUR.role) || 'admin';
+  var RESTREINT = ROLE === 'lecture' || ROLE === 'comptable';
+  var RUBRIQUES_PERMISES = ROLE === 'comptable' ? ['factures', 'journal'] : [];
+  var DEBUT = Date.now();
+
+  var LIBELLES_ROLES = { admin: 'Administratrice', gestion: 'Gestionnaire',
+                         comptable: 'Comptable', lecture: 'Consultation' };
+
+  function messageInterdit() {
+    return ROLE === 'comptable'
+      ? 'Compte comptable : seule la facturation se modifie — rien n’a été enregistré.'
+      : 'Compte en consultation : rien n’est modifiable — rien n’a été enregistré.';
+  }
+
   /* ---------- On enveloppe l'enregistrement local ---------- */
   var sauveLocal = window.sagaSave;
   window.sagaSave = function (cle, valeur) {
+    if (RESTREINT && RUBRIQUES_PERMISES.indexOf(cle) === -1) {
+      // Le journal se tait : il suit une action, il n'en est pas une
+      if (cle !== 'journal' && Date.now() - DEBUT > 1500) afficher(messageInterdit(), 'erreur');
+      return false;
+    }
     var ok = sauveLocal(cle, valeur);
     if (ok !== false) programmerEnvoi();
     return ok;
   };
+
+  /* Ce qu'un compte restreint peut encore toucher : naviguer, filtrer,
+     chercher, exporter et imprimer. Le comptable, en plus, note les factures. */
+  function actionPermise(el) {
+    if (!RESTREINT) return true;
+    if (el.closest('.sidebar, .toggle-group, .tabs, .cal-pop, .picker, .search, [data-fermer]')) return true;
+    var modale = el.closest('.modale');
+    if (ROLE === 'comptable' && modale && modale.querySelector('#sagaFactNum')) return true;
+    var action = (el.getAttribute('onclick') || '') + ' ' + (el.textContent || '');
+    if (ROLE === 'comptable' && /ouvrirFacture/.test(action)) return true;
+    return /imprim|export|pdf|csv|t[ée]l[ée]charg|r[ée]cap|relev[ée]|voirTout|filtrerSur|choisirCliente|appliquerRaccourci|genererCSV|doBackup|doExport/i
+      .test(action);
+  }
+
+  var CIBLES = 'button, .btn, input[type=checkbox], input[type=radio], input[type=file]';
+
+  if (RESTREINT) {
+    document.body.classList.add('saga-restreint');
+
+    // Un clic interdit est arrêté avant d'atteindre son bouton
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest(CIBLES);
+      if (!el || actionPermise(el)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      afficher(messageInterdit().replace(' — rien n’a été enregistré.', '.'), 'erreur');
+    }, true);
+
+    // Et il se voit d'avance : grisé, curseur interdit
+    var style = document.createElement('style');
+    style.textContent =
+      'body.saga-restreint .saga-interdit{opacity:.35;cursor:not-allowed;}' +
+      '.saga-bandeau-droits{margin:0 0 16px;}';
+    document.head.appendChild(style);
+
+    var prevu = false;
+    function marquer() {
+      prevu = false;
+      document.querySelectorAll(CIBLES).forEach(function (el) {
+        el.classList.toggle('saga-interdit', !actionPermise(el));
+      });
+    }
+    new MutationObserver(function () {
+      if (prevu) return;
+      prevu = true;
+      /* Un minuteur plutôt que requestAnimationFrame : ce dernier est suspendu
+         dans un onglet en arrière-plan, et les boutons restaient alors actifs
+         d'aspect — bloqués au clic, mais sans rien qui le signale. */
+      setTimeout(marquer, 30);
+    }).observe(document.body, { childList: true, subtree: true });
+    marquer();
+
+    // Le mode actif, dit une fois en haut de page
+    var main = document.querySelector('.main');
+    if (main && !main.querySelector('.saga-bandeau-droits')) {
+      var b = document.createElement('div');
+      b.className = 'alert-bar saga-bandeau-droits';
+      b.innerHTML = ROLE === 'comptable'
+        ? '<span><strong>Compte comptable.</strong> Vous consultez tout et pouvez exporter. '
+          + 'Vous pouvez noter les factures — bouton « Facturer » sur la fiche d’une cliente, '
+          + 'onglet Lives. Rien d’autre n’est modifiable.</span>'
+        : '<span><strong>Compte en consultation.</strong> Vous pouvez tout regarder, filtrer et '
+          + 'exporter. Rien n’est modifiable.</span>';
+      main.insertBefore(b, main.firstChild);
+    }
+  }
 
   var resetLocal = window.sagaReset;
   window.sagaReset = function () {
@@ -271,6 +362,20 @@
 
     var nom = pied.querySelector('.user-name');
     if (nom) nom.textContent = (moi.prenom + ' ' + moi.nom).trim() || moi.email;
+
+    // Le rôle du compte connecté, pas celui de la liste locale
+    var role = pied.querySelector('.user-role');
+    if (role) role.textContent = LIBELLES_ROLES[moi.role] || moi.role;
+
+    // Les Paramètres ne concernent ni la consultation ni la comptabilité
+    if (moi.role === 'lecture' || moi.role === 'comptable') {
+      document.querySelectorAll('.sidebar a[href*="parametres"]').forEach(function (a) { a.remove(); });
+      // Un intitulé de rubrique resté sans lien n'a plus rien à annoncer
+      document.querySelectorAll('.sidebar .nav-label').forEach(function (l) {
+        var suivant = l.nextElementSibling;
+        if (!suivant || suivant.classList.contains('nav-label')) l.remove();
+      });
+    }
 
     var avatar = pied.querySelector('.user-avatar');
     if (avatar) {
