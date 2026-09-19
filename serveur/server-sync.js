@@ -263,8 +263,7 @@
     // Et il se voit d'avance : grisé, curseur interdit
     var style = document.createElement('style');
     style.textContent =
-      'body.saga-restreint .saga-interdit{opacity:.35;cursor:not-allowed;}' +
-      '.saga-bandeau-droits{margin:0 0 16px;}';
+      'body.saga-restreint .saga-interdit{opacity:.35;cursor:not-allowed;}';
     document.head.appendChild(style);
 
     var prevu = false;
@@ -284,19 +283,6 @@
     }).observe(document.body, { childList: true, subtree: true });
     marquer();
 
-    // Le mode actif, dit une fois en haut de page
-    var main = document.querySelector('.main');
-    if (main && !main.querySelector('.saga-bandeau-droits')) {
-      var b = document.createElement('div');
-      b.className = 'alert-bar saga-bandeau-droits';
-      b.innerHTML = ROLE === 'comptable'
-        ? '<span><strong>Compte comptable.</strong> Vous consultez tout et pouvez exporter. '
-          + 'Vous pouvez noter les factures — bouton « Facturer » sur la fiche d’une cliente, '
-          + 'onglet Lives. Rien d’autre n’est modifiable.</span>'
-        : '<span><strong>Compte en consultation.</strong> Vous pouvez tout regarder, filtrer et '
-          + 'exporter. Rien n’est modifiable.</span>';
-      main.insertBefore(b, main.firstChild);
-    }
   }
 
   var resetLocal = window.sagaReset;
