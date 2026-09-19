@@ -1520,29 +1520,53 @@
     });
 
     var libelle = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
-    res.textContent = 'Envoi en cours…';
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours… (30 s max)'; }
+    res.textContent = 'Envoi en cours — connexion au serveur d’envoi…';
 
-    mailRequete('test', {
-      reglages: reglages,
-      destinataire: document.getElementById('mailTestTo').value.trim()
-    }).then(function (r) {
+    /* Le résultat s'affiche sous les boutons ET dans une fenêtre : en petit
+       texte gris, il passait inaperçu. Et l'attente est bornée — sans cela,
+       un serveur muet laissait la page suspendue sans rien dire. */
+    function conclure(ok, texte) {
       if (btn) { btn.disabled = false; btn.textContent = libelle; }
-      var c = r.corps;
+      res.style.color = ok ? 'var(--good)' : 'var(--critical)';
+      res.textContent = texte;
+      alert(texte);
+    }
+
+    var arret = window.AbortController ? new AbortController() : null;
+    var minuteur = setTimeout(function () { if (arret) arret.abort(); }, 35000);
+
+    fetch('mail_api.php?action=test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Saga-Jeton': window.sagaJetonServeur() },
+      body: JSON.stringify({ reglages: reglages,
+                             destinataire: document.getElementById('mailTestTo').value.trim() }),
+      signal: arret ? arret.signal : undefined
+    }).then(function (r) {
+      return r.text().then(function (t) { return { code: r.status, texte: t }; });
+    }).then(function (r) {
+      clearTimeout(minuteur);
+      var c = null;
+      try { c = JSON.parse(r.texte); } catch (e) { c = null; }
+      if (!c) {
+        conclure(false, '✗ Le serveur a répondu autre chose qu’un résultat (code ' + r.code + ').'
+          + '\n\nDébut de la réponse :\n' + r.texte.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 300));
+        return;
+      }
       if (c.ok) {
-        res.style.color = 'var(--good)';
-        res.textContent = '✓ Message envoyé à ' + c.destinataire + '. ' + (c.message || '')
-          + '\n\nRegardez la boîte de réception, et les indésirables.';
+        conclure(true, '✓ Message envoyé à ' + c.destinataire + '. ' + (c.message || '')
+          + '\n\nRegardez la boîte de réception, et les indésirables.');
         sagaTracer('Réglages d\'envoi', 'email de test', c.destinataire);
       } else {
-        res.style.color = 'var(--critical)';
-        res.textContent = '✗ ' + (c.message || 'Envoi impossible.')
-          + (c.detail ? '\n\nDialogue avec le serveur :\n' + c.detail : '');
+        conclure(false, '✗ ' + (c.message || 'Envoi impossible.')
+          + (c.detail ? '\n\nDialogue avec le serveur :\n' + c.detail : ''));
       }
     }).catch(function (e) {
-      if (btn) { btn.disabled = false; btn.textContent = libelle; }
-      res.style.color = 'var(--critical)';
-      res.textContent = '✗ ' + (e.message || e);
+      clearTimeout(minuteur);
+      conclure(false, (e && e.name === 'AbortError')
+        ? '✗ Aucune réponse du serveur au bout de 35 secondes.\n\nL’hébergement bloque '
+          + 'probablement les connexions sortantes vers le serveur d’envoi.'
+        : '✗ ' + ((e && e.message) || e));
     });
   }
 

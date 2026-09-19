@@ -2197,9 +2197,12 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.28.2';
+var SAGA_VERSION = '1.28.3';
 
 var SAGA_VERSIONS = [
+  { version: '1.28.3', date: '2026-09-19', titre: 'Email de test : toujours une réponse', points: [
+    'Le résultat du test s’affiche dans une fenêtre en plus du texte sous les boutons, et l’attente est bornée à 35 secondes : un serveur d’envoi muet ne laisse plus la page suspendue sans rien dire.'
+  ] },
   { version: '1.28.2', date: '2026-09-19', titre: 'Sans bandeau pour les comptes restreints', points: [
     'Le bandeau « Compte comptable » / « Compte en consultation » en haut des pages est retiré. Les droits ne changent pas : les boutons interdits restent grisés et inactifs.'
   ] },

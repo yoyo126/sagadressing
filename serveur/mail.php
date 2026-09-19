@@ -63,9 +63,15 @@ class SagaSmtp
 {
     private $flux;
     private $journal = [];
+    private $limite;
 
-    public function __construct($hote, $port, $securite, $delai = 15)
+    /* Chaque lecture attend au plus $delai secondes, mais un échange compte une
+       dizaine de lectures : sans plafond global, un serveur qui répond au
+       compte-gouttes tenait la page en attente plusieurs minutes, sans rien
+       afficher. Au-delà de 25 secondes, on abandonne et on le dit. */
+    public function __construct($hote, $port, $securite, $delai = 10)
     {
+        $this->limite = microtime(true) + 25;
         $prefixe = ($securite === 'ssl') ? 'ssl://' : '';
         $contexte = stream_context_create([
             'ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'SNI_enabled' => true],
@@ -91,6 +97,11 @@ class SagaSmtp
     {
         $texte = '';
         while (($ligne = fgets($this->flux, 515)) !== false) {
+            if (microtime(true) > $this->limite) {
+                throw new SagaSmtpErreur('Le serveur d’envoi répond trop lentement (plus de '
+                    . '25 secondes). L’hébergement bloque peut-être les connexions sortantes '
+                    . 'vers ce port.');
+            }
             $texte .= $ligne;
             // Dernière ligne d'une réponse : « 250 » et non « 250- »
             if (strlen($ligne) < 4 || $ligne[3] !== '-') {
@@ -189,6 +200,8 @@ class SagaSmtp
    ============================================================ */
 function saga_mail_envoyer($reglages, $destinataire, $sujet, $texte)
 {
+    // De quoi aller au bout du plafond de 25 s et répondre proprement
+    @set_time_limit(45);
     $de = trim((string) (isset($reglages['mailFrom']) ? $reglages['mailFrom'] : ''));
     $nom = trim((string) (isset($reglages['mailName']) ? $reglages['mailName'] : 'Saga Dressing'));
     $reponse = trim((string) (isset($reglages['mailReply']) ? $reglages['mailReply'] : ''));
