@@ -60,6 +60,7 @@ function saga_traiter_comptes()
     if (!$moi) {
         return;
     }
+    saga_schema_a_jour();
     $administre = ($moi['role'] === 'admin');
 
     $action = (string) filter_input(INPUT_POST, 'action');

@@ -58,6 +58,45 @@ function saga_ip()
     return isset($_SERVER['REMOTE_ADDR']) ? substr($_SERVER['REMOTE_ADDR'], 0, 45) : '';
 }
 
+/* ============ Rôles et structure de la base ============
+   La colonne `role` a été créée en ENUM('admin','gestion','lecture'). Le rôle
+   « comptable » n'y entrait pas : MySQL enregistrait alors un rôle VIDE, tout
+   en laissant croire que la modification avait réussi. Et un rôle vide
+   n'étant ni « lecture » ni « comptable », il échappait à toute restriction —
+   autrement dit, il donnait tous les droits.
+
+   Deux protections, qui ne dépendent pas l'une de l'autre :
+     · la colonne devient un texte libre, validé par l'application ;
+     · un rôle inconnu vaut désormais le moins de droits possible. */
+const SAGA_ROLES_CONNUS = ['admin', 'gestion', 'comptable', 'lecture'];
+
+function saga_schema_a_jour()
+{
+    static $fait = false;
+    if ($fait) {
+        return;
+    }
+    $fait = true;
+    try {
+        $db = saga_db();
+        $col = $db->query("SHOW COLUMNS FROM utilisateurs LIKE 'role'")->fetch();
+        if ($col && stripos((string) $col['Type'], 'enum') === 0) {
+            $db->exec("ALTER TABLE utilisateurs MODIFY role VARCHAR(20) NOT NULL DEFAULT 'gestion'");
+        }
+        /* Un rôle vide ou inconnu — celui qu'a laissé l'échec d'enregistrement —
+           redevient « Consultation » : le plus prudent. L'administratrice le
+           règlera ensuite en connaissance de cause. */
+        $marques = implode(',', array_fill(0, count(SAGA_ROLES_CONNUS), '?'));
+        $st = $db->prepare("UPDATE utilisateurs SET role = 'lecture'
+                            WHERE proprietaire = 0 AND role NOT IN ($marques)");
+        $st->execute(SAGA_ROLES_CONNUS);
+    } catch (Exception $e) {
+        /* Sans droit de modifier la structure, on continue : la normalisation
+           ci-dessous garde l'accès sûr, même avec l'ancienne colonne. */
+        error_log('Saga — mise à jour du schéma impossible : ' . $e->getMessage());
+    }
+}
+
 /* ============ Compte connecté ============ */
 
 function saga_utilisateur()
@@ -77,6 +116,14 @@ function saga_utilisateur()
         if (!$u || !$u['actif']) {
             saga_deconnecter();
             return null;
+        }
+        /* Un rôle que l'application ne connaît pas ne donne jamais plus que la
+           consultation. Le propriétaire, lui, reste administrateur quoi qu'il
+           arrive : sans lui, plus personne ne pourrait régler les accès. */
+        if ($u['proprietaire']) {
+            $u['role'] = 'admin';
+        } elseif (!in_array($u['role'], SAGA_ROLES_CONNUS, true)) {
+            $u['role'] = 'lecture';
         }
     }
     return $u;

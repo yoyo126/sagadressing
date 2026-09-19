@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS utilisateurs (
   mdp_hash            VARCHAR(255) NOT NULL,
   prenom              VARCHAR(80)  NOT NULL DEFAULT '',
   nom                 VARCHAR(80)  NOT NULL DEFAULT '',
-  role                ENUM('admin','gestion','lecture') NOT NULL DEFAULT 'gestion',
+  role                VARCHAR(20)  NOT NULL DEFAULT 'gestion',  -- admin, gestion, comptable, lecture
   proprietaire        TINYINT(1)   NOT NULL DEFAULT 0,
   actif               TINYINT(1)   NOT NULL DEFAULT 1,
   cree_le             DATETIME     NOT NULL,

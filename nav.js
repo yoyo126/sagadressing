@@ -2197,9 +2197,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.28.0';
+var SAGA_VERSION = '1.28.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.28.1', date: '2026-09-19', titre: 'Le rôle « Comptable » s’enregistre vraiment', points: [
+    'La base n’acceptait que trois rôles. Choisir « Comptable » enregistrait un rôle vide — en affichant pourtant « rôle modifié » —, et ce rôle vide ne subissait aucune restriction : le compte gardait tous les droits.',
+    'La base est mise à jour d’elle-même au premier chargement. Un compte au rôle vide repasse en « Consultation » ; il suffit ensuite de le mettre en « Comptable ».',
+    'Protection durable : un rôle inconnu ne donne désormais que la consultation, jamais plus. Le compte propriétaire reste toujours administrateur.'
+  ] },
   { version: '1.28.0', date: '2026-09-19', titre: 'Des droits qui tiennent : consultation et comptable', points: [
     'Le compte « Consultation » ne peut vraiment plus rien modifier : les boutons qui modifient sont grisés et inactifs, les Paramètres ne sont plus accessibles. Rester possible : tout regarder, filtrer, chercher, exporter et imprimer.',
     'Nouveau rôle « Comptable » : même chose, avec en plus le bouton « Facturer » sur la fiche d’une cliente. Elle note les factures, et rien d’autre — ni live, ni cliente, ni paiement.',

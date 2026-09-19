@@ -32,6 +32,7 @@ header('Pragma: no-cache');
 header('Expires: 0');
 
 saga_exiger_connexion();
+saga_schema_a_jour();
 
 /* Les Paramètres règlent le CRM lui-même : comptes, envoi d'emails, données.
    Rien à y faire pour qui consulte ou tient la facturation. Le lien est
