@@ -2175,9 +2175,12 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.27.2';
+var SAGA_VERSION = '1.27.3';
 
 var SAGA_VERSIONS = [
+  { version: '1.27.3', date: '2026-09-19', titre: 'Factures à faire : le nombre, sans montant', points: [
+    'La colonne « À facturer » de la liste des clientes et la fiche cliente indiquent seulement le nombre de ventes à facturer.'
+  ] },
   { version: '1.27.2', date: '2026-09-19', titre: 'Les factures à faire, d’un coup d’œil', points: [
     'Liste des clientes : une colonne « À facturer » avec le montant et le nombre de ventes restant à facturer pour chacune, et le total en pied de tableau. Plus besoin d’ouvrir chaque fiche.'
   ] },

@@ -1434,8 +1434,7 @@
        affichée — une facture oubliée en juillet doit se voir en septembre. */
     var f = sagaTotauxFacturation(identiteCliente());
     document.getElementById('recapFactureSub').textContent = f.nbAFaire
-      ? fmtEUR(f.aFaire) + ' à facturer · ' + f.nbAFaire + ' vente'
-        + (f.nbAFaire > 1 ? 's' : '')
+      ? f.nbAFaire + ' vente' + (f.nbAFaire > 1 ? 's' : '') + ' à facturer'
       : (f.nbFaites ? 'tout est facturé' : '');
   }
 

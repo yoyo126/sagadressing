@@ -279,10 +279,8 @@
         '<td class="num tabular">' + c.pct + ' %</td>' +
         '<td class="num tabular">' + fmtEUR(c.ca) + '</td>' +
         '<td class="num tabular"><strong>' + fmtEUR(c.commission) + '</strong></td>' +
-        '<td class="num tabular">' + (c.aFacturer > 0
-          ? '<strong style="color:var(--brand-strong)">' + fmtEUR(c.aFacturer) + '</strong>'
-            + '<div class="muted" style="font-size:.75rem;">' + c.nbAFacturer + ' vente'
-            + (c.nbAFacturer > 1 ? 's' : '') + '</div>'
+        '<td class="num tabular">' + (c.nbAFacturer > 0
+          ? '<strong style="color:var(--brand-strong)">' + c.nbAFacturer + '</strong>'
           : '<span class="muted">—</span>') + '</td>' +
         '<td class="num tabular">' + reste + '</td>' +
         '<td>' + statut + '</td>' +
@@ -292,13 +290,13 @@
     var tCA = rows.reduce(function (s, c) { return s + c.ca; }, 0);
     var tCom = rows.reduce(function (s, c) { return s + c.commission; }, 0);
     var tReste = rows.reduce(function (s, c) { return s + c.reste; }, 0);
-    var tFact = rows.reduce(function (s, c) { return s + (c.aFacturer || 0); }, 0);
+    var tFact = rows.reduce(function (s, c) { return s + (c.nbAFacturer || 0); }, 0);
 
     foot.innerHTML = rows.length ? '<tr>' +
       '<td></td><td><strong>Total</strong></td><td></td><td></td>' +
       '<td class="num tabular"><strong>' + fmtEUR(tCA) + '</strong></td>' +
       '<td class="num tabular"><strong>' + fmtEUR(tCom) + '</strong></td>' +
-      '<td class="num tabular"><strong>' + fmtEUR(tFact) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + tFact + '</strong></td>' +
       '<td class="num tabular"><strong>' + fmtEUR(tReste) + '</strong></td>' +
       '<td></td></tr>' : '';
 
