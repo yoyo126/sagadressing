@@ -2197,9 +2197,12 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.28.3';
+var SAGA_VERSION = '1.28.4';
 
 var SAGA_VERSIONS = [
+  { version: '1.28.4', date: '2026-09-19', titre: 'Paramètres : la page s’arrêtait en plein chargement', points: [
+    'En ligne, la page Paramètres cherchait le formulaire de comptes de la maquette, remplacé par les vrais comptes du serveur. Ne le trouvant pas, elle s’arrêtait : « Enregistrer » et « Envoyer un email de test » ne faisaient plus rien, et les réglages d’email n’étaient jamais sauvegardés.'
+  ] },
   { version: '1.28.3', date: '2026-09-19', titre: 'Email de test : toujours une réponse', points: [
     'Le résultat du test s’affiche dans une fenêtre en plus du texte sous les boutons, et l’attente est bornée à 35 secondes : un serveur d’envoi muet ne laisse plus la page suspendue sans rien dire.'
   ] },

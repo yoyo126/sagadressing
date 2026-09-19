@@ -1179,7 +1179,11 @@
     el.style.color = f.couleur;
   }
 
-  document.getElementById('invMdpMode').addEventListener('click', function (e) {
+  /* Le formulaire local des comptes n'existe que dans la maquette : en ligne,
+     l'onglet Utilisateurs est remplacé par les vrais comptes du serveur. S'y
+     accrocher sans vérifier arrêtait tout le script de la page — et avec lui
+     l'enregistrement des réglages d'email et l'email de test. */
+  (document.getElementById('invMdpMode') || document.createElement('div')).addEventListener('click', function (e) {
     var b = e.target.closest('button');
     if (!b) return;
     document.querySelectorAll('#invMdpMode button').forEach(function (x) { x.classList.remove('active'); });
@@ -1191,7 +1195,7 @@
       : "Un lien d'activation lui est envoyé : vous ne connaîtrez jamais son mot de passe. C'est la méthode recommandée.";
   });
 
-  document.getElementById('invMdp').addEventListener('input', majForceMdp);
+  (document.getElementById('invMdp') || document.createElement('input')).addEventListener('input', majForceMdp);
 
   /* Réinitialisation depuis la liste des comptes */
   function definirMotDePasse(id) {
@@ -1312,7 +1316,7 @@
     });
   }
 
-  document.getElementById('permRole').addEventListener('change', function () {
+  (document.getElementById('permRole') || document.createElement('select')).addEventListener('change', function () {
     var role = this.value;
     if (role === 'custom') return;
     renderPermTable(ROLE_PRESETS[role], false);
