@@ -2175,9 +2175,12 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.27.1';
+var SAGA_VERSION = '1.27.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.27.2', date: '2026-09-19', titre: 'Les factures à faire, d’un coup d’œil', points: [
+    'Liste des clientes : une colonne « À facturer » avec le montant et le nombre de ventes restant à facturer pour chacune, et le total en pied de tableau. Plus besoin d’ouvrir chaque fiche.'
+  ] },
   { version: '1.27.1', date: '2026-09-18', titre: 'La facturation revient sur la fiche cliente', points: [
     'Le suivi des factures quitte les Rapports pour l’onglet Lives de la fiche cliente : un bouton « Facturer » à côté de « Payer », sur chaque ligne, et une colonne qui montre le numéro Qonto une fois la facture émise.',
     'Sous « Ma commission », le montant qu’il reste à facturer pour cette cliente, toutes ventes confondues.'

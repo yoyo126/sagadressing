@@ -148,6 +148,7 @@
               <th class="num">Taux</th>
               <th class="num">CA total</th>
               <th class="num">Ma commission</th>
+              <th class="num">À facturer</th>
               <th class="num">Reste à reverser</th>
               <th>Statut</th>
             </tr>
@@ -228,6 +229,10 @@
     clientes.forEach(function (c) {
       var t = sagaTotauxDressing(c.key || c.lettre);
       c.ca = t.ca; c.commission = t.commission; c.reste = t.reste;
+      /* Ce qui reste à facturer chez Qonto, pour ne plus avoir à ouvrir
+         chaque fiche pour le savoir. Lecture seule : aucun chiffre ne bouge. */
+      var f = sagaTotauxFacturation(c.key || c.lettre);
+      c.aFacturer = f.aFaire; c.nbAFacturer = f.nbAFaire;
     });
 
     DOUBLONS = sagaCodesEnDoublon();
@@ -274,6 +279,11 @@
         '<td class="num tabular">' + c.pct + ' %</td>' +
         '<td class="num tabular">' + fmtEUR(c.ca) + '</td>' +
         '<td class="num tabular"><strong>' + fmtEUR(c.commission) + '</strong></td>' +
+        '<td class="num tabular">' + (c.aFacturer > 0
+          ? '<strong style="color:var(--brand-strong)">' + fmtEUR(c.aFacturer) + '</strong>'
+            + '<div class="muted" style="font-size:.75rem;">' + c.nbAFacturer + ' vente'
+            + (c.nbAFacturer > 1 ? 's' : '') + '</div>'
+          : '<span class="muted">—</span>') + '</td>' +
         '<td class="num tabular">' + reste + '</td>' +
         '<td>' + statut + '</td>' +
       '</tr>';
@@ -282,11 +292,13 @@
     var tCA = rows.reduce(function (s, c) { return s + c.ca; }, 0);
     var tCom = rows.reduce(function (s, c) { return s + c.commission; }, 0);
     var tReste = rows.reduce(function (s, c) { return s + c.reste; }, 0);
+    var tFact = rows.reduce(function (s, c) { return s + (c.aFacturer || 0); }, 0);
 
     foot.innerHTML = rows.length ? '<tr>' +
       '<td></td><td><strong>Total</strong></td><td></td><td></td>' +
       '<td class="num tabular"><strong>' + fmtEUR(tCA) + '</strong></td>' +
       '<td class="num tabular"><strong>' + fmtEUR(tCom) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + fmtEUR(tFact) + '</strong></td>' +
       '<td class="num tabular"><strong>' + fmtEUR(tReste) + '</strong></td>' +
       '<td></td></tr>' : '';
 
