@@ -2324,9 +2324,13 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.29.0';
+var SAGA_VERSION = '1.29.1';
 
 var SAGA_VERSIONS = [
+  { version: '1.29.1', date: '2026-09-23', titre: 'L’onglet Paiements montrait des règlements qui n’existaient pas', points: [
+    'Cet onglet, sur la fiche d’une cliente, affichait trois lignes d’exemple restées de la maquette — 522 € et 660 € en virement, 410 € en espèces — identiques pour toutes les clientes, y compris celles qui n’ont jamais rien reçu.',
+    'Il montre désormais les règlements réellement enregistrés : la date, le montant net reversé et le live concerné, avec le total en bas. Aucun chiffre n’a été modifié : ces trois lignes n’étaient qu’un affichage, elles n’entraient dans aucun calcul.'
+  ] },
   { version: '1.29.0', date: '2026-09-23', titre: 'Des pièces jointes qu’on peut vraiment ajouter', points: [
     'L’onglet « Pièces jointes » d’une cliente accepte enfin les documents : contrat renvoyé signé, justificatif, photo d’une pièce. On les dépose par le bouton ou en les glissant sur la liste ; ils restent attachés à la fiche, consultables et téléchargeables, et se suppriment à la demande.',
     'Ces documents sont rangés dans un dossier fermé du serveur, hors de portée d’internet : contrairement aux photos d’annonces, ils ne se lisent qu’une fois connecté au CRM.',

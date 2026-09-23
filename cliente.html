@@ -481,11 +481,8 @@
           <div class="table-scroll">
           <table>
             <thead><tr><th>Date</th><th>Mode</th><th class="num">Montant</th><th>Lives couverts</th></tr></thead>
-            <tbody>
-              <tr><td>17 juil.</td><td class="muted">Virement</td><td class="num tabular">522 €</td><td class="muted">Live du 17/07</td></tr>
-              <tr><td>20 juin</td><td class="muted">Virement</td><td class="num tabular">660 €</td><td class="muted">Live du 19/06</td></tr>
-              <tr><td>2 juin</td><td class="muted">Espèces</td><td class="num tabular">410 €</td><td class="muted">Live du 29/05</td></tr>
-            </tbody>
+            <tbody id="paiementsBody"></tbody>
+            <tfoot id="paiementsPied" style="display:none;"></tfoot>
           </table>
           </div>
         </div>
@@ -782,6 +779,7 @@
     }).join('') || '<tr><td colspan="8" class="muted" style="text-align:center; padding:24px 8px;">Aucune vente enregistrée pour cette cliente.</td></tr>';
 
     initRowLinks(document.getElementById('livesTableBody'));
+    renderPaiements();
     renderPiecesJointes();
 
     // Champs identité repris dans les documents
@@ -1756,6 +1754,45 @@
     document.getElementById('contratActionsDraft').style.display = 'flex';
     setSignStep('draft');
     ['stepSentSub', 'stepViewedSub', 'stepSignedSub'].forEach(id => document.getElementById(id).textContent = '—');
+  }
+
+  /* ---- Règlements ----------------------------------------------------
+     Cet onglet affichait trois lignes d'exemple — les mêmes pour toutes les
+     clientes, virement, virement, espèces — restées de la maquette. Il ne
+     montre plus que les règlements réellement enregistrés : ceux des ventes
+     marquées « Payé », avec leur date et leur montant net. Rien n'est saisi
+     ici ; c'est le reflet de l'onglet Lives. */
+  function renderPaiements() {
+    var corps = document.getElementById('paiementsBody');
+    var pied = document.getElementById('paiementsPied');
+    if (!corps) return;
+
+    var regles = VENTES.filter(function (v) { return v.paye; })
+      .slice()
+      .sort(function (a, b) {
+        return (a.datePaiement || a.date) < (b.datePaiement || b.date) ? 1 : -1;
+      });
+
+    corps.innerHTML = regles.map(function (v) {
+      return '<tr>' +
+        '<td>' + (v.datePaiement ? fmtDateShortFR(v.datePaiement) : '<span class="muted">date non notée</span>') + '</td>' +
+        '<td class="muted">' + sagaEchapper(v.modePaiement || 'Virement') + '</td>' +
+        '<td class="num tabular">' + fmtEUR(v.net) + '</td>' +
+        '<td class="muted">' + sagaEchapper(v.label) + '</td>' +
+        '</tr>';
+    }).join('') ||
+      '<tr><td colspan="4" class="muted" style="text-align:center; padding:24px 8px;">' +
+      'Aucun règlement enregistré pour cette cliente.</td></tr>';
+
+    if (regles.length) {
+      var total = regles.reduce(function (s, v) { return s + v.net; }, 0);
+      pied.innerHTML = '<tr><th colspan="2">Total reversé</th>' +
+        '<th class="num tabular">' + fmtEUR(total) + '</th><th></th></tr>';
+      pied.style.display = '';
+    } else {
+      pied.innerHTML = '';
+      pied.style.display = 'none';
+    }
   }
 
   /* ---- Pièces jointes ----------------------------------------------
