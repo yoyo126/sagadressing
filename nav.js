@@ -312,6 +312,132 @@ function sagaTeleverserPhoto(file, auSucces, auxErreurs) {
   });
 }
 
+/* ============ Pièces jointes des clientes ============
+   Un dossier de cliente ne tient pas qu'en chiffres : il y a le contrat
+   signé renvoyé scanné, la photo d'une pièce abîmée, un justificatif. Ces
+   documents-là sont déposés sur le serveur dans un dossier fermé — rien à
+   voir avec /uploads, que Whatnot lit sans compte — et l'état ne garde que
+   leur fiche : nom d'origine, taille, date, et le nom de rangement.
+
+   Hors serveur (la maquette ouverte depuis un dossier), le document est
+   gardé tel quel dans l'état, à condition de rester petit. */
+function sagaPiecesJointes(cle) {
+  if (!cle) return [];
+  var toutes = sagaLoad('pieces_jointes', {}) || {};
+  var liste = toutes[cle];
+  return Array.isArray(liste) ? liste : [];
+}
+
+function sagaEnregistrerPiecesJointes(cle, liste) {
+  if (!cle) return false;
+  var toutes = sagaLoad('pieces_jointes', {}) || {};
+  if (Array.isArray(toutes)) toutes = {};
+  if (liste && liste.length) toutes[cle] = liste;
+  else delete toutes[cle];
+  return sagaSave('pieces_jointes', toutes);
+}
+
+function sagaAjouterPieceJointe(cle, piece) {
+  var liste = sagaPiecesJointes(cle).slice();
+  piece.id = piece.id || ('pj' + Date.now() + Math.random().toString(16).slice(2, 8));
+  piece.ajoutLe = piece.ajoutLe || sagaAujourdhui();
+  liste.unshift(piece);
+  sagaEnregistrerPiecesJointes(cle, liste);
+  return piece;
+}
+
+function sagaSupprimerPieceJointe(cle, id) {
+  var liste = sagaPiecesJointes(cle);
+  var piece = null;
+  var restantes = liste.filter(function (p) {
+    if (p.id === id) { piece = p; return false; }
+    return true;
+  });
+  if (!piece) return null;
+  sagaEnregistrerPiecesJointes(cle, restantes);
+  /* Le document lui-même part du serveur : laisser le fichier derrière soi
+     reviendrait à croire l'avoir supprimé sans que ce soit vrai. */
+  if (piece.fichier && typeof window.sagaJetonServeur === 'function') {
+    var corps = new FormData();
+    corps.append('action', 'supprimer');
+    corps.append('fichier', piece.fichier);
+    fetch('fichier_depot.php', {
+      method: 'POST',
+      body: corps,
+      headers: { 'X-Saga-Jeton': window.sagaJetonServeur() }
+    }).catch(function () { /* la fiche est retirée : l'essentiel est fait */ });
+  }
+  return piece;
+}
+
+/* L'adresse d'un document : sur le serveur il passe par fichier.php, qui
+   exige une session ; hors serveur c'est le contenu gardé dans l'état. */
+function sagaUrlPieceJointe(piece, pourTelecharger) {
+  if (!piece) return '';
+  if (piece.fichier) {
+    return 'fichier.php?f=' + encodeURIComponent(piece.fichier) +
+      '&n=' + encodeURIComponent(piece.nom || piece.fichier) +
+      (pourTelecharger ? '&dl=1' : '');
+  }
+  return piece.contenu || '';
+}
+
+function sagaTailleFichier(octets) {
+  var n = Number(octets) || 0;
+  if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1).replace('.', ',') + ' Mo';
+  if (n >= 1024) return Math.round(n / 1024) + ' Ko';
+  return n + ' o';
+}
+
+function sagaTeleverserFichier(file, auSucces, auxErreurs) {
+  function echec(message) {
+    if (auxErreurs) auxErreurs(message);
+    else alert('Le document n\'a pas pu être envoyé.\n\n' + message);
+  }
+  if (!file) return;
+
+  if (typeof window.sagaJetonServeur !== 'function') {
+    // Maquette hors serveur : le document tient dans l'état, s'il est petit
+    if (file.size > 1.5 * 1024 * 1024) {
+      echec('Hors connexion au serveur, un document de plus de 1,5 Mo ne peut pas être conservé.');
+      return;
+    }
+    var lecteur = new FileReader();
+    lecteur.onerror = function () { echec('Fichier illisible.'); };
+    lecteur.onload = function (e) {
+      auSucces({
+        nom: file.name, taille: file.size, type: file.type || '',
+        contenu: e.target.result
+      });
+    };
+    lecteur.readAsDataURL(file);
+    return;
+  }
+
+  var corps = new FormData();
+  corps.append('fichier', file);
+
+  fetch('fichier_depot.php', {
+    method: 'POST',
+    body: corps,
+    headers: { 'X-Saga-Jeton': window.sagaJetonServeur() }
+  }).then(function (r) {
+    return r.json().then(function (j) { return { ok: r.ok, corps: j }; });
+  }).then(function (r) {
+    if (!r.ok || !r.corps || !r.corps.fichier) {
+      throw new Error((r.corps && r.corps.erreur) || 'Réponse inattendue du serveur.');
+    }
+    auSucces({
+      nom: r.corps.nom || file.name,
+      fichier: r.corps.fichier,
+      taille: r.corps.taille || file.size,
+      type: r.corps.type || file.type || ''
+    });
+  }).catch(function (e) {
+    echec(e.message || String(e));
+  });
+}
+
 /* Téléchargement d'un fichier généré côté navigateur */
 function sagaDownload(filename, content, mime) {
   var blob = new Blob([content], { type: (mime || 'text/plain') + ';charset=utf-8' });
@@ -985,7 +1111,8 @@ function sagaReparerIdentites() {
 function sagaTablesAttendues() {
   return {
     paiements_apporteurs: true, clients_data: true, apporteurs_data: true,
-    dressings_retires: true, mail_config: true, factures: true
+    dressings_retires: true, mail_config: true, factures: true,
+    pieces_jointes: true
   };
 }
 
@@ -1795,7 +1922,7 @@ function sagaModaleFacture(cle, vente, auValider) {
   fond.innerHTML =
     '<div class="modale-boite" style="width:min(440px,100%);">' +
       '<div class="modale-tete"><strong>' +
-        (dejaFaite ? 'Corriger la facture' : 'Facture émise') + '</strong>' +
+        (dejaFaite ? 'Corriger la facture' : 'Noter la facture émise') + '</strong>' +
         '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
       '<div class="modale-corps">' +
         '<p class="card-note" style="margin-bottom:14px;">' +
@@ -2197,9 +2324,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.28.4';
+var SAGA_VERSION = '1.29.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.29.0', date: '2026-09-23', titre: 'Des pièces jointes qu’on peut vraiment ajouter', points: [
+    'L’onglet « Pièces jointes » d’une cliente accepte enfin les documents : contrat renvoyé signé, justificatif, photo d’une pièce. On les dépose par le bouton ou en les glissant sur la liste ; ils restent attachés à la fiche, consultables et téléchargeables, et se suppriment à la demande.',
+    'Ces documents sont rangés dans un dossier fermé du serveur, hors de portée d’internet : contrairement aux photos d’annonces, ils ne se lisent qu’une fois connecté au CRM.',
+    'Sur les ventes d’une cliente, « Facture » et « Facturer » se ressemblaient trop : le bouton dit maintenant « Facturer » ou « Modifier la facture », et la colonne affiche « À facturer » tant que la facture reste à faire.'
+  ] },
   { version: '1.28.4', date: '2026-09-19', titre: 'Paramètres : la page s’arrêtait en plein chargement', points: [
     'En ligne, la page Paramètres cherchait le formulaire de comptes de la maquette, remplacé par les vrais comptes du serveur. Ne le trouvant pas, elle s’arrêtait : « Enregistrer » et « Envoyer un email de test » ne faisaient plus rien, et les réglages d’email n’étaient jamais sauvegardés.'
   ] },

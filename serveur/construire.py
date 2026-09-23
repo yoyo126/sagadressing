@@ -39,11 +39,14 @@ FICHIERS_SERVEUR = ['.htaccess', 'db.php', 'lib_auth.php', 'entete.php',
                     'schema.sql', 'verifier.php', 'config.example.php',
                     'importer.php', 'sauvegarde.php', 'televerser.php',
                     'mail.php', 'mail_api.php',
+                    'fichier.php', 'fichier_depot.php',
                     'comptes_actions.php', 'comptes_bloc.php']
 
 # Dossier public des photos d'annonces. Whatnot vient les y chercher sans
 # compte : le dossier voyage avec son .htaccess, qui y interdit l'exécution.
-DOSSIERS_SERVEUR = ['uploads']
+# `fichiers` est l'inverse : les pièces jointes des clientes n'ont rien à
+# faire dehors, son .htaccess en ferme l'accès, et fichier.php les sert.
+DOSSIERS_SERVEUR = ['uploads', 'fichiers']
 
 # Fichiers de l'application à déposer tels quels
 FICHIERS_APP = ['style.css', 'nav.js', 'saga-pdf.js']

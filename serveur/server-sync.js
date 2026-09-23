@@ -238,6 +238,8 @@
   function actionPermise(el) {
     if (!RESTREINT) return true;
     if (el.closest('.sidebar, .toggle-group, .tabs, .cal-pop, .picker, .search, [data-fermer]')) return true;
+    // Consulter une pièce jointe ne modifie rien : c'est permis à tous
+    if (el.hasAttribute('data-voir')) return true;
     var modale = el.closest('.modale');
     if (ROLE === 'comptable' && modale && modale.querySelector('#sagaFactNum')) return true;
     var action = (el.getAttribute('onclick') || '') + ' ' + (el.textContent || '');

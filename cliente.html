@@ -491,12 +491,25 @@
         </div>
 
         <div class="tab-panel" id="tab-fichiers" data-panel-group="cliente" style="margin-top:18px;">
-          <div id="fichiersEmpty" class="empty-state">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/><path d="M16 2l6 6"/><path d="M22 2l-9.5 9.5"/></svg>
-            <div class="t">Aucune pièce jointe</div>
-            <div class="s">Contrat, photos du dressing, justificatifs… glissez un fichier ici pour l'ajouter</div>
+          <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+            <div style="flex:1; min-width:220px;">
+              <div class="card-note">Contrat renvoyé signé, justificatif, photo d'une pièce…
+                les documents restent attachés à la fiche. PDF, images, Word, Excel ou texte, 20 Mo maximum.</div>
+            </div>
+            <input type="file" id="pjInput" multiple style="display:none;"
+                   accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                   onchange="ajouterPiecesJointes(this.files); this.value = '';" />
+            <button class="btn btn-secondary btn-sm" id="pjAjouter"
+                    onclick="document.getElementById('pjInput').click()">Ajouter un document</button>
           </div>
-          <div id="fichiersList" class="file-list" style="display:none;"></div>
+          <div id="fichiersDrop">
+            <div id="fichiersEmpty" class="empty-state">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/><path d="M16 2l6 6"/><path d="M22 2l-9.5 9.5"/></svg>
+              <div class="t">Aucune pièce jointe</div>
+              <div class="s">Contrat, photos du dressing, justificatifs… glissez un fichier ici pour l'ajouter</div>
+            </div>
+            <div id="fichiersList" class="file-list" style="display:none;"></div>
+          </div>
         </div>
 
         <div class="tab-panel" id="tab-infos" data-panel-group="cliente" style="margin-top:18px;">
@@ -741,10 +754,13 @@
           + '<div class="muted" style="font-size:.78rem; margin-top:3px;">'
           + (facture.numero ? sagaEchapper(facture.numero) + ' · ' : '')
           + fmtDateFR(facture.date) + '</div>'
-        : '<span class="chip warn">À faire</span>';
+        : '<span class="chip warn">À facturer</span>';
+      /* « Facture » et « Facturer » se ressemblaient trop pour qu'on sache,
+         d'un coup d'œil, si la facture restait à faire : le bouton dit
+         maintenant le geste, et lui seul. */
       action += '<button class="btn ' + (facture ? 'btn-ghost' : 'btn-secondary')
         + ' btn-sm" onclick="event.stopPropagation(); ouvrirFacture(' + i + ')">'
-        + (facture ? 'Facture' : 'Facturer') + '</button>';
+        + (facture ? 'Modifier la facture' : 'Facturer') + '</button>';
       action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerLigne(' + i + ')">PDF</button>';
       if (l.origine === 'direct') {
         action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); supprimerVenteDirecte(\'' + l.venteId + '\')">Supprimer</button>';
@@ -766,6 +782,7 @@
     }).join('') || '<tr><td colspan="8" class="muted" style="text-align:center; padding:24px 8px;">Aucune vente enregistrée pour cette cliente.</td></tr>';
 
     initRowLinks(document.getElementById('livesTableBody'));
+    renderPiecesJointes();
 
     // Champs identité repris dans les documents
     document.getElementById('fNom').value = CLIENT.nom;
@@ -1740,6 +1757,131 @@
     setSignStep('draft');
     ['stepSentSub', 'stepViewedSub', 'stepSignedSub'].forEach(id => document.getElementById(id).textContent = '—');
   }
+
+  /* ---- Pièces jointes ----------------------------------------------
+     Les documents générés ici (contrat, bon de restitution) et ceux que
+     l'on dépose depuis son ordinateur cohabitent dans la même liste : côté
+     cliente, il n'y a qu'un dossier. Seuls les seconds sont conservés — un
+     contrat se régénère, un scan reçu par mail ne se retrouve nulle part
+     ailleurs. */
+  function majVideFichiers() {
+    const list = document.getElementById('fichiersList');
+    const vide = !list.children.length;
+    document.getElementById('fichiersEmpty').style.display = vide ? 'flex' : 'none';
+    list.style.display = vide ? 'none' : 'flex';
+  }
+
+  function ligneDeLaPiece(piece) {
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    row.dataset.pj = piece.id;
+    const details = [sagaTailleFichier(piece.taille)];
+    if (piece.ajoutLe) details.push('ajouté le ' + fmtDateFR(piece.ajoutLe));
+    row.innerHTML =
+      '<div class="file-icon">' + FILE_ICON_PDF + '</div>' +
+      '<div class="file-meta">' +
+        '<div class="file-name">' + sagaEchapper(piece.nom || 'Document') + '</div>' +
+        '<div class="file-sub">' + details.join(' · ') + '</div>' +
+      '</div>' +
+      '<div class="file-actions">' +
+        '<button class="btn btn-ghost btn-sm" data-voir>Voir</button>' +
+        '<button class="btn btn-ghost btn-sm" data-dl>Télécharger</button>' +
+        '<button class="btn btn-ghost btn-sm" data-sup style="color:var(--critical);">Supprimer</button>' +
+      '</div>';
+    row.querySelector('[data-voir]').onclick = function () { voirPieceJointe(piece); };
+    row.querySelector('[data-dl]').onclick = function () { telechargerPieceJointe(piece); };
+    row.querySelector('[data-sup]').onclick = function () { supprimerPieceJointe(piece); };
+    return row;
+  }
+
+  function renderPiecesJointes() {
+    const list = document.getElementById('fichiersList');
+    if (!list) return;
+    Array.prototype.slice.call(list.querySelectorAll('[data-pj]'))
+      .forEach(function (el) { el.remove(); });
+    // Rangées de la plus ancienne à la plus récente : la dernière finit en tête
+    sagaPiecesJointes(identiteCliente()).slice().reverse().forEach(function (p) {
+      list.insertBefore(ligneDeLaPiece(p), list.firstChild);
+    });
+    majVideFichiers();
+  }
+
+  function voirPieceJointe(piece) {
+    const url = sagaUrlPieceJointe(piece, false);
+    if (!url) { alert("Ce document n'est plus disponible."); return; }
+    const w = window.open(url, '_blank');
+    if (!w) alert('Autorisez les fenêtres pop-up pour afficher le document.');
+  }
+
+  function telechargerPieceJointe(piece) {
+    const url = sagaUrlPieceJointe(piece, true);
+    if (!url) { alert("Ce document n'est plus disponible."); return; }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = piece.nom || 'document';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function supprimerPieceJointe(piece) {
+    if (!confirm('Supprimer « ' + (piece.nom || 'ce document') + ' » ?\n\nLe fichier est retiré du serveur : c’est définitif.')) return;
+    sagaSupprimerPieceJointe(identiteCliente(), piece.id);
+    sagaTracer('Pièce jointe supprimée', CLIENT.nom, piece.nom || '');
+    renderPiecesJointes();
+  }
+
+  function ajouterPiecesJointes(fichiers) {
+    const liste = Array.prototype.slice.call(fichiers || []);
+    if (!liste.length) return;
+    /* Le glisser-déposer contourne le bouton : un compte en consultation
+       serait arrêté par le serveur, mais autant le dire tout de suite. */
+    if (typeof sagaCompteRestreint === 'function' && sagaCompteRestreint()) {
+      alert('Votre compte est en consultation seule : les documents ne peuvent pas être ajoutés.');
+      return;
+    }
+    const bouton = document.getElementById('pjAjouter');
+    let restants = liste.length;
+    if (bouton) { bouton.disabled = true; bouton.textContent = 'Envoi…'; }
+
+    function fini() {
+      restants--;
+      if (restants > 0) return;
+      if (bouton) { bouton.disabled = false; bouton.textContent = 'Ajouter un document'; }
+      renderPiecesJointes();
+    }
+
+    liste.forEach(function (f) {
+      sagaTeleverserFichier(f, function (infos) {
+        sagaAjouterPieceJointe(identiteCliente(), infos);
+        sagaTracer('Pièce jointe ajoutée', CLIENT.nom, infos.nom);
+        fini();
+      }, function (message) {
+        alert('« ' + f.name +' » n’a pas été ajouté.\n\n' + message);
+        fini();
+      });
+    });
+  }
+
+  /* Glisser-déposer : c'est ce que l'écran promet depuis toujours. */
+  (function () {
+    const zone = document.getElementById('fichiersDrop');
+    if (!zone) return;
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) {
+        e.preventDefault();
+        zone.style.outline = '2px dashed var(--brand)';
+        zone.style.outlineOffset = '6px';
+      });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      zone.addEventListener(ev, function () { zone.style.outline = ''; });
+    });
+    zone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.files) ajouterPiecesJointes(e.dataTransfer.files);
+    });
+  })();
 
   function addContractFile(name, subHtml, apercuId) {
     document.getElementById('fichiersEmpty').style.display = 'none';

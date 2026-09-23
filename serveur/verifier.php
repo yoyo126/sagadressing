@@ -66,9 +66,27 @@ if (!is_dir($dossierPhotos)) {
             : ' — attention, son .htaccess manque'));
 }
 
+/* ---------- Pièces jointes des clientes ----------
+   Même exigence d'écriture, mais l'inverse en lecture : ce dossier doit
+   rester fermé, son .htaccess est donc ce qui compte le plus ici. */
+$dossierDocs = __DIR__ . '/fichiers';
+if (!is_dir($dossierDocs)) {
+    ctrl('Dossier des pièces jointes (fichiers)', 'echec',
+         'absent — les documents des clientes ne pourront pas être déposés');
+} elseif (!is_writable($dossierDocs)) {
+    ctrl('Dossier des pièces jointes (fichiers)', 'echec',
+         'présent mais non accessible en écriture — donnez-lui les droits 755');
+} elseif (!is_file($dossierDocs . '/.htaccess')) {
+    ctrl('Dossier des pièces jointes (fichiers)', 'echec',
+         'son .htaccess manque — les documents des clientes seraient lisibles depuis internet');
+} else {
+    ctrl('Dossier des pièces jointes (fichiers)', 'ok',
+         'accessible en écriture, fermé à la lecture directe');
+}
+
 /* ---------- Fichiers attendus ---------- */
 $attendus = ['db.php', 'lib_auth.php', 'login.php', 'logout.php', 'schema.sql', '.htaccess',
-             'televerser.php'];
+             'televerser.php', 'fichier.php', 'fichier_depot.php'];
 $manquants = [];
 foreach ($attendus as $f) {
     if (!is_file(__DIR__ . '/' . $f)) {

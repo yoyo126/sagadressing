@@ -1,0 +1,30 @@
+# ============================================================
+#  Pièces jointes des clientes
+# ============================================================
+#  Contrats signés, justificatifs, relevés : ce dossier ne contient que des
+#  documents qui appartiennent aux clientes. Contrairement à /uploads, rien
+#  ici n'a de raison d'être visible depuis l'extérieur — Whatnot ne vient pas
+#  y chercher d'image.
+#
+#  L'accès direct est donc entièrement fermé : un document ne se lit qu'au
+#  travers de fichier.php, qui exige une session ouverte. Même en devinant le
+#  nom d'un fichier, on n'obtient rien d'autre qu'un refus.
+# ============================================================
+
+# Apache 2.4
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+
+# Apache 2.2 (certains hébergements mutualisés)
+<IfModule !mod_authz_core.c>
+  Order deny,allow
+  Deny from all
+</IfModule>
+
+# Ceinture et bretelles : si une configuration exotique rendait malgré tout un
+# fichier accessible, il ne serait en aucun cas exécuté.
+RemoveHandler .php .phtml .pht .phar .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+RemoveType .php .phtml .pht .phar .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+
+Options -Indexes
