@@ -2324,9 +2324,14 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.29.1';
+var SAGA_VERSION = '1.29.2';
 
 var SAGA_VERSIONS = [
+  { version: '1.29.2', date: '2026-09-30', titre: 'Une pièce jointe glissée s’ouvrait dans un onglet au lieu de s’ajouter', points: [
+    'Sur une fiche cliente ayant déjà un document, glisser un fichier sur l’onglet « Pièces jointes » ne l’ajoutait pas : le navigateur l’ouvrait dans un nouvel onglet. Sur une cliente sans aucun document, le même geste fonctionnait — d’où l’impression que le CRM marchait pour les unes et pas pour les autres.',
+    'La fiche s’interrompait au chargement dès qu’elle avait une pièce jointe à dessiner, avant d’avoir mis en place le glisser-déposer. Le premier document passait donc toujours, et la fiche restait bloquée ensuite. C’est corrigé : les documents s’ajoutent à nouveau, en les glissant comme par le bouton.',
+    'Par sécurité, un fichier lâché sur le CRM ne peut plus jamais s’ouvrir à la place de la page, et une fiche dont une partie ne peut pas s’afficher le dit désormais dans un bandeau au lieu de s’arrêter en silence.'
+  ] },
   { version: '1.29.1', date: '2026-09-23', titre: 'L’onglet Paiements montrait des règlements qui n’existaient pas', points: [
     'Cet onglet, sur la fiche d’une cliente, affichait trois lignes d’exemple restées de la maquette — 522 € et 660 € en virement, 410 € en espèces — identiques pour toutes les clientes, y compris celles qui n’ont jamais rien reçu.',
     'Il montre désormais les règlements réellement enregistrés : la date, le montant net reversé et le live concerné, avec le total en bas. Aucun chiffre n’a été modifié : ces trois lignes n’étaient qu’un affichage, elles n’entraient dans aucun calcul.'

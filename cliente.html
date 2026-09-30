@@ -50,6 +50,11 @@
         <button class="btn btn-secondary btn-sm alert-action" id="pendingSignBtn">Voir le document</button>
       </div>
 
+      <div class="alert-bar" id="fichePanne" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+        <span id="fichePanneTexte">—</span>
+      </div>
+
       <div class="recap-bar">
         <div class="recap-bar-left">
           <span class="recap-title">Récapitulatif</span>
@@ -615,9 +620,46 @@
 <script src="nav.js"></script>
 <script src="saga-pdf.js"></script>
 <script>
+  /* L'icône des documents est définie avant tout rendu, et non plus après.
+     Déclarée en `const` sous les appels de rendu, elle n'existait pas encore
+     quand la fiche dessinait la liste des pièces jointes : toute cliente en
+     ayant déjà une voyait son script s'arrêter là, au chargement. Le
+     glisser-déposer, installé plus bas, n'était alors jamais mis en place et
+     le navigateur ouvrait le document dans un onglet au lieu de l'ajouter. */
+  const FILE_ICON_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>';
+
   renderSagaSidebar('clientes');
   initRowLinks();
   initTabs();
+
+  /* Une fiche ne doit pas tomber en entier parce qu'une de ses parties bute
+     sur une donnée. Chaque étape du démarrage est isolée : si l'une
+     échoue, les suivantes ont quand même lieu, et la panne se dit à
+     l'écran au lieu de rester dans la console du navigateur. */
+  var SAGA_PANNES = [];
+  function sagaEtape(nom, fn) {
+    try {
+      fn();
+    } catch (e) {
+      SAGA_PANNES.push(nom);
+      console.error('Fiche cliente — ' + nom + ' :', e);
+      var bandeau = document.getElementById('fichePanne');
+      var texte = document.getElementById('fichePanneTexte');
+      if (!bandeau || !texte) return;
+      /* Le détail technique est affiché avec le reste : c'est lui qui
+         désigne la donnée fautive, et une capture d'écran suffit alors
+         à la corriger sans avoir à ouvrir la console du navigateur. */
+      texte.innerHTML = 'Cette fiche n’a pas pu être affichée en entier ('
+        + sagaEchapper(SAGA_PANNES.join(', ')) + '). Le reste du CRM fonctionne ; '
+        + 'signalez-le pour que la donnée en cause soit corrigée.'
+        + '<br/><span class="muted" style="font-size:.78rem;">'
+        + sagaEchapper(String((e && e.message) || e)) + '</span>';
+      bandeau.style.display = 'flex';
+    }
+  }
+
+  // Le dépôt de documents est posé avant tout ce qui peut échouer
+  sagaEtape('glisser-déposer', installerDepotFichiers);
 
   // ================== FICHES CLIENTES ==================
   // La fiche affichée dépend du paramètre ?c= dans l'adresse
@@ -1612,10 +1654,12 @@
     });
   }
 
-  renderClient();
-  refreshRecap();
-
-  const FILE_ICON_PDF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3h6l6 6v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>';
+  sagaEtape('ventes et coordonnées', renderClient);
+  sagaEtape('récapitulatif', refreshRecap);
+  /* renderClient() dessine déjà la liste des documents, mais tard dans son
+     parcours : si elle bute avant, l'onglet resterait vide alors que les
+     pièces sont bien là. On la redessine donc pour elle-même. */
+  sagaEtape('pièces jointes', renderPiecesJointes);
 
   const CONTRAT_INPUT_IDS = ['fAdresse', 'fFixationPrix', 'fCommission', 'fInvendus', 'fDate'];
 
@@ -1900,25 +1944,73 @@
     });
   }
 
-  /* Glisser-déposer : c'est ce que l'écran promet depuis toujours. */
-  (function () {
-    const zone = document.getElementById('fichiersDrop');
-    if (!zone) return;
+  /* Glisser-déposer : c'est ce que l'écran promet depuis toujours.
+     ------------------------------------------------------------------
+     Cette installation se fait tout en haut du script, avant le rendu de
+     la fiche. Elle était placée ici, après lui : il suffisait qu'une
+     cliente ait une donnée que le rendu ne savait pas lire pour que le
+     script s'arrête avant d'y arriver. L'écouteur n'était alors jamais
+     posé, le navigateur reprenait la main, et le document lâché sur la
+     fiche s'ouvrait dans un onglet au lieu d'être ajouté — sur ces
+     clientes-là seulement, ce qui rendait la panne incompréhensible.
+
+     Le garde-fou posé sur la fenêtre achève le travail : quoi qu'il
+     arrive ensuite, un fichier lâché sur le CRM ne s'ouvre plus jamais
+     à la place de la page. */
+  function porteDesFichiers(e) {
+    var types = e.dataTransfer && e.dataTransfer.types;
+    if (!types) return false;
+    return Array.prototype.indexOf.call(types, 'Files') !== -1;
+  }
+
+  function installerDepotFichiers() {
+    /* La fenêtre d'abord : même si tout le reste échoue, le navigateur
+       n'ouvre plus le document à la place du CRM. */
     ['dragenter', 'dragover'].forEach(function (ev) {
-      zone.addEventListener(ev, function (e) {
-        e.preventDefault();
-        zone.style.outline = '2px dashed var(--brand)';
-        zone.style.outlineOffset = '6px';
+      window.addEventListener(ev, function (e) {
+        if (porteDesFichiers(e)) e.preventDefault();
       });
     });
-    ['dragleave', 'drop'].forEach(function (ev) {
-      zone.addEventListener(ev, function () { zone.style.outline = ''; });
+    window.addEventListener('drop', function (e) {
+      if (!porteDesFichiers(e)) return;
+      e.preventDefault();
+      // Déjà traité par la zone elle-même : ne pas ajouter deux fois
+      if (e.target && e.target.closest && e.target.closest('#fichiersDrop')) return;
+      /* Visé à côté de la zone, l'onglet des pièces jointes étant ouvert :
+         c'est bien un document qu'on voulait ajouter. */
+      var panneau = document.getElementById('tab-fichiers');
+      if (panneau && panneau.classList.contains('active')) {
+        ajouterPiecesJointes(e.dataTransfer.files);
+      }
+    });
+
+    var zone = document.getElementById('fichiersDrop');
+    if (!zone) return;
+    /* Le survol passe d'un enfant à l'autre : sans ce compte, le cadre
+       clignotait dès qu'on traversait une ligne de la liste. */
+    var dedans = 0;
+    function surligner(actif) {
+      zone.style.outline = actif ? '2px dashed var(--brand)' : '';
+      zone.style.outlineOffset = actif ? '6px' : '';
+    }
+    zone.addEventListener('dragenter', function (e) {
+      if (!porteDesFichiers(e)) return;
+      e.preventDefault(); dedans++; surligner(true);
+    });
+    zone.addEventListener('dragover', function (e) {
+      if (!porteDesFichiers(e)) return;
+      e.preventDefault(); surligner(true);
+    });
+    zone.addEventListener('dragleave', function () {
+      dedans = Math.max(0, dedans - 1);
+      if (!dedans) surligner(false);
     });
     zone.addEventListener('drop', function (e) {
       e.preventDefault();
+      dedans = 0; surligner(false);
       if (e.dataTransfer && e.dataTransfer.files) ajouterPiecesJointes(e.dataTransfer.files);
     });
-  })();
+  }
 
   function addContractFile(name, subHtml, apercuId) {
     document.getElementById('fichiersEmpty').style.display = 'none';
@@ -2091,7 +2183,7 @@
     btn.classList.add('active');
   });
 
-  renderNotes();
+  sagaEtape('notes', renderNotes);
 
   // ================== BON DE RESTITUTION ==================
 
