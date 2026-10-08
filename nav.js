@@ -1301,6 +1301,15 @@ function sagaDecompte(live, part) {
      affichait. `ventes` reste le brut, pour le détail. */
   var ca = sagaCentimes(ventes - portGiveaway);
 
+  /* On ne réclame jamais d'argent à une cliente : si ses ventes ont été
+     remboursées alors que le port des giveaways a bien été payé, le net
+     tomberait sous zéro. Il est plafonné, et ce qui n'est pas repris lui est
+     offert — donc retiré de la marge de Saga, sinon elle afficherait un
+     bénéfice qui n'existe pas. */
+  var netBrut = sagaCentimes(base - commSaga - portGiveaway);
+  var net = Math.max(0, netBrut);
+  var absorbe = sagaCentimes(net - netBrut);
+
   var paiement = (live.paiements || {})[id] || null;
   return {
     id: id, cle: (arts[0] && arts[0].cle) || '',
@@ -1311,8 +1320,9 @@ function sagaDecompte(live, part) {
     commSaga: commSaga, commApporteur: commApporteur, apporteur: t.apporteur,
     fraisAnnexes: fraisAnnexes, rembourses: sagaCentimes(rembourses),
     nbRembourses: arts.filter(sagaEstRembourse).length,
-    margeSaga: sagaCentimes(commSaga - fraisAnnexes - commApporteur),
-    net: sagaCentimes(base - commSaga - portGiveaway),
+    absorbe: absorbe,
+    margeSaga: sagaCentimes(commSaga - fraisAnnexes - commApporteur - absorbe),
+    net: net,
     paye: !!paiement, paiement: paiement
   };
 }
@@ -1591,7 +1601,7 @@ function sagaLiveDepuisWhatnot(analyse, options) {
 function sagaTotauxLive(live) {
   var t = { ventes: 0, ca: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0,
             portGiveaway: 0, net: 0, reste: 0, clientes: 0,
-            fraisAnnexes: 0, rembourses: 0, nbRembourses: 0, margeSaga: 0 };
+            fraisAnnexes: 0, rembourses: 0, nbRembourses: 0, margeSaga: 0, absorbe: 0 };
   sagaPartsDuLive(live).forEach(function (part) {
     var d = sagaDecompte(live, part);
     t.clientes++;
@@ -1599,6 +1609,7 @@ function sagaTotauxLive(live) {
     t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
     t.portGiveaway += d.portGiveaway;
     t.rembourses += d.rembourses; t.nbRembourses += d.nbRembourses;
+    t.absorbe += d.absorbe;
     if (!d.paye) t.reste += d.net;
   });
 
@@ -1607,10 +1618,10 @@ function sagaTotauxLive(live) {
      n'aurait plus aucune part sur qui les imputer — ils resteraient invisibles
      alors que l'argent est bien sorti. */
   t.fraisAnnexes = sagaCentimes(Number(live.fraisAnnexes || 0));
-  t.margeSaga = t.commSaga - t.fraisAnnexes - t.commApporteur;
+  t.margeSaga = t.commSaga - t.fraisAnnexes - t.commApporteur - t.absorbe;
 
   ['ventes','ca','giveaways','base','commSaga','commApporteur','portGiveaway','net','reste',
-   'fraisAnnexes','rembourses','margeSaga']
+   'fraisAnnexes','rembourses','margeSaga','absorbe']
     .forEach(function (k) { t[k] = sagaCentimes(t[k]); });
   return t;
 }
@@ -1811,14 +1822,21 @@ function sagaDecompteDirect(v) {
     ? Math.max(0, sagaCentimes(commSaga * t.apporteurPct / 100))
     : 0;
   var frais = rembourse ? 0 : (v.frais || 0);
+
+  // Même règle que sur un live : rien n'est réclamé à la cliente
+  var netBrutDirect = sagaCentimes(montant - commSaga - frais);
+  var netDirect = Math.max(0, netBrutDirect);
+  var absorbeDirect = sagaCentimes(netDirect - netBrutDirect);
+
   return {
     ventes: montant, giveaways: 0, base: montant,
     commSaga: commSaga, commApporteur: commApporteur, frais: frais,
     fraisAnnexes: 0, rembourse: rembourse,
     rembourses: rembourse ? sagaCentimes(v.montant) : 0,
     nbRembourses: rembourse ? 1 : 0,
-    margeSaga: sagaCentimes(commSaga - commApporteur),
-    net: sagaCentimes(montant - commSaga - frais),
+    absorbe: absorbeDirect,
+    margeSaga: sagaCentimes(commSaga - commApporteur - absorbeDirect),
+    net: netDirect,
     apporteur: v.apporteur ? t.apporteur : ''
   };
 }
@@ -2420,6 +2438,7 @@ var SAGA_VERSIONS = [
     'Nouveau champ « frais annexes » sur un live, à saisir à l’import ou dans ses informations : la valeur des cadeaux offerts et les achats faits pour ce live. Ils sont à la charge de Saga, jamais refacturés à la cliente, et se répartissent entre les dressings au prorata des ventes. Ils réduisent la marge et l’assiette des apporteurs.',
     'Les écrans montrent enfin la marge réelle — commission moins frais annexes moins part des apporteurs — là où ils n’affichaient que la commission encaissée. Visible par cliente, par live et sur les rapports.',
     'Un article peut être marqué remboursé, avec son motif et sa date : pièce non conforme, colis perdu, litige… Il reste visible, barré, mais sort de tous les calculs — ni la cliente ni l’apporteur ne sont payés dessus, et la commission baisse d’autant. Si la cliente a déjà été réglée, l’écart à récupérer est annoncé avant de valider.',
+    'Le net d’une cliente ne peut jamais devenir négatif : si ses ventes sont remboursées alors que le port des giveaways a bien été payé, ce port reste à la charge de Saga plutôt que de lui être réclamé. Il est alors retiré de la marge du live, pour qu’elle ne montre pas un bénéfice qui n’existe pas.',
     'Le contrat d’apporteur annonçait un pourcentage « du produit des ventes » : il décrit maintenant le calcul réellement appliqué, le plancher à zéro sur un live déficitaire et le sort des articles remboursés.'
   ] },
   { version: '1.29.2', date: '2026-09-30', titre: 'Une pièce jointe glissée s’ouvrait dans un onglet au lieu de s’ajouter', points: [

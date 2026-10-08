@@ -442,17 +442,17 @@
       var statut = d.paye
         ? '<span class="chip good">Payé</span><div class="muted" style="font-size:.72rem; margin-top:3px;">' +
           sagaDateFR(d.paiement.date) + ' · ' + d.paiement.mode + '</div>'
-        : d.net < 0
-          ? '<span class="chip warn">À récupérer</span>' +
-            '<div class="muted" style="font-size:.72rem; margin-top:3px;">' +
-            sagaEUR(-d.net) + ' sur son prochain live</div>'
-          : d.net === 0
-            ? '<span class="chip neutral">Rien à reverser</span>'
-            : '<span class="chip warn">En attente</span>';
-      /* Un net négatif n'est pas un virement à faire : il arrive quand les
+        : d.net === 0
+          ? '<span class="chip neutral">Rien à reverser</span>' +
+            (d.absorbe > 0
+              ? '<div class="muted" style="font-size:.72rem; margin-top:3px;">' +
+                sagaEUR(d.absorbe) + ' de port à votre charge</div>'
+              : '')
+          : '<span class="chip warn">En attente</span>';
+      /* Rien à reverser n'est pas un virement à faire : cela arrive quand les
          ventes ont été remboursées alors que le port des giveaways, lui, a bien
-         été payé. C'est donc une somme à récupérer sur son prochain live, et
-         proposer « Payer » n'aurait aucun sens. */
+         été payé. Ce port reste à la charge de Saga — on ne réclame rien à la
+         cliente — et proposer « Payer » n'aurait aucun sens. */
       var action = d.paye
         ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); annulerPaiement(\'' + id + '\')">Annuler</button>'
         : (d.net > 0
@@ -473,8 +473,7 @@
         '<td class="num tabular">' + sagaEUR(d.commApporteur) + '</td>' +
         '<td class="num tabular"' + (d.margeSaga < 0 ? ' style="color:var(--critical)"' : '') + '>' +
           sagaEUR(d.margeSaga) + '</td>' +
-        '<td class="num tabular"><strong' + (d.net < 0 ? ' style="color:var(--critical)"' : '') + '>' +
-          sagaEUR(d.net) + '</strong></td>' +
+        '<td class="num tabular"><strong>' + sagaEUR(d.net) + '</strong></td>' +
         '<td>' + statut + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' + action +
           '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerCliente(\'' + id + '\')">PDF</button></td>' +
