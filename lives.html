@@ -49,6 +49,21 @@
             <label class="form-label" for="csvCategorie">Catégorie (facultatif)</label>
             <input class="form-input" id="csvCategorie" placeholder="Ex. Sacs &amp; accessoires" />
           </div>
+          <div class="form-field">
+            <label class="form-label" for="csvFraisAnnexes">Frais annexes du live (€) — à votre charge</label>
+            <input class="form-input" type="number" id="csvFraisAnnexes" step="0.01" min="0"
+                   placeholder="Ex. 70" />
+            <span class="card-note">
+              Ce que ce live vous a coûté : cadeaux offerts, achats, emballages. Ces frais ne
+              sont <strong>jamais</strong> refacturés à la cliente — ils réduisent votre marge
+              et l'assiette de vos apporteurs. C'est ce qui permet de lire le bénéfice réel du
+              live, et non la seule commission.
+            </span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="csvFraisAnnexesNote">Ce que couvrent ces frais (facultatif)</label>
+            <input class="form-input" id="csvFraisAnnexesNote" placeholder="Ex. parfum offert, pochettes" />
+          </div>
           <div style="display:flex; gap:10px;">
             <button class="btn btn-primary btn-sm" onclick="runImport()">Analyser le fichier</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleImport()">Annuler</button>
@@ -369,6 +384,8 @@
     document.getElementById('csvFile').value = '';
     document.getElementById('csvSession').value = '';
     document.getElementById('csvCategorie').value = '';
+    document.getElementById('csvFraisAnnexes').value = '';
+    document.getElementById('csvFraisAnnexesNote').value = '';
     document.getElementById('importResult').innerHTML = '';
     ANALYSE = null;
   }
@@ -624,7 +641,9 @@
 
     var live = sagaLiveDepuisWhatnot(ANALYSE, {
       titre: document.getElementById('csvSession').value.trim(),
-      categorie: document.getElementById('csvCategorie').value.trim()
+      categorie: document.getElementById('csvCategorie').value.trim(),
+      fraisAnnexes: parseFloat(document.getElementById('csvFraisAnnexes').value) || 0,
+      fraisAnnexesNote: document.getElementById('csvFraisAnnexesNote').value.trim()
     , affectations: affectations, sansLettre: sansLettre });
 
     var lives = sagaLives();

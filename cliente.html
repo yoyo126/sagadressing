@@ -139,7 +139,7 @@
           </div>
 
           <div id="directSaleForm" class="form-grid" style="display:none; max-width:520px; margin-bottom:18px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface-alt);">
-            <p class="card-note" style="margin:0 0 2px;">Vente conclue hors Whatnot (main propre, virement, autre plateforme…). Ni frais Whatnot ni giveaways ne s'appliquent. La commission Saga (30 %) est retenue automatiquement ; celle de l'apporteur est à votre choix ci-dessous.</p>
+            <p class="card-note" style="margin:0 0 2px;">Vente conclue hors Whatnot (main propre, virement, autre plateforme…). Ni frais Whatnot ni giveaways ne s'appliquent. La commission Saga est retenue automatiquement. Rémunérer l'apporteur reste à votre choix ci-dessous : sa part se prend sur votre marge, et ne change rien au net de la cliente.</p>
             <div class="form-field">
               <label class="form-label">Date de la vente</label>
               <input class="form-input" type="date" id="dsDate" />
@@ -178,7 +178,7 @@
             <div class="calc-recap" id="dsRecap">
               <div class="calc-row"><span>Montant de la vente</span><span class="tabular" id="dsRecapMontant">—</span></div>
               <div class="calc-row"><span>− Commission Saga (30 %)</span><span class="tabular" id="dsRecapSaga">—</span></div>
-              <div class="calc-row" id="dsRecapApporteurRow" style="display:none;"><span>− Commission apporteur (8 %)</span><span class="tabular" id="dsRecapApporteur">—</span></div>
+              <div class="calc-row" id="dsRecapApporteurRow" style="display:none;"><span id="dsRecapApporteurLabel">Dont commission apporteur (sur votre marge)</span><span class="tabular" id="dsRecapApporteur">—</span></div>
               <div class="calc-row" id="dsRecapFraisRow" style="display:none;"><span>− Frais d'envoi</span><span class="tabular" id="dsRecapFrais">—</span></div>
               <div class="calc-row total"><span id="dsRecapNetLabel">Net à reverser</span><span class="tabular" id="dsRecapNet">—</span></div>
             </div>
@@ -774,7 +774,15 @@
       if (l.portGiveaway > 0) {
         det.push('Port des giveaways : ' + fmtEURcents(l.portGiveaway));
       }
-      if (l.apporteurMontant > 0) det.push('Apporteur ' + CLIENT.apporteur + ' : ' + fmtEURcents(l.apporteurMontant));
+      /* L'apporteur d'affaires est payé sur la marge de Saga, comme un
+         commercial : il ne retire rien à la cliente et n'a donc rien à faire
+         sur sa fiche — ni ici, ni sur ses relevés. */
+      if (l.origine === 'direct' && l.rembourse) {
+        det.push('Remboursé' + (l.motifRemb ? ' · ' + l.motifRemb : ''));
+      } else if (l.nbRembourses > 0) {
+        det.push(l.nbRembourses + (l.nbRembourses > 1 ? ' articles remboursés : ' : ' article remboursé : ')
+          + fmtEURcents(l.rembourses));
+      }
       if (l.frais > 0) det.push("Frais d'envoi : " + fmtEURcents(l.frais));
       if (det.length) label += '<div class="muted" style="font-size:.8rem; margin-top:3px;">' + det.join(' · ') + '</div>';
 
@@ -802,6 +810,9 @@
         + (facture ? 'Modifier la facture' : 'Facturer') + '</button>';
       action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerLigne(' + i + ')">PDF</button>';
       if (l.origine === 'direct') {
+        action += l.rembourse
+          ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); annulerRemboursementDirect(\'' + l.venteId + '\')">Rétablir</button>'
+          : '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); rembourserVenteDirecte(\'' + l.venteId + '\')">Rembourser</button>';
         action += '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); supprimerVenteDirecte(\'' + l.venteId + '\')">Supprimer</button>';
       }
 
@@ -835,7 +846,8 @@
     var apField = document.getElementById('dsApporteurField');
     if (CLIENT.apporteur) {
       document.getElementById('dsApporteurLabel').innerHTML =
-        'Verser sa commission à <strong>' + CLIENT.apporteur + '</strong> (' + CLIENT.apporteurPct + ' %) sur cette vente';
+        'Verser sa commission à <strong>' + CLIENT.apporteur + '</strong> ('
+        + CLIENT.apporteurPct + ' % de votre commission) sur cette vente';
       apField.style.display = 'flex';
     } else {
       apField.style.display = 'none';
@@ -868,13 +880,19 @@
     var contact = [sagaTelephone(CLIENT.tel), CLIENT.email].filter(Boolean).join('  ·  ');
     if (contact) pdf.paragraphe(contact);
 
-    var lignes = [['Ventes', fmtEUR(l.ventes)]];
+    var lignes = [];
+    /* Un remboursement fait baisser son net : elle doit pouvoir le lire, pas
+       le deviner. On repart donc du brut pour montrer la déduction. */
+    if ((l.rembourses || 0) > 0) {
+      lignes.push(['Ventes avant remboursement', fmtEUR(l.ventes + l.rembourses)]);
+      lignes.push(['− Article(s) remboursé(s)', fmtEUR(l.rembourses)]);
+    }
+    lignes.push(['Ventes', fmtEUR(l.ventes)]);
     if (l.portGiveaway > 0) {
       lignes.push(['− Frais de port des giveaways', fmtEUR(l.portGiveaway)]);
       lignes.push(['Chiffre d\'affaires encaissé', fmtEUR(l.ca)]);
     }
     lignes.push(['− Commission Saga (' + CLIENT.commission + ' %)', fmtEUR(l.commission)]);
-    if (l.apporteurMontant > 0) lignes.push(['− Commission apporteur (' + CLIENT.apporteur + ')', fmtEUR(l.apporteurMontant)]);
     if (l.frais > 0) lignes.push(["− Frais d'envoi", fmtEUR(l.frais)]);
     lignes.push(['Net à reverser', fmtEUR(l.net)]);
 
@@ -894,8 +912,10 @@
           { titre: 'Type',    cle: 'type',    largeur: 21, discret: true }
         ], arts.map(function (a) {
           return {
-            libelle: a.libelle, montant: fmtEUR(a.montant),
-            type: a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente'
+            libelle: a.libelle + (sagaEstRembourse(a) && a.motifRemb ? ' — ' + a.motifRemb : ''),
+            montant: fmtEUR(a.montant),
+            type: sagaEstRembourse(a) ? 'Remboursé'
+              : a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente'
           };
         }));
       }
@@ -1203,11 +1223,12 @@
       t.ventes += l.ventes; t.ca += l.ca; t.commission += l.commission;
       t.giveaways += l.portGiveaway || 0;
       t.apporteur += l.apporteurMontant || 0; t.frais += l.frais || 0;
+      t.rembourses += l.rembourses || 0;
       t.net += l.net;
       if (l.paye) t.regle += l.net; else t.reste += l.net;
       return t;
     }, { ventes: 0, ca: 0, giveaways: 0, commission: 0, apporteur: 0, frais: 0,
-         net: 0, regle: 0, reste: 0 });
+         rembourses: 0, net: 0, regle: 0, reste: 0 });
 
     var pdf = sagaNouveauPdf('Relevé ' + (CLIENT.nom || CLIENT.prenom));
     pdf.titre('Relevé des ventes');
@@ -1248,8 +1269,10 @@
       decompte.push(['− Frais de port des giveaways', fmtEUR(totaux.giveaways)]);
     }
     decompte.push(['Chiffre d\'affaires encaissé', fmtEUR(totaux.ca)]);
+    if (totaux.rembourses > 0) {
+      decompte.push(['dont article(s) remboursé(s), déjà déduit(s)', fmtEUR(totaux.rembourses)]);
+    }
     decompte.push(['− Commission Saga', fmtEUR(totaux.commission)]);
-    if (totaux.apporteur > 0) decompte.push(['− Commission apporteur (' + CLIENT.apporteur + ')', fmtEUR(totaux.apporteur)]);
     if (totaux.frais > 0) decompte.push(['− Frais d\'envoi', fmtEUR(totaux.frais)]);
     decompte.push(['− Déjà reversé', fmtEUR(totaux.regle)]);
     decompte.push(['Reste à reverser', fmtEUR(totaux.reste)]);
@@ -1270,8 +1293,10 @@
           { titre: 'Type',    cle: 'type',    largeur: 21, discret: true }
         ], arts.map(function (a) {
           return {
-            libelle: a.libelle, montant: fmtEUR(a.montant),
-            type: a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente'
+            libelle: a.libelle + (sagaEstRembourse(a) && a.motifRemb ? ' — ' + a.motifRemb : ''),
+            montant: fmtEUR(a.montant),
+            type: sagaEstRembourse(a) ? 'Remboursé'
+              : a.type === 'giveaway' ? 'Giveaway' : a.type === 'horslive' ? 'Hors Whatnot' : 'Vente'
           };
         }));
       });
@@ -1526,16 +1551,24 @@
     refreshDirectSaleRecap();
   }
 
-  // Calcul d'une vente hors live : net = montant − commission Saga − commission apporteur (si choisie)
+  /* Calcul d'une vente hors live.
+       net à reverser      = montant − commission Saga − frais d'envoi
+       commission apporteur = commission Saga × son taux
+
+     Sa commission se prend sur celle de Saga, pas sur la vente : cocher ou
+     décocher la case ne change donc plus rien à ce que touche la cliente,
+     seulement ce que Saga garde. C'était l'inverse avant, et la cliente
+     gagnait 20 points dès qu'on ne payait pas l'apporteur. */
   function computeDirectSale() {
     const montant = parseFloat(document.getElementById('dsMontant').value) || 0;
     const frais = parseFloat(document.getElementById('dsFrais').value) || 0;
     const withApporteur = document.getElementById('dsApporteur').checked;
     const saga = montant * CLIENTE_COMMISSION_PCT / 100;
-    const apporteur = withApporteur ? montant * APPORTEUR_PCT / 100 : 0;
+    const apporteur = withApporteur ? Math.max(0, saga * APPORTEUR_PCT / 100) : 0;
     return {
       montant: montant, saga: saga, apporteur: apporteur, frais: frais,
-      net: montant - saga - apporteur - frais,
+      net: montant - saga - frais,
+      marge: saga - apporteur,
       withApporteur: withApporteur
     };
   }
@@ -1578,6 +1611,46 @@
     renderClient();
     refreshRecap();
     toggleDirectSaleForm();
+  }
+
+  /* ============ Remboursement d'une vente hors live ============
+     Même règle que sur un live : la vente reste visible, barrée d'un motif,
+     mais elle ne rapporte plus rien — ni à la cliente, ni à l'apporteur. */
+  function rembourserVenteDirecte(id) {
+    var ventes = sagaVentesDirectes();
+    var v = ventes.filter(function (x) { return x.id === id; })[0];
+    if (!v || sagaEstRembourse(v)) return;
+    var avant = sagaDecompteDirect(v);
+    var alerte = v.paye
+      ? CLIENT.prenom + ' a déjà été réglée pour cette vente : ' + fmtEUR(avant.net)
+        + ' seront à récupérer sur son prochain versement.'
+      : '';
+    sagaModaleRemboursement(
+      { libelle: v.libelle, montant: v.montant, alerte: alerte },
+      function (r) {
+        v.rembourse = true;
+        v.motifRemb = r.motif;
+        v.dateRemb = r.date;
+        sagaSaveVentesDirectes(ventes);
+        sagaTracer('Remboursement vente hors live', CLIENT.nom, v.libelle + ' — ' + r.motif);
+        renderClient();
+        refreshRecap();
+      });
+  }
+
+  function annulerRemboursementDirect(id) {
+    var ventes = sagaVentesDirectes();
+    var v = ventes.filter(function (x) { return x.id === id; })[0];
+    if (!v || !sagaEstRembourse(v)) return;
+    if (!confirm('Rétablir la vente « ' + v.libelle + ' » (' + fmtEUR(v.montant)
+      + ') ? Elle rentrera de nouveau dans le décompte.')) return;
+    delete v.rembourse;
+    delete v.motifRemb;
+    delete v.dateRemb;
+    sagaSaveVentesDirectes(ventes);
+    sagaTracer('Remboursement annulé', CLIENT.nom, v.libelle);
+    renderClient();
+    refreshRecap();
   }
 
   function supprimerVenteDirecte(id) {

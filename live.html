@@ -68,6 +68,20 @@
             </div>
           </div>
           <div class="form-field">
+            <label class="form-label" for="eFraisAnnexes">Frais annexes du live (€) — à votre charge</label>
+            <input class="form-input" type="number" id="eFraisAnnexes" step="0.01" min="0" />
+            <span class="card-note">
+              Valeur des cadeaux offerts, achats faits pour ce live. Supportés par Saga, jamais
+              par la cliente : ils ne touchent pas son net. Ils se déduisent de votre marge et de
+              l'assiette de vos apporteurs, répartis entre les dressings au prorata des ventes.
+              À ne pas confondre avec le <em>port</em> des giveaways, lui à la charge de la cliente.
+            </span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="eFraisAnnexesNote">Ce que couvrent ces frais</label>
+            <input class="form-input" id="eFraisAnnexesNote" placeholder="Ex. parfum offert, pochettes" />
+          </div>
+          <div class="form-field">
             <label class="form-label" for="eCategorie">Catégorie</label>
             <input class="form-input" id="eCategorie" placeholder="Ex. Sacs &amp; accessoires" />
           </div>
@@ -100,7 +114,9 @@
               <th class="num">Giveaways</th>
               <th class="num">CA encaissé</th>
               <th class="num">Comm. Saga</th>
+              <th class="num">Frais annexes</th>
               <th class="num">Comm. apporteur</th>
+              <th class="num">Marge Saga</th>
               <th class="num">Net reversé</th>
               <th>Statut</th>
               <th></th>
@@ -185,14 +201,22 @@
             <p class="card-note">
               <strong>Base</strong> = ventes × (1 − frais Whatnot %)<br/>
               <strong>Commission Saga</strong> = base × % cliente<br/>
-              <strong>Commission apporteur</strong> = base × % apporteur<br/>
-              <strong>Net reversé</strong> = base − commission Saga − commission apporteur − giveaways
+              <strong>Net reversé</strong> = base − port des giveaways − commission Saga<br/>
+              <strong>Commission apporteur</strong> = (commission Saga − frais annexes) × son %<br/>
+              <strong>Votre marge</strong> = commission Saga − frais annexes − commission apporteur
+            </p>
+            <p class="card-note">
+              L'apporteur d'affaires est payé sur votre marge, comme un commercial : son
+              pourcentage ne touche jamais le net de la cliente, qui n'a pas à le connaître.
+              Les frais annexes — cadeaux offerts, achats — sont à votre charge et réduisent
+              son assiette à hauteur de sa part.
             </p>
             <p class="card-note">
               Les ventes hors Whatnot ne supportent pas les frais de plateforme.
-              Les giveaways correspondent aux frais de port des cadeaux : Whatnot ne remonte
-              pas la valeur du cadeau, financé par Saga. Ils sont déduits du net de la cliente,
-              au prorata de ses ventes sur le live.
+              Les giveaways correspondent aux frais de <em>port</em> des cadeaux : Whatnot ne
+              remonte pas la valeur du cadeau, financé par Saga. Ils sont déduits du net de la
+              cliente, au prorata de ses ventes sur le live. Un article remboursé sort du
+              calcul : plus personne n'est payé dessus.
             </p>
           </div>
           <div class="panel">
@@ -384,15 +408,23 @@
         stat('CA encaissé de ' + d.prenom, sagaEUR(d.ca)) +
         stat('Commission Saga', sagaEUR(d.commSaga)) +
         stat('Giveaways déduits', sagaEUR(d.portGiveaway)) +
-        stat('Net à reverser', sagaEUR(d.net), true);
+        (d.rembourses > 0 ? stat('Remboursé', sagaEUR(d.rembourses)) : '') +
+        stat('Net à reverser', sagaEUR(d.net), true) +
+        stat('Votre marge', sagaEUR(d.margeSaga), true);
       return;
     }
     var t = sagaTotauxLive(LIVE);
+    /* « Commission Saga » n'a jamais été le bénéfice : les cadeaux offerts et
+       les achats du live n'y étaient pas, et la part des apporteurs non plus.
+       La marge est le seul chiffre qui dise ce que le live a rapporté. */
     row.innerHTML =
       stat('CA encaissé', sagaEUR(t.ca)) +
       stat('Commission Saga', sagaEUR(t.commSaga)) +
-      stat('Commission apporteurs', sagaEUR(t.commApporteur)) +
-      stat('Reste à reverser', sagaEUR(t.reste), true);
+      (t.fraisAnnexes > 0 ? stat('Frais annexes', sagaEUR(t.fraisAnnexes)) : '') +
+      (t.commApporteur > 0 ? stat('Commission apporteurs', sagaEUR(t.commApporteur)) : '') +
+      (t.rembourses > 0 ? stat('Remboursé', sagaEUR(t.rembourses)) : '') +
+      stat('Reste à reverser', sagaEUR(t.reste)) +
+      stat('Votre marge', sagaEUR(t.margeSaga), true);
   }
 
   function stat(label, valeur, accent) {
@@ -410,10 +442,22 @@
       var statut = d.paye
         ? '<span class="chip good">Payé</span><div class="muted" style="font-size:.72rem; margin-top:3px;">' +
           sagaDateFR(d.paiement.date) + ' · ' + d.paiement.mode + '</div>'
-        : '<span class="chip warn">En attente</span>';
+        : d.net < 0
+          ? '<span class="chip warn">À récupérer</span>' +
+            '<div class="muted" style="font-size:.72rem; margin-top:3px;">' +
+            sagaEUR(-d.net) + ' sur son prochain live</div>'
+          : d.net === 0
+            ? '<span class="chip neutral">Rien à reverser</span>'
+            : '<span class="chip warn">En attente</span>';
+      /* Un net négatif n'est pas un virement à faire : il arrive quand les
+         ventes ont été remboursées alors que le port des giveaways, lui, a bien
+         été payé. C'est donc une somme à récupérer sur son prochain live, et
+         proposer « Payer » n'aurait aucun sens. */
       var action = d.paye
         ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); annulerPaiement(\'' + id + '\')">Annuler</button>'
-        : '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payerCliente(\'' + id + '\')">Payer</button>';
+        : (d.net > 0
+          ? '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); payerCliente(\'' + id + '\')">Payer</button>'
+          : '');
       var infos = sagaInfosCliente(id);
       // Cliquer sur la ligne filtre le live sur cette cliente, sur place
       return '<tr class="ligne-cliente" onclick="filtrerSur(\'' + id + '\')" title="Voir le détail de ' + infos.nom + ' sur ce live">' +
@@ -425,8 +469,12 @@
         '<td class="num tabular">' + sagaEUR(d.portGiveaway) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.ca) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.commSaga) + '</td>' +
+        '<td class="num tabular muted">' + sagaEUR(d.fraisAnnexes) + '</td>' +
         '<td class="num tabular">' + sagaEUR(d.commApporteur) + '</td>' +
-        '<td class="num tabular"><strong>' + sagaEUR(d.net) + '</strong></td>' +
+        '<td class="num tabular"' + (d.margeSaga < 0 ? ' style="color:var(--critical)"' : '') + '>' +
+          sagaEUR(d.margeSaga) + '</td>' +
+        '<td class="num tabular"><strong' + (d.net < 0 ? ' style="color:var(--critical)"' : '') + '>' +
+          sagaEUR(d.net) + '</strong></td>' +
         '<td>' + statut + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' + action +
           '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); imprimerCliente(\'' + id + '\')">PDF</button></td>' +
@@ -441,7 +489,10 @@
       '<td class="num tabular"><strong>' + sagaEUR(t.portGiveaway) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.ca) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.commSaga) + '</strong></td>' +
+      '<td class="num tabular"><strong>' + sagaEUR(t.fraisAnnexes) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.commApporteur) + '</strong></td>' +
+      '<td class="num tabular"><strong' + (t.margeSaga < 0 ? ' style="color:var(--critical)"' : '') + '>' +
+        sagaEUR(t.margeSaga) + '</strong></td>' +
       '<td class="num tabular"><strong>' + sagaEUR(t.net) + '</strong></td><td></td><td></td></tr>';
   }
 
@@ -558,15 +609,32 @@
     var arts = articlesAffiches();
     document.getElementById('articlesEmpty').style.display = arts.length ? 'none' : 'flex';
     document.getElementById('articlesBody').innerHTML = arts.map(function (a) {
+      var rembourse = sagaEstRembourse(a);
       return '<tr' + (SELECTION.indexOf(a.id) !== -1 ? ' style="background:var(--brand-soft);"' : '') + '>' +
         '<td><input type="checkbox" data-article="' + sagaEchapper(a.id) + '"'
           + (SELECTION.indexOf(a.id) !== -1 ? ' checked' : '')
           + ' onchange="cocherArticle(\'' + sagaEchapper(a.id) + '\', this.checked)" /></td>' +
-        '<td>' + a.libelle + '</td>' +
+        '<td>' + a.libelle +
+          (rembourse
+            ? '<div class="muted" style="font-size:.78rem; margin-top:3px;">Remboursé'
+              + (a.dateRemb ? ' le ' + sagaDateFR(a.dateRemb) : '')
+              + (a.motifRemb ? ' · ' + sagaEchapper(a.motifRemb) : '') + '</div>'
+            : '') + '</td>' +
         '<td><span class="tag-avatar" style="width:22px;height:22px;font-size:.7rem;">' + a.lettre + '</span></td>' +
-        '<td class="num tabular">' + sagaEUR(a.montant) + '</td>' +
-        '<td class="muted">' + libelleType(a.type) + '</td>' +
+        '<td class="num tabular"' + (rembourse ? ' style="text-decoration:line-through; opacity:.55;"' : '') + '>' +
+          sagaEUR(a.montant) + '</td>' +
+        '<td class="muted">' + (rembourse
+            ? '<span class="chip warn">Remboursé</span>'
+            : libelleType(a.type)) + '</td>' +
         '<td style="text-align:right; white-space:nowrap;">' +
+          /* Un giveaway n'est pas une vente mais le port d'un cadeau : il n'y a
+             rien à rembourser à un acheteur. Pour le corriger, on modifie ou on
+             supprime la ligne. */
+          (a.type === 'giveaway'
+            ? ''
+            : rembourse
+              ? '<button class="btn btn-ghost btn-sm" onclick="annulerRemboursement(\'' + a.id + '\')">Rétablir</button>'
+              : '<button class="btn btn-ghost btn-sm" onclick="rembourserArticle(\'' + a.id + '\')">Rembourser</button>') +
           '<button class="btn btn-ghost btn-sm" onclick="editerArticle(\'' + a.id + '\')">Modifier</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="supprimerArticle(\'' + a.id + '\')">Supprimer</button>' +
         '</td></tr>';
@@ -721,6 +789,61 @@
     annoncer._t = setTimeout(function () { box.style.display = 'none'; }, 6000);
   }
 
+  /* ============ Remboursements ============
+     Une pièce remboursée sort du calcul sans disparaître du live : la ligne
+     reste, barrée, avec son motif. C'est ce qui permet de répondre, plus tard,
+     à « pourquoi ce live a-t-il baissé ».
+
+     Le remboursement se répercute partout tout seul, puisque le décompte est
+     recalculé depuis les articles : net de la cliente, commission Saga, part
+     de l'apporteur. Si la cliente a déjà été réglée, l'écart est annoncé
+     avant de valider — pas découvert sur son prochain relevé. */
+  function rembourserArticle(id) {
+    var a = LIVE.articles.filter(function (x) { return x.id === id; })[0];
+    if (!a || sagaEstRembourse(a)) return;
+    var part = sagaPartArticle(a);
+
+    // Simulation : on mesure l'écart réel plutôt que de le recalculer à la main
+    var avant = sagaDecompte(LIVE, part);
+    a.rembourse = true;
+    var apres = sagaDecompte(LIVE, part);
+    a.rembourse = false;
+
+    var ecart = sagaCentimes(avant.net - apres.net);
+    var alerte = '';
+    if (avant.paye && ecart > 0) {
+      alerte = avant.prenom + ' a déjà été réglée pour ce live. Son net passe de '
+        + sagaEUR(avant.net) + ' à ' + sagaEUR(apres.net) + ' : il restera '
+        + sagaEUR(ecart) + ' à récupérer sur son prochain versement.';
+    }
+
+    sagaModaleRemboursement(
+      { libelle: a.libelle, montant: a.montant, alerte: alerte },
+      function (r) {
+        a.rembourse = true;
+        a.motifRemb = r.motif;
+        a.dateRemb = r.date;
+        persist();
+        renderTout();
+        annoncer('« ' + a.libelle + ' » est marqué remboursé. Net de '
+          + avant.prenom + ' : ' + sagaEUR(apres.net)
+          + (ecart > 0 ? ' (−' + sagaEUR(ecart) + ')' : '') + '.');
+      });
+  }
+
+  function annulerRemboursement(id) {
+    var a = LIVE.articles.filter(function (x) { return x.id === id; })[0];
+    if (!a || !sagaEstRembourse(a)) return;
+    if (!confirm('Rétablir « ' + a.libelle + ' » (' + sagaEUR(a.montant)
+      + ') comme vente ? Elle rentrera de nouveau dans le décompte.')) return;
+    delete a.rembourse;
+    delete a.motifRemb;
+    delete a.dateRemb;
+    persist();
+    renderTout();
+    annoncer('« ' + a.libelle + ' » est de nouveau compté comme vendu.');
+  }
+
   function supprimerArticle(id) {
     var a = LIVE.articles.filter(function (x) { return x.id === id; })[0];
     if (!a) return;
@@ -735,6 +858,8 @@
     document.getElementById('eTitre').value = LIVE.titre;
     document.getElementById('eDate').value = LIVE.date;
     document.getElementById('eFrais').value = LIVE.fraisPct || 0;
+    document.getElementById('eFraisAnnexes').value = LIVE.fraisAnnexes || 0;
+    document.getElementById('eFraisAnnexesNote').value = LIVE.fraisAnnexesNote || '';
     document.getElementById('eCategorie').value = LIVE.categorie;
     document.getElementById('editLivePanel').style.display = 'block';
     document.getElementById('eTitre').focus();
@@ -750,6 +875,8 @@
     LIVE.titre = titre;
     LIVE.date = document.getElementById('eDate').value || LIVE.date;
     LIVE.fraisPct = parseFloat(document.getElementById('eFrais').value) || 0;
+    LIVE.fraisAnnexes = Math.max(0, parseFloat(document.getElementById('eFraisAnnexes').value) || 0);
+    LIVE.fraisAnnexesNote = document.getElementById('eFraisAnnexesNote').value.trim();
     LIVE.categorie = document.getElementById('eCategorie').value.trim();
     persist();
     annulerEditionLive();

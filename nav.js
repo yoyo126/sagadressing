@@ -1202,6 +1202,32 @@ setTimeout(function () {
 /* Les parts d'un live, une par cliente présente, dans l'ordre d'apparition.
    `id` sert aux calculs, `lettre` à l'affichage. La part sans identifiant
    rassemble les articles pas encore attribués. */
+/* Un article remboursé n'a jamais rapporté : il sort de tous les calculs.
+   La ligne reste visible, avec son motif, pour qu'on sache pourquoi le
+   décompte a bougé — mais ni la cliente ni l'apporteur ne sont payés dessus,
+   et la commission Saga tombe avec. */
+function sagaEstRembourse(a) {
+  return !!(a && a.rembourse);
+}
+
+/* Frais annexes d'un live — valeur des cadeaux offerts, achats, emballages —
+   supportés par Saga et jamais par la cliente. Saisis une fois sur le live,
+   ils se répartissent entre ses dressings au prorata des ventes, la même clé
+   que le port des giveaways.
+
+   Ne pas confondre avec `portGiveaway`, qui est le *port* des cadeaux et
+   reste, lui, à la charge de la cliente : deux montants opposés dont les noms
+   se ressemblent de trop près. */
+function sagaFraisAnnexesPart(live, ventesPart) {
+  var total = Number((live && live.fraisAnnexes) || 0);
+  if (!total || !(total > 0)) return 0;
+  var ventesLive = ((live && live.articles) || [])
+    .filter(function (a) { return a.type !== 'giveaway' && !sagaEstRembourse(a); })
+    .reduce(function (s, a) { return s + a.montant; }, 0);
+  if (ventesLive <= 0) return 0;
+  return sagaCentimes(total * ventesPart / ventesLive);
+}
+
 function sagaPartsDuLive(live) {
   var vus = [], res = [];
   ((live && live.articles) || []).forEach(function (a) {
@@ -1215,14 +1241,24 @@ function sagaPartsDuLive(live) {
 
 /* Décompte d'un dressing sur un live, recalculé depuis ses articles.
    `part` est un identifiant de part, ou la part elle-même.
-   base = ventes − frais Whatnot ; net = base − giveaways − commissions */
+
+   base            = ventes − frais Whatnot
+   net reversé     = base − port des giveaways − commission Saga
+   commission app. = (commission Saga − frais annexes) × son taux
+   marge Saga      = commission Saga − frais annexes − commission apporteur
+
+   L'apporteur d'affaires est un commercial payé sur la marge : son taux ne
+   touche donc jamais le net de la cliente, qui ne doit rien savoir de lui. */
 function sagaDecompte(live, part) {
   var id = (part && part.id !== undefined) ? part.id : (part || '');
   var arts = live.articles.filter(function (a) { return sagaPartArticle(a) === id; });
-  var ventes = arts.filter(function (a) { return a.type !== 'giveaway'; })
+  var vendus = arts.filter(function (a) { return !sagaEstRembourse(a); });
+  var ventes = vendus.filter(function (a) { return a.type !== 'giveaway'; })
                    .reduce(function (s, a) { return s + a.montant; }, 0);
-  var giveaways = arts.filter(function (a) { return a.type === 'giveaway'; })
+  var giveaways = vendus.filter(function (a) { return a.type === 'giveaway'; })
                       .reduce(function (s, a) { return s + a.montant; }, 0);
+  var rembourses = arts.filter(sagaEstRembourse)
+                       .reduce(function (s, a) { return s + a.montant; }, 0);
   /* La lettre affichée est celle que portaient les articles ce soir-là : un
      changement de code ne réécrit pas les lives passés. */
   var lettre = (arts[0] && arts[0].lettre)
@@ -1238,13 +1274,21 @@ function sagaDecompte(live, part) {
     ? live.tauxParCode[id] : t.commission;
 
   // Une vente hors Whatnot ne supporte pas les frais de la plateforme
-  var soumisFrais = arts.filter(function (a) { return a.type === 'vente'; })
+  var soumisFrais = vendus.filter(function (a) { return a.type === 'vente'; })
                         .reduce(function (s, a) { return s + a.montant; }, 0);
-  var horsLive = arts.filter(function (a) { return a.type === 'horslive'; })
+  var horsLive = vendus.filter(function (a) { return a.type === 'horslive'; })
                      .reduce(function (s, a) { return s + a.montant; }, 0);
   var base = sagaCentimes(soumisFrais * (1 - (live.fraisPct || 0) / 100) + horsLive);
   var commSaga = sagaCentimes(base * pctSaga / 100);
-  var commApporteur = t.apporteur ? sagaCentimes(base * t.apporteurPct / 100) : 0;
+
+  var fraisAnnexes = sagaFraisAnnexesPart(live, ventes);
+
+  /* Son pourcentage porte sur ce que Saga gagne réellement, frais annexes
+     déduits — et non sur les ventes, ce qui le faisait sortir de la poche de
+     la cliente. Plancher à zéro : sur un live déficitaire, Saga absorbe. */
+  var commApporteur = t.apporteur
+    ? Math.max(0, sagaCentimes((commSaga - fraisAnnexes) * t.apporteurPct / 100))
+    : 0;
 
   /* Giveaways : le montant remonté par Whatnot correspond aux frais de port
      du cadeau — la plateforme n'en connaît pas la valeur, que Saga finance.
@@ -1265,7 +1309,10 @@ function sagaDecompte(live, part) {
     ventes: sagaCentimes(ventes), giveaways: sagaCentimes(giveaways), base: base,
     portGiveaway: sagaCentimes(portGiveaway),
     commSaga: commSaga, commApporteur: commApporteur, apporteur: t.apporteur,
-    net: sagaCentimes(base - commSaga - commApporteur - portGiveaway),
+    fraisAnnexes: fraisAnnexes, rembourses: sagaCentimes(rembourses),
+    nbRembourses: arts.filter(sagaEstRembourse).length,
+    margeSaga: sagaCentimes(commSaga - fraisAnnexes - commApporteur),
+    net: sagaCentimes(base - commSaga - portGiveaway),
     paye: !!paiement, paiement: paiement
   };
 }
@@ -1530,6 +1577,11 @@ function sagaLiveDepuisWhatnot(analyse, options) {
     /* Les montants importés sont déjà nets des frais Whatnot : les déduire
        une seconde fois amputerait la cliente. */
     fraisPct: 0,
+    /* Frais annexes : valeur des cadeaux offerts et achats faits pour ce live,
+       à la charge de Saga. Saisis à l'import tant qu'on les a en tête, ils se
+       répartissent ensuite entre les dressings au prorata des ventes. */
+    fraisAnnexes: Math.max(0, Number(options.fraisAnnexes) || 0),
+    fraisAnnexesNote: options.fraisAnnexesNote || '',
     encaisse: { statut: 'En attente', date: '' },
     articles: articles
   };
@@ -1537,16 +1589,28 @@ function sagaLiveDepuisWhatnot(analyse, options) {
 
 /* Lettres présentes sur un live, dans l'ordre d'apparition */
 function sagaTotauxLive(live) {
-  var t = { ventes: 0, ca: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0, portGiveaway: 0, net: 0, reste: 0, clientes: 0 };
+  var t = { ventes: 0, ca: 0, giveaways: 0, base: 0, commSaga: 0, commApporteur: 0,
+            portGiveaway: 0, net: 0, reste: 0, clientes: 0,
+            fraisAnnexes: 0, rembourses: 0, nbRembourses: 0, margeSaga: 0 };
   sagaPartsDuLive(live).forEach(function (part) {
     var d = sagaDecompte(live, part);
     t.clientes++;
     t.ventes += d.ventes; t.ca += d.ca; t.giveaways += d.giveaways; t.base += d.base;
     t.commSaga += d.commSaga; t.commApporteur += d.commApporteur; t.net += d.net;
     t.portGiveaway += d.portGiveaway;
+    t.rembourses += d.rembourses; t.nbRembourses += d.nbRembourses;
     if (!d.paye) t.reste += d.net;
   });
-  ['ventes','ca','giveaways','base','commSaga','commApporteur','portGiveaway','net','reste']
+
+  /* Les frais annexes se lisent sur le live, pas en additionnant les parts :
+     la répartition au prorata arrondit, et un live dont tout a été remboursé
+     n'aurait plus aucune part sur qui les imputer — ils resteraient invisibles
+     alors que l'argent est bien sorti. */
+  t.fraisAnnexes = sagaCentimes(Number(live.fraisAnnexes || 0));
+  t.margeSaga = t.commSaga - t.fraisAnnexes - t.commApporteur;
+
+  ['ventes','ca','giveaways','base','commSaga','commApporteur','portGiveaway','net','reste',
+   'fraisAnnexes','rembourses','margeSaga']
     .forEach(function (k) { t[k] = sagaCentimes(t[k]); });
   return t;
 }
@@ -1735,13 +1799,26 @@ function sagaSaveVentesDirectes(v) { return sagaSave('ventes_directes', v); }
 /* Décompte d'une vente hors Whatnot : ni frais de plateforme, ni giveaway */
 function sagaDecompteDirect(v) {
   var t = sagaTauxDressing(sagaPartArticle(v));
-  var commSaga = sagaCentimes(v.montant * t.commission / 100);
-  var commApporteur = v.apporteur ? sagaCentimes(v.montant * t.apporteurPct / 100) : 0;
-  var frais = v.frais || 0;
+  var rembourse = sagaEstRembourse(v);
+  var montant = rembourse ? 0 : sagaCentimes(v.montant);
+  var commSaga = sagaCentimes(montant * t.commission / 100);
+
+  /* Comme sur un live : sa commission se prend sur celle de Saga, pas sur la
+     vente. Cocher ou non la case ne change donc plus rien à ce que touche la
+     cliente — seulement ce que Saga garde. Une vente hors live n'a pas de
+     frais annexes : ils se saisissent sur un live. */
+  var commApporteur = (v.apporteur && !rembourse)
+    ? Math.max(0, sagaCentimes(commSaga * t.apporteurPct / 100))
+    : 0;
+  var frais = rembourse ? 0 : (v.frais || 0);
   return {
-    ventes: sagaCentimes(v.montant), giveaways: 0, base: sagaCentimes(v.montant),
+    ventes: montant, giveaways: 0, base: montant,
     commSaga: commSaga, commApporteur: commApporteur, frais: frais,
-    net: sagaCentimes(v.montant - commSaga - commApporteur - frais),
+    fraisAnnexes: 0, rembourse: rembourse,
+    rembourses: rembourse ? sagaCentimes(v.montant) : 0,
+    nbRembourses: rembourse ? 1 : 0,
+    margeSaga: sagaCentimes(commSaga - commApporteur),
+    net: sagaCentimes(montant - commSaga - frais),
     apporteur: v.apporteur ? t.apporteur : ''
   };
 }
@@ -1760,6 +1837,8 @@ function sagaVentesDuDressing(id) {
       partId: d.id, lettre: d.lettre, ventes: d.ventes, ca: d.ca, giveaways: d.giveaways,
       portGiveaway: d.portGiveaway,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: 0,
+      fraisAnnexes: d.fraisAnnexes, margeSaga: d.margeSaga,
+      rembourses: d.rembourses, nbRembourses: d.nbRembourses,
       net: d.net, paye: d.paye ? 1 : 0,
       datePaiement: d.paye ? d.paiement.date : '', modePaiement: d.paye ? d.paiement.mode : '',
       nbArticles: d.articles.length
@@ -1772,6 +1851,9 @@ function sagaVentesDuDressing(id) {
       origine: 'direct', venteId: v.id, date: v.date, label: v.libelle,
       lettre: v.lettre || '', ventes: d.ventes, ca: d.ventes, giveaways: 0, portGiveaway: 0,
       commission: d.commSaga, apporteurMontant: d.commApporteur, frais: d.frais,
+      fraisAnnexes: 0, margeSaga: d.margeSaga,
+      rembourse: d.rembourse, motifRemb: v.motifRemb || '', dateRemb: v.dateRemb || '',
+      rembourses: d.rembourses, nbRembourses: d.nbRembourses,
       net: d.net, paye: v.paye ? 1 : 0,
       datePaiement: v.datePaiement || '', modePaiement: v.paye ? 'Virement' : '',
       nbArticles: 1
@@ -2017,7 +2099,12 @@ function sagaCommissionsApporteur(nom) {
       var cle = live.id + '|' + part.id;
       res.push({
         cle: cle, origine: 'Live', date: live.date, session: live.titre,
-        lettre: d.lettre, cliente: d.prenom, base: d.base, montant: d.commApporteur,
+        lettre: d.lettre, cliente: d.prenom,
+        /* Son assiette n'est plus le chiffre d'affaires mais la commission que
+           Saga garde, frais annexes du live déduits : afficher la base de
+           ventes donnerait un pourcentage qui ne tombe pas. */
+        base: sagaCentimes(d.commSaga - d.fraisAnnexes),
+        montant: d.commApporteur,
         paye: !!regles[cle], paiement: regles[cle] || null
       });
     });
@@ -2030,7 +2117,7 @@ function sagaCommissionsApporteur(nom) {
     res.push({
       cle: cle, origine: 'Hors live', date: v.date, session: v.libelle,
       lettre: v.lettre, cliente: sagaTauxDressing(v.lettre).prenom,
-      base: d.base, montant: d.commApporteur,
+      base: d.commSaga, montant: d.commApporteur,
       paye: !!regles[cle], paiement: regles[cle] || null
     });
   });
@@ -2324,9 +2411,17 @@ function sagaHorodatage(iso) {
 
 /* ============ Versions du CRM ============
    Historique des évolutions, consultable depuis Paramètres. */
-var SAGA_VERSION = '1.29.2';
+var SAGA_VERSION = '1.30.0';
 
 var SAGA_VERSIONS = [
+  { version: '1.30.0', date: '2026-10-08', titre: 'L’apporteur d’affaires est payé sur la marge, et les remboursements se déduisent', points: [
+    'La commission d’un apporteur était prélevée sur les ventes, au même titre que celle de Saga : elle sortait donc de la poche de la cliente, et son nom apparaissait sur les récapitulatifs qu’elle reçoit. Elle se calcule désormais sur la commission de Saga — comme pour un commercial — et n’apparaît plus nulle part côté cliente. Son taux ne peut plus modifier ce qui lui est reversé.',
+    'Aucun montant déjà reversé ne change : aucune cliente n’avait d’apporteur enregistré, le terme valait zéro partout.',
+    'Nouveau champ « frais annexes » sur un live, à saisir à l’import ou dans ses informations : la valeur des cadeaux offerts et les achats faits pour ce live. Ils sont à la charge de Saga, jamais refacturés à la cliente, et se répartissent entre les dressings au prorata des ventes. Ils réduisent la marge et l’assiette des apporteurs.',
+    'Les écrans montrent enfin la marge réelle — commission moins frais annexes moins part des apporteurs — là où ils n’affichaient que la commission encaissée. Visible par cliente, par live et sur les rapports.',
+    'Un article peut être marqué remboursé, avec son motif et sa date : pièce non conforme, colis perdu, litige… Il reste visible, barré, mais sort de tous les calculs — ni la cliente ni l’apporteur ne sont payés dessus, et la commission baisse d’autant. Si la cliente a déjà été réglée, l’écart à récupérer est annoncé avant de valider.',
+    'Le contrat d’apporteur annonçait un pourcentage « du produit des ventes » : il décrit maintenant le calcul réellement appliqué, le plancher à zéro sur un live déficitaire et le sort des articles remboursés.'
+  ] },
   { version: '1.29.2', date: '2026-09-30', titre: 'Une pièce jointe glissée s’ouvrait dans un onglet au lieu de s’ajouter', points: [
     'Sur une fiche cliente ayant déjà un document, glisser un fichier sur l’onglet « Pièces jointes » ne l’ajoutait pas : le navigateur l’ouvrait dans un nouvel onglet. Sur une cliente sans aucun document, le même geste fonctionnait — d’où l’impression que le CRM marchait pour les unes et pas pour les autres.',
     'La fiche s’interrompait au chargement dès qu’elle avait une pièce jointe à dessiner, avant d’avoir mis en place le glisser-déposer. Le premier document passait donc toujours, et la fiche restait bloquée ensuite. C’est corrigé : les documents s’ajoutent à nouveau, en les glissant comme par le bouton.',
@@ -2836,6 +2931,101 @@ function sagaDemanderPaiement(options, auValider) {
   };
 
   setTimeout(function () { fond.querySelector('#sagaPaieDate').focus(); }, 0);
+}
+
+/* ============ Marquer un article comme remboursé ============
+   Une pièce part, revient, l'acheteur est remboursé : elle n'a jamais
+   rapporté. Le motif est demandé sur place — six mois plus tard, « pourquoi
+   ce live a-t-il baissé de 80 € » est une question sans réponse si personne
+   ne l'a écrit.
+
+   Si la cliente a déjà été réglée pour ce live, son net recalculé devient
+   inférieur à ce qu'elle a touché : l'écart est annoncé ici plutôt que
+   découvert plus tard sur un relevé qui ne tombe plus juste. */
+var SAGA_MOTIFS_REMBOURSEMENT = [
+  'Pièce non conforme à l\'annonce',
+  'Article défectueux',
+  'Erreur de taille',
+  'Colis perdu ou non reçu',
+  'Litige acheteur',
+  'Annulation de la vente'
+];
+
+function sagaModaleRemboursement(options, auValider) {
+  options = options || {};
+  var fond = document.createElement('div');
+  fond.className = 'modale';
+  fond.innerHTML =
+    '<div class="modale-boite" style="width:min(460px,100%);">' +
+      '<div class="modale-tete"><strong>Marquer un remboursement</strong>' +
+        '<button class="btn btn-ghost btn-sm" data-fermer>Fermer</button></div>' +
+      '<div class="modale-corps">' +
+        '<div class="calc-recap" style="margin-bottom:16px;"><div class="calc-row calc-total">' +
+          '<span>' + sagaEchapper(options.libelle || 'Article') + '</span>' +
+          '<span class="tabular">' + sagaEUR(options.montant || 0) + '</span></div></div>' +
+        (options.alerte
+          ? '<div class="alert-bar" style="margin-bottom:16px; display:block;">' +
+              sagaEchapper(options.alerte) + '</div>'
+          : '') +
+        '<div class="form-field"><label class="form-label" for="sagaRembMotif">Motif</label>' +
+          '<select class="form-select" id="sagaRembMotif">' +
+            SAGA_MOTIFS_REMBOURSEMENT.map(function (m) {
+              return '<option value="' + sagaEchapper(m) + '">' + sagaEchapper(m) + '</option>';
+            }).join('') +
+            '<option value="">Autre motif…</option>' +
+          '</select></div>' +
+        '<div class="form-field" style="margin-top:12px; display:none;" id="sagaRembAutreBloc">' +
+          '<label class="form-label" for="sagaRembAutre">Précisez</label>' +
+          '<input class="form-input" id="sagaRembAutre" placeholder="Ex. geste commercial" /></div>' +
+        '<div class="form-field" style="margin-top:12px;">' +
+          '<label class="form-label" for="sagaRembDate">Date du remboursement</label>' +
+          '<input class="form-input" type="date" id="sagaRembDate" value="' +
+            (options.date || sagaAujourdhui()) + '" /></div>' +
+        '<p class="card-note" style="margin-top:12px;">' +
+          'L\'article reste visible avec son motif. Il sort du calcul : ni la cliente ni ' +
+          'l\'apporteur ne sont payés dessus, et la commission Saga baisse d\'autant.</p>' +
+        '<div style="display:flex; gap:10px; margin-top:18px;">' +
+          '<button class="btn btn-primary btn-sm" data-valider>Marquer comme remboursé</button>' +
+          '<button class="btn btn-ghost btn-sm" data-fermer>Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(fond);
+  document.body.classList.add('modale-ouverte');
+
+  function fermer() {
+    fond.remove();
+    document.body.classList.remove('modale-ouverte');
+    document.removeEventListener('keydown', auClavier);
+  }
+  function auClavier(e) { if (e.key === 'Escape') fermer(); }
+  document.addEventListener('keydown', auClavier);
+
+  fond.querySelectorAll('[data-fermer]').forEach(function (b) { b.onclick = fermer; });
+  fond.addEventListener('mousedown', function (e) { if (e.target === fond) fermer(); });
+
+  var champMotif = fond.querySelector('#sagaRembMotif');
+  var blocAutre = fond.querySelector('#sagaRembAutreBloc');
+  champMotif.onchange = function () {
+    var libre = champMotif.value === '';
+    blocAutre.style.display = libre ? 'block' : 'none';
+    if (libre) fond.querySelector('#sagaRembAutre').focus();
+  };
+
+  fond.querySelector('[data-valider]').onclick = function () {
+    var motif = champMotif.value;
+    if (motif === '') {
+      motif = fond.querySelector('#sagaRembAutre').value.trim();
+      if (!motif) { fond.querySelector('#sagaRembAutre').focus(); return; }
+    }
+    var date = fond.querySelector('#sagaRembDate').value;
+    if (!date) { fond.querySelector('#sagaRembDate').focus(); return; }
+    fermer();
+    auValider({ motif: motif, date: date });
+  };
+
+  setTimeout(function () { champMotif.focus(); }, 0);
 }
 
 /* ============ Aperçu d'un PDF avant enregistrement ============

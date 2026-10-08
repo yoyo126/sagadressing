@@ -95,6 +95,13 @@
           <div class="kpi-value tabular" id="kpiNet">—</div>
           <div class="kpi-delta" id="kpiNetSub">—</div>
         </div>
+        <!-- La commission n'a jamais été le bénéfice : les cadeaux offerts, les
+             achats du live et la part des apporteurs n'y figuraient pas. -->
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Votre marge</span></div>
+          <div class="kpi-value tabular" id="kpiMarge" style="color:var(--brand-strong)">—</div>
+          <div class="kpi-delta" id="kpiMargeSub">—</div>
+        </div>
       </section>
 
       <div class="content-grid">
@@ -153,6 +160,7 @@
              montant déduit qui doit figurer au rapport, pas celui engagé. */
           source: 'live', ventes: d.ca, giveaways: d.portGiveaway,
           saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
+          fraisAnnexes: d.fraisAnnexes, marge: d.margeSaga, rembourses: d.rembourses,
           paye: d.paye, datePaiement: d.paye ? d.paiement.date : ''
         });
       });
@@ -168,6 +176,7 @@
         cliente: i.prenom, nom: i.nom, cle: idv, lettre: v.lettre,
         source: 'direct', ventes: d.ventes, giveaways: 0,   // pas de giveaway hors Whatnot
         saga: d.commSaga, apporteur: d.commApporteur, net: d.net,
+        fraisAnnexes: 0, marge: d.margeSaga, rembourses: d.rembourses,
         paye: !!v.paye, datePaiement: v.datePaiement || ''
       });
     });
@@ -403,9 +412,12 @@
     return rows.reduce(function (a, v) {
       a.ventes += v.ventes; a.giveaways += v.giveaways; a.saga += v.saga;
       a.apporteur += v.apporteur; a.net += v.net;
+      a.fraisAnnexes += v.fraisAnnexes || 0; a.marge += v.marge || 0;
+      a.rembourses += v.rembourses || 0;
       a[v.source === 'live' ? 'live' : 'direct'] += v.ventes;
       return a;
-    }, { ventes: 0, giveaways: 0, saga: 0, apporteur: 0, net: 0, live: 0, direct: 0 });
+    }, { ventes: 0, giveaways: 0, saga: 0, apporteur: 0, net: 0, live: 0, direct: 0,
+         fraisAnnexes: 0, marge: 0, rembourses: 0 });
   }
 
   function grouperParCliente(rows) {
@@ -485,6 +497,17 @@
     document.getElementById('kpiNetSub').textContent = 'dont ' + fmtEUR(
       rows.filter(function (v) { return v.source === 'direct'; }).reduce(function (a, v) { return a + v.net; }, 0)
     ) + ' hors live';
+
+    /* Commission Saga − frais annexes − commissions apporteurs : ce qui vous
+       reste réellement, et non ce que vous avez prélevé. */
+    document.getElementById('kpiMarge').textContent = fmtEUR(t.marge);
+    var detailMarge = [];
+    if (t.fraisAnnexes > 0) detailMarge.push(fmtEUR(t.fraisAnnexes) + ' de frais annexes');
+    if (t.apporteur > 0) detailMarge.push(fmtEUR(t.apporteur) + ' aux apporteurs');
+    if (t.rembourses > 0) detailMarge.push(fmtEUR(t.rembourses) + ' remboursés');
+    document.getElementById('kpiMargeSub').textContent = detailMarge.length
+      ? 'après ' + detailMarge.join(' · ')
+      : (t.saga > 0 ? 'aucun frais sur la période' : '—');
 
     // Tableau de synthèse : une ligne par cliente
     var lettres = Object.keys(byCliente).sort(function (a, b) {

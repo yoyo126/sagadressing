@@ -80,7 +80,7 @@
         <div class="tab-panel active" id="tab-commissions" data-panel-group="apporteur" style="margin-top:18px;">
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Date</th><th>Origine</th><th>Cliente</th><th class="num">Base</th><th class="num">Commission</th><th>Statut</th></tr></thead>
+              <thead><tr><th>Date</th><th>Origine</th><th>Cliente</th><th class="num">Assiette</th><th class="num">Commission</th><th>Statut</th></tr></thead>
               <tbody id="commBody"></tbody>
             </table>
           </div>
@@ -133,6 +133,11 @@
                 <div class="form-field">
                   <label class="form-label" for="cTaux">Taux de commission (%)</label>
                   <input class="form-input" type="number" id="cTaux" />
+                  <span class="card-note">
+                    Pourcentage de <strong>votre</strong> commission, frais annexes déduits — pas du
+                    chiffre d'affaires. Un apporteur à 20 % sur une cliente à 50 % touche donc 10 %
+                    des ventes, et jamais rien qui sorte de la poche de la cliente.
+                  </span>
                 </div>
                 <div class="form-field">
                   <label class="form-label" for="cAssiette">Assiette de la commission</label>
@@ -180,9 +185,15 @@
                 en dépôt-vente. Il n'a aucun pouvoir de représentation ni de négociation au nom de la Société.</p>
 
                 <h3>2. Rémunération</h3>
-                <p>L'Apporteur perçoit <span class="field" data-f="taux">—</span> % du produit des ventes réalisées
-                pour les clientes qu'il a apportées, calculé sur <span class="field" data-f="assiette">—</span>.
-                La commission est due après encaissement effectif par la Société.</p>
+                <p>L'Apporteur perçoit <span class="field" data-f="taux">—</span> % de la
+                <strong>commission perçue par la Société</strong> sur les ventes des clientes qu'il a
+                apportées, déduction faite des frais annexes engagés par la Société pour ces ventes
+                (cadeaux offerts, achats liés au live). L'assiette retenue est :
+                <span class="field" data-f="assiette">—</span>.</p>
+                <p>La commission est due après encaissement effectif par la Société. Elle ne peut être
+                négative : lorsque les frais annexes excèdent la commission de la Société, aucune somme
+                n'est due au titre des ventes concernées, sans report. Un article remboursé à l'acheteur
+                n'ouvre droit à aucune commission.</p>
 
                 <h3>3. Durée de l'apport</h3>
                 <p><span class="field" data-f="duree">—</span>. Prise d'effet au
